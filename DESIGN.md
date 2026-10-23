@@ -20,6 +20,10 @@ MVC controllers translate HTTP input into application use cases and responses. B
 - The MVC host uses secure cookie authentication, a fallback authenticated-user policy, and antiforgery validation for unsafe MVC actions. Development uses ephemeral data-protection keys; production must configure durable protected keys for multi-instance deployments.
 - Role, staff ID, and assigned branch are emitted as claims after successful authentication.
 
+## Branch and staff administration slice
+
+The Administrator-only MVC area lists branches and staff, creates branches and staff accounts, and activates or deactivates staff accounts. `AdministrationController` handles web forms and authorization. `StaffManagementService` checks duplicate branch codes and email addresses, validates branch assignment, delegates password hashing, and prevents deactivating the last active Administrator. The service depends on Application repository abstractions; Infrastructure provides the JSON-backed implementations. This JSON read-modify-write workflow is intended for the single-process training application and does not provide transactional multi-user concurrency guarantees.
+
 ## Persistence
 
 Assignment 2 requires JSON file persistence behind interfaces. The JSON implementation remains in Infrastructure so a later database adapter can replace it without changing business rules. JSON writes use a semaphore and a temporary file replacement; this protects a single process from overlapping writes but does not provide multi-process transactions.

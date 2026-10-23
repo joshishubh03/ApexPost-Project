@@ -4,7 +4,7 @@ Assignment 2 implementation of a secure retail and postal counter platform using
 
 ## Current stage
 
-The feature/branch-staff-auth branch adds branch and staff domain records, JSON demo data, and cookie-based staff sign-in. Business capabilities will continue in short-lived feature branches and merge into main through pull requests.
+The staff-auth slice adds branch and staff domain records, JSON demo data, and cookie-based staff sign-in. The branch-staff-management slice adds Administrator-only branch and staff management. Business capabilities continue in short-lived feature branches and merge into main through pull requests.
 
 ## Solution projects
 
@@ -37,6 +37,12 @@ The demo data is seeded on first run in Development. All seeded accounts use the
 - auditor1@apexpost.local
 
 The demo password is public training data and must never be reused outside this local demo. Password hashes, not plaintext passwords, are stored in JSON.
+
+## Branch and staff administration
+
+Sign in as the seeded Administrator to use the **Branches** and **Staff** links. Administrators can create branches, create staff accounts, and activate or deactivate accounts. New passwords are hashed before they are saved. Non-administrator staff must be assigned to an existing branch, and the last active Administrator cannot be deactivated.
+
+The MVC administration controller calls `StaffManagementService` in the Application layer. That service uses repository interfaces; Infrastructure implements those interfaces with the JSON files in `data/`. This keeps web form handling, business rules, and persistence in their respective layers.
 
 Never commit real secrets or production personal data.
 
