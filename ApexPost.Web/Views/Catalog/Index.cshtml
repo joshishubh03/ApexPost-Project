@@ -1,0 +1,56 @@
+@model ProductCataloguePageModel
+@{
+    ViewData["Title"] = "Product catalogue";
+    var canManage = User.IsInRole("Administrator") || User.IsInRole("BranchManager");
+}
+
+<h1>Product catalogue</h1>
+<p class="text-muted">Search postage, packaging, retail items, and counter services.</p>
+@if (TempData["StatusMessage"] is string status) { <div class="alert alert-success">@status</div> }
+
+<form asp-action="Index" method="get" class="row g-2 mb-4">
+    <div class="col-sm-8"><label for="query" class="visually-hidden">Search products</label><input id="query" name="query" value="@Model.Query" class="form-control" placeholder="Search by SKU, name, category, or description" /></div>
+    <div class="col-auto"><button class="btn btn-outline-primary" type="submit">Search</button></div>
+    <div class="col-auto"><a asp-action="Index" class="btn btn-outline-secondary">Clear</a></div>
+</form>
+
+@if (canManage)
+{
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <div class="card card-body mb-4">
+        <h2 class="h5">Add product</h2>
+        <form asp-action="Create" method="post" class="row g-3">
+            <input asp-for="Query" type="hidden" />
+            <div class="col-md-2"><label asp-for="NewProduct.Sku" class="form-label">SKU</label><input asp-for="NewProduct.Sku" class="form-control" /><span asp-validation-for="NewProduct.Sku" class="text-danger"></span></div>
+            <div class="col-md-3"><label asp-for="NewProduct.Name" class="form-label"></label><input asp-for="NewProduct.Name" class="form-control" /><span asp-validation-for="NewProduct.Name" class="text-danger"></span></div>
+            <div class="col-md-2"><label asp-for="NewProduct.Category" class="form-label"></label><input asp-for="NewProduct.Category" class="form-control" /><span asp-validation-for="NewProduct.Category" class="text-danger"></span></div>
+            <div class="col-md-2"><label asp-for="NewProduct.Price" class="form-label">Price (INR)</label><input asp-for="NewProduct.Price" class="form-control" type="number" min="0" step="0.01" /><span asp-validation-for="NewProduct.Price" class="text-danger"></span></div>
+            <div class="col-md-3"><label asp-for="NewProduct.Description" class="form-label"></label><input asp-for="NewProduct.Description" class="form-control" /><span asp-validation-for="NewProduct.Description" class="text-danger"></span></div>
+            <div class="col-12"><button class="btn btn-primary" type="submit">Create product</button></div>
+        </form>
+    </div>
+}
+
+<div class="table-responsive">
+    <table class="table table-striped align-middle">
+        <thead><tr><th>SKU</th><th>Product</th><th>Category</th><th class="text-end">Price</th>@if (canManage) { <th>Status</th><th></th> }</tr></thead>
+        <tbody>
+        @foreach (var product in Model.Products)
+        {
+            <tr>
+                <td>@product.Sku</td>
+                <td>@product.Name<br /><small class="text-muted">@product.Description</small></td>
+                <td>@product.Category</td>
+                <td class="text-end">@product.Price.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("en-IN"))</td>
+                @if (canManage)
+                {
+                    <td>@(product.IsActive ? "Active" : "Inactive")</td>
+                    <td><form asp-action="SetActive" method="post"><input type="hidden" name="id" value="@product.Id" /><input type="hidden" name="isActive" value="@(!product.IsActive)" /><button type="submit" class="btn btn-sm @(product.IsActive ? "btn-outline-danger" : "btn-outline-success")">@(product.IsActive ? "Deactivate" : "Activate")</button></form></td>
+                }
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+@if (Model.Products.Count == 0) { <p class="text-muted">No matching products found.</p> }
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

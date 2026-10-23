@@ -7,6 +7,7 @@ namespace ApexPost.Infrastructure.Seed;
 public sealed class DemoDataSeeder(
     IBranchRepository branchRepository,
     IStaffRepository staffRepository,
+    IProductRepository productRepository,
     IStaffPasswordService passwordService,
     string demoPassword)
 {
@@ -24,6 +25,48 @@ public sealed class DemoDataSeeder(
                     isOpen: true))
                 .ToArray();
             await branchRepository.SaveAllAsync(branches, cancellationToken);
+        }
+
+        var products = await productRepository.GetAllAsync(cancellationToken);
+        if (products.Count == 0)
+        {
+            var productSeeds = new (string Sku, string Name, string Description, string Category, decimal Price)[]
+            {
+                ("POST-001", "Domestic Letter", "Standard domestic letter postage", "Postage", 25.00m),
+                ("POST-002", "Large Letter", "Large format domestic letter postage", "Postage", 45.00m),
+                ("POST-003", "Registered Letter", "Tracked registered letter service", "Postage", 85.00m),
+                ("POST-004", "Express Letter", "Priority domestic letter service", "Postage", 120.00m),
+                ("POST-005", "Postcard", "Domestic postcard postage", "Postage", 15.00m),
+                ("POST-006", "International Letter", "Standard international letter postage", "Postage", 150.00m),
+                ("POST-007", "International Express", "Priority international letter service", "Postage", 450.00m),
+                ("POST-008", "Printed Matter", "Printed material postal service", "Postage", 35.00m),
+                ("PACK-001", "Small Mailing Box", "Small corrugated mailing box", "Packaging", 40.00m),
+                ("PACK-002", "Medium Mailing Box", "Medium corrugated mailing box", "Packaging", 65.00m),
+                ("PACK-003", "Large Mailing Box", "Large corrugated mailing box", "Packaging", 95.00m),
+                ("PACK-004", "Document Envelope", "Rigid document mailing envelope", "Packaging", 20.00m),
+                ("PACK-005", "Padded Mailer", "Protective padded mailer", "Packaging", 30.00m),
+                ("PACK-006", "Bubble Wrap Roll", "Protective bubble wrap roll", "Packaging", 110.00m),
+                ("PACK-007", "Packing Tape", "Standard clear packing tape", "Packaging", 35.00m),
+                ("PACK-008", "Shipping Labels", "Pack of adhesive shipping labels", "Packaging", 55.00m),
+                ("RETL-001", "ApexPost Pen", "Branded blue ballpoint pen", "Retail", 20.00m),
+                ("RETL-002", "ApexPost Notebook", "Branded pocket notebook", "Retail", 60.00m),
+                ("RETL-003", "Address Book", "Hardcover address book", "Retail", 125.00m),
+                ("RETL-004", "Greeting Card", "Blank all-occasion greeting card", "Retail", 40.00m),
+                ("RETL-005", "Gift Wrap Sheet", "Decorative gift wrapping sheet", "Retail", 25.00m),
+                ("RETL-006", "Postage Stamp Sheet", "Sheet of domestic postage stamps", "Retail", 100.00m),
+                ("RETL-007", "Desk Calendar", "ApexPost annual desk calendar", "Retail", 85.00m),
+                ("RETL-008", "Document Folder", "Reusable document folder", "Retail", 45.00m),
+                ("SHIP-001", "Small Parcel Service", "Domestic small parcel handling", "Shipping", 90.00m),
+                ("SHIP-002", "Medium Parcel Service", "Domestic medium parcel handling", "Shipping", 160.00m),
+                ("SHIP-003", "Large Parcel Service", "Domestic large parcel handling", "Shipping", 280.00m),
+                ("SHIP-004", "Fragile Handling", "Additional fragile parcel handling", "Shipping", 75.00m),
+                ("MORD-001", "Money Order Fee - Basic", "Basic money order processing fee", "Money Order", 30.00m),
+                ("MORD-002", "Money Order Fee - Express", "Express money order processing fee", "Money Order", 65.00m)
+            };
+            var seededProducts = productSeeds.Select((seed, index) => new Product(
+                Guid.Parse($"20000000-0000-0000-0000-{index + 1:000000000000}"),
+                seed.Sku, seed.Name, seed.Description, seed.Category, seed.Price, isActive: true));
+            await productRepository.SaveAllAsync(seededProducts, cancellationToken);
         }
 
         var staff = await staffRepository.GetAllAsync(cancellationToken);

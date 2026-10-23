@@ -1,0 +1,272 @@
+[
+  {
+    "id": "20000000-0000-0000-0000-000000000001",
+    "sku": "POST-001",
+    "name": "Domestic Letter",
+    "description": "Standard domestic letter postage",
+    "category": "Postage",
+    "price": 25.00,
+    "isActive": true
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000002",
+    "sku": "POST-002",
+    "name": "Large Letter",
+    "description": "Large format domestic letter postage",
+    "category": "Postage",
+    "price": 45.00,
+    "isActive": true
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000003",
+    "sku": "POST-003",
+    "name": "Registered Letter",
+    "description": "Tracked registered letter service",
+    "category": "Postage",
+    "price": 85.00,
+    "isActive": true
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000004",
+    "sku": "POST-004",
+    "name": "Express Letter",
+    "description": "Priority domestic letter service",
+    "category": "Postage",
+    "price": 120.00,
+    "isActive": true
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000005",
+    "sku": "POST-005",
+    "name": "Postcard",
+    "description": "Domestic postcard postage",
+    "category": "Postage",
+    "price": 15.00,
+    "isActive": true
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000006",
+    "sku": "POST-006",
+    "name": "International Letter",
+    "description": "Standard international letter postage",
+    "category": "Postage",
+    "price": 150.00,
+    "isActive": true
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000007",
+    "sku": "POST-007",
+    "name": "International Express",
+    "description": "Priority international letter service",
+    "category": "Postage",
+    "price": 450.00,
+    "isActive": true
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000008",
+    "sku": "POST-008",
+    "name": "Printed Matter",
+    "description": "Printed material postal service",
+    "category": "Postage",
+    "price": 35.00,
+    "isActive": true
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000009",
+    "sku": "PACK-001",
+    "name": "Small Mailing Box",
+    "description": "Small corrugated mailing box",
+    "category": "Packaging",
+    "price": 40.00,
+    "isActive": true
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000010",
+    "sku": "PACK-002",
+    "name": "Medium Mailing Box",
+    "description": "Medium corrugated mailing box",
+    "category": "Packaging",
+    "price": 65.00,
+    "isActive": true
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000011",
+    "sku": "PACK-003",
+    "name": "Large Mailing Box",
+    "description": "Large corrugated mailing box",
+    "category": "Packaging",
+    "price": 95.00,
+    "isActive": true
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000012",
+    "sku": "PACK-004",
+    "name": "Document Envelope",
+    "description": "Rigid document mailing envelope",
+    "category": "Packaging",
+    "price": 20.00,
+    "isActive": true
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000013",
+    "sku": "PACK-005",
+    "name": "Padded Mailer",
+    "description": "Protective padded mailer",
+    "category": "Packaging",
+    "price": 30.00,
+    "isActive": true
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000014",
+    "sku": "PACK-006",
+    "name": "Bubble Wrap Roll",
+    "description": "Protective bubble wrap roll",
+    "category": "Packaging",
+    "price": 110.00,
+    "isActive": true
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000015",
+    "sku": "PACK-007",
+    "name": "Packing Tape",
+    "description": "Standard clear packing tape",
+    "category": "Packaging",
+    "price": 35.00,
+    "isActive": true
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000016",
+    "sku": "PACK-008",
+    "name": "Shipping Labels",
+    "description": "Pack of adhesive shipping labels",
+    "category": "Packaging",
+    "price": 55.00,
+    "isActive": true
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000017",
+    "sku": "RETL-001",
+    "name": "ApexPost Pen",
+    "description": "Branded blue ballpoint pen",
+    "category": "Retail",
+    "price": 20.00,
+    "isActive": true
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000018",
+    "sku": "RETL-002",
+    "name": "ApexPost Notebook",
+    "description": "Branded pocket notebook",
+    "category": "Retail",
+    "price": 60.00,
+    "isActive": true
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000019",
+    "sku": "RETL-003",
+    "name": "Address Book",
+    "description": "Hardcover address book",
+    "category": "Retail",
+    "price": 125.00,
+    "isActive": true
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000020",
+    "sku": "RETL-004",
+    "name": "Greeting Card",
+    "description": "Blank all-occasion greeting card",
+    "category": "Retail",
+    "price": 40.00,
+    "isActive": true
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000021",
+    "sku": "RETL-005",
+    "name": "Gift Wrap Sheet",
+    "description": "Decorative gift wrapping sheet",
+    "category": "Retail",
+    "price": 25.00,
+    "isActive": true
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000022",
+    "sku": "RETL-006",
+    "name": "Postage Stamp Sheet",
+    "description": "Sheet of domestic postage stamps",
+    "category": "Retail",
+    "price": 100.00,
+    "isActive": true
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000023",
+    "sku": "RETL-007",
+    "name": "Desk Calendar",
+    "description": "ApexPost annual desk calendar",
+    "category": "Retail",
+    "price": 85.00,
+    "isActive": true
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000024",
+    "sku": "RETL-008",
+    "name": "Document Folder",
+    "description": "Reusable document folder",
+    "category": "Retail",
+    "price": 45.00,
+    "isActive": true
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000025",
+    "sku": "SHIP-001",
+    "name": "Small Parcel Service",
+    "description": "Domestic small parcel handling",
+    "category": "Shipping",
+    "price": 90.00,
+    "isActive": true
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000026",
+    "sku": "SHIP-002",
+    "name": "Medium Parcel Service",
+    "description": "Domestic medium parcel handling",
+    "category": "Shipping",
+    "price": 160.00,
+    "isActive": true
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000027",
+    "sku": "SHIP-003",
+    "name": "Large Parcel Service",
+    "description": "Domestic large parcel handling",
+    "category": "Shipping",
+    "price": 280.00,
+    "isActive": true
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000028",
+    "sku": "SHIP-004",
+    "name": "Fragile Handling",
+    "description": "Additional fragile parcel handling",
+    "category": "Shipping",
+    "price": 75.00,
+    "isActive": true
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000029",
+    "sku": "MORD-001",
+    "name": "Money Order Fee - Basic",
+    "description": "Basic money order processing fee",
+    "category": "Money Order",
+    "price": 30.00,
+    "isActive": false
+  },
+  {
+    "id": "20000000-0000-0000-0000-000000000030",
+    "sku": "MORD-002",
+    "name": "Money Order Fee - Express",
+    "description": "Express money order processing fee",
+    "category": "Money Order",
+    "price": 65.00,
+    "isActive": true
+  }
+]

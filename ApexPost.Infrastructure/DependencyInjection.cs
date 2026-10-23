@@ -15,10 +15,12 @@ public static class DependencyInjection
     {
         services.AddSingleton<IBranchRepository>(_ => new JsonBranchRepository(dataDirectory));
         services.AddSingleton<IStaffRepository>(_ => new JsonStaffRepository(dataDirectory));
+        services.AddSingleton<IProductRepository>(_ => new JsonProductRepository(dataDirectory));
         services.AddSingleton<IStaffPasswordService, AspNetStaffPasswordService>();
         services.AddSingleton(serviceProvider => new DemoDataSeeder(
             serviceProvider.GetRequiredService<IBranchRepository>(),
             serviceProvider.GetRequiredService<IStaffRepository>(),
+            serviceProvider.GetRequiredService<IProductRepository>(),
             serviceProvider.GetRequiredService<IStaffPasswordService>(),
             demoPassword));
 

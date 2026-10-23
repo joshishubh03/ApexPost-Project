@@ -17,6 +17,7 @@
                 <div class="d-flex align-items-center gap-3">
                     @if (User.Identity?.IsAuthenticated == true)
                     {
+                        <a asp-controller="Catalog" asp-action="Index" class="btn btn-outline-primary btn-sm">Catalogue</a>
                         @if (User.IsInRole("Administrator"))
                         {
                             <a asp-controller="Administration" asp-action="Branches" class="btn btn-outline-primary btn-sm">Branches</a>
