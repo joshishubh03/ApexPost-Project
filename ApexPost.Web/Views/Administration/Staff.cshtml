@@ -1,0 +1,47 @@
+@model CreateStaffInputModel
+@using ApexPost.Domain.Entities
+@using ApexPost.Domain.Enums
+@{
+    ViewData["Title"] = "Staff management";
+    var staff = ViewData["Staff"] as IReadOnlyList<StaffMember> ?? [];
+    var branches = ViewData["Branches"] as IReadOnlyList<Branch> ?? [];
+}
+
+<h1>Staff management</h1>
+<p class="text-muted">Create accounts and control whether staff can sign in.</p>
+@if (TempData["StatusMessage"] is string status) { <div class="alert alert-success">@status</div> }
+@if (TempData["ErrorMessage"] is string error) { <div class="alert alert-danger">@error</div> }
+<div asp-validation-summary="ModelOnly" class="text-danger"></div>
+<div class="row g-4">
+    <section class="col-lg-5">
+        <div class="card card-body">
+            <h2 class="h5">Create staff account</h2>
+            <form asp-action="CreateStaff" method="post">
+                <div class="mb-3"><label asp-for="FullName" class="form-label"></label><input asp-for="FullName" class="form-control" /><span asp-validation-for="FullName" class="text-danger"></span></div>
+                <div class="mb-3"><label asp-for="Email" class="form-label"></label><input asp-for="Email" class="form-control" /><span asp-validation-for="Email" class="text-danger"></span></div>
+                <div class="mb-3"><label asp-for="Role" class="form-label"></label><select asp-for="Role" asp-items="Html.GetEnumSelectList<StaffRole>()" class="form-select"></select><span asp-validation-for="Role" class="text-danger"></span></div>
+                <div class="mb-3"><label asp-for="BranchId" class="form-label">Branch</label><select asp-for="BranchId" class="form-select"><option value="">Select a branch</option>@foreach (var branch in branches) { <option value="@branch.Id">@branch.Code — @branch.Name</option> }</select><span asp-validation-for="BranchId" class="text-danger"></span><div class="form-text">Administrators may be unassigned.</div></div>
+                <div class="mb-3"><label asp-for="InitialPassword" class="form-label">Temporary password</label><input asp-for="InitialPassword" class="form-control" autocomplete="new-password" /><span asp-validation-for="InitialPassword" class="text-danger"></span><div class="form-text">At least 12 characters. Share it with the staff member securely.</div></div>
+                <button class="btn btn-primary" type="submit">Create staff</button>
+            </form>
+        </div>
+    </section>
+    <section class="col-lg-7">
+        <h2 class="h5">Staff accounts</h2>
+        <div class="table-responsive"><table class="table table-striped align-middle">
+            <thead><tr><th>Name / email</th><th>Role</th><th>Branch</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var member in staff)
+            {
+                var branch = branches.FirstOrDefault(item => item.Id == member.BranchId);
+                <tr>
+                    <td>@member.FullName<br /><small class="text-muted">@member.Email</small></td>
+                    <td>@member.Role</td><td>@(branch?.Code ?? "—")</td><td>@(member.IsActive ? "Active" : "Inactive")</td>
+                    <td><form asp-action="SetStaffActive" method="post"><input type="hidden" name="id" value="@member.Id" /><input type="hidden" name="isActive" value="@(!member.IsActive)" /><button class="btn btn-sm @(member.IsActive ? "btn-outline-danger" : "btn-outline-success")" type="submit">@(member.IsActive ? "Deactivate" : "Activate")</button></form></td>
+                </tr>
+            }
+            </tbody>
+        </table></div>
+    </section>
+</div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }
