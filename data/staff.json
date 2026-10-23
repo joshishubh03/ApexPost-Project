@@ -1,0 +1,182 @@
+[
+  {
+    "id": "60de6608-bc63-1595-b124-373ca6f24564",
+    "email": "manager1@apexpost.local",
+    "fullName": "Branch Manager 1",
+    "role": "BranchManager",
+    "branchId": "10000000-0000-0000-0000-000000000001",
+    "isActive": true,
+    "passwordHash": "AQAAAAIAAYagAAAAEAdGruSae6PM9FpkRARhqbpPNba5L2hUpRoVEA6f5gbyew51sKRhQUSFRgkLnyWkHg=="
+  },
+  {
+    "id": "8055dcea-8b45-de06-6328-66ba78941751",
+    "email": "clerk11@apexpost.local",
+    "fullName": "Counter Clerk 1-1",
+    "role": "CounterClerk",
+    "branchId": "10000000-0000-0000-0000-000000000001",
+    "isActive": true,
+    "passwordHash": "AQAAAAIAAYagAAAAENQSgKAgNDKLyUacKyYDhxTIAPmbKElh5T69TKNZSfuEypflTR0vdSE/tzWhI8V9hA=="
+  },
+  {
+    "id": "22266a47-aa14-1195-bd34-9ad97c9abcd0",
+    "email": "clerk12@apexpost.local",
+    "fullName": "Counter Clerk 1-2",
+    "role": "CounterClerk",
+    "branchId": "10000000-0000-0000-0000-000000000001",
+    "isActive": true,
+    "passwordHash": "AQAAAAIAAYagAAAAEJPdcIqeIpgiDH1wzIzN/WUTIw/KAE5pWFyG/sKWUz1pAczXuTv9XyXm9DnNzVfDLQ=="
+  },
+  {
+    "id": "710e29ba-a4fd-1638-94d6-2e133355d4d7",
+    "email": "manager2@apexpost.local",
+    "fullName": "Branch Manager 2",
+    "role": "BranchManager",
+    "branchId": "10000000-0000-0000-0000-000000000002",
+    "isActive": true,
+    "passwordHash": "AQAAAAIAAYagAAAAEAPfKPUOa4uG2DhRxWlgmJfNqZ\u002BZNNYIhfNQT6Ks8KUy0NJMDrx9JwETZPQplWkfeg=="
+  },
+  {
+    "id": "843015b4-0e6b-a8c3-78e8-95165cc51303",
+    "email": "clerk21@apexpost.local",
+    "fullName": "Counter Clerk 2-1",
+    "role": "CounterClerk",
+    "branchId": "10000000-0000-0000-0000-000000000002",
+    "isActive": true,
+    "passwordHash": "AQAAAAIAAYagAAAAEJeuQgKRISp1jCpWAH\u002BUE\u002BrXSDuW2Ii8HNslknZftHlm4l9tLjY10YdYax/PZKQx4g=="
+  },
+  {
+    "id": "6f9f0c79-8063-fec1-8e13-1e1827a842c6",
+    "email": "clerk22@apexpost.local",
+    "fullName": "Counter Clerk 2-2",
+    "role": "CounterClerk",
+    "branchId": "10000000-0000-0000-0000-000000000002",
+    "isActive": true,
+    "passwordHash": "AQAAAAIAAYagAAAAEE6dkfwuyTmYxn8AP\u002BjB/YfjoDJx8snmOHLAbm9ia0J/oU2d\u002BtfYKH3n6LxticSjCQ=="
+  },
+  {
+    "id": "4c9994fd-bc7c-17f5-38be-b5c29ef959ff",
+    "email": "manager3@apexpost.local",
+    "fullName": "Branch Manager 3",
+    "role": "BranchManager",
+    "branchId": "10000000-0000-0000-0000-000000000003",
+    "isActive": true,
+    "passwordHash": "AQAAAAIAAYagAAAAEGTULNrN3AIpo44HfSgBZRJqNio0sTGf1QZfzvH314j9BBSAgOqKzXm3wm\u002Bg1hGB/g=="
+  },
+  {
+    "id": "d2722426-714b-e07d-e22a-cf0773c7fbe9",
+    "email": "clerk31@apexpost.local",
+    "fullName": "Counter Clerk 3-1",
+    "role": "CounterClerk",
+    "branchId": "10000000-0000-0000-0000-000000000003",
+    "isActive": true,
+    "passwordHash": "AQAAAAIAAYagAAAAEC5fdCYocA4q5RbVyGgNex4GuUCiBuJtng7IJT8wVZYZJYaA9ysN9c0I3LW9QZ\u002B/rw=="
+  },
+  {
+    "id": "2332dce3-0058-9c44-e50c-050e99341cdd",
+    "email": "clerk32@apexpost.local",
+    "fullName": "Counter Clerk 3-2",
+    "role": "CounterClerk",
+    "branchId": "10000000-0000-0000-0000-000000000003",
+    "isActive": true,
+    "passwordHash": "AQAAAAIAAYagAAAAEJREhWeWdri2awssQmNpBxYQQW2RmGng7vVLbTncz1PCTg9jFAPAk0Zs\u002B/nqFsXEJg=="
+  },
+  {
+    "id": "26f440e1-e88b-6c35-db37-49a2e95950f9",
+    "email": "manager4@apexpost.local",
+    "fullName": "Branch Manager 4",
+    "role": "BranchManager",
+    "branchId": "10000000-0000-0000-0000-000000000004",
+    "isActive": true,
+    "passwordHash": "AQAAAAIAAYagAAAAEPaU4B4rhppd5ZJK3F5kgbTOYfQVaCSB73/wwUKuWfNUElzxY8haEEYExeDQIm94NA=="
+  },
+  {
+    "id": "7893507e-3565-041c-a628-4f18b4ff1808",
+    "email": "clerk41@apexpost.local",
+    "fullName": "Counter Clerk 4-1",
+    "role": "CounterClerk",
+    "branchId": "10000000-0000-0000-0000-000000000004",
+    "isActive": true,
+    "passwordHash": "AQAAAAIAAYagAAAAEHgJ2LGNhQiOaroC2ooL1idxihqpHGCupnJvlE/yV5NHdEjyhBLudrzJusCr\u002Bh6CjA=="
+  },
+  {
+    "id": "9d1f2799-9507-38de-cf43-a0e3315b6ce1",
+    "email": "clerk42@apexpost.local",
+    "fullName": "Counter Clerk 4-2",
+    "role": "CounterClerk",
+    "branchId": "10000000-0000-0000-0000-000000000004",
+    "isActive": true,
+    "passwordHash": "AQAAAAIAAYagAAAAEGYvXorczO\u002BUZ6vST1G1nabYeLTvOl3Fq6xXIvVRxm7NNPnwRVqa4QWem5kFGxse4w=="
+  },
+  {
+    "id": "f535c6da-d35c-7eee-610e-4e39202b832c",
+    "email": "manager5@apexpost.local",
+    "fullName": "Branch Manager 5",
+    "role": "BranchManager",
+    "branchId": "10000000-0000-0000-0000-000000000005",
+    "isActive": true,
+    "passwordHash": "AQAAAAIAAYagAAAAEFD30km6fYbmY5iH4xEBgn2wTnEGq4N9inZjiv0qNfbptyvR2tuaN\u002BhZR6P85wrc/g=="
+  },
+  {
+    "id": "a049445c-fbd4-5f95-b6af-773130f846c0",
+    "email": "clerk51@apexpost.local",
+    "fullName": "Counter Clerk 5-1",
+    "role": "CounterClerk",
+    "branchId": "10000000-0000-0000-0000-000000000005",
+    "isActive": true,
+    "passwordHash": "AQAAAAIAAYagAAAAELC1ZRVDoGJwxLLbNhyRDUFzdAO3QPZ1YGIUDFHiIgIQ8bJxN/jYU5ua13stSw3gYg=="
+  },
+  {
+    "id": "86e5bbaf-1f38-4899-0ad7-5cbe5850421e",
+    "email": "clerk52@apexpost.local",
+    "fullName": "Counter Clerk 5-2",
+    "role": "CounterClerk",
+    "branchId": "10000000-0000-0000-0000-000000000005",
+    "isActive": true,
+    "passwordHash": "AQAAAAIAAYagAAAAEHPMQO/WL5s6sdEmIhG1lzxp77NrgQ07lrqRGoWgvDVsJDLdGp3YgYB2QnW2BO\u002B9OA=="
+  },
+  {
+    "id": "5d804f51-9235-5149-3f28-c253090b2629",
+    "email": "clerk-extra1@apexpost.local",
+    "fullName": "Counter Clerk Extra 1",
+    "role": "CounterClerk",
+    "branchId": "10000000-0000-0000-0000-000000000001",
+    "isActive": true,
+    "passwordHash": "AQAAAAIAAYagAAAAEH85LLaZG0LkiUL1NMz4mwMSTwe3pff4A/A9\u002BzkbVCmXSkRpqLLLMqO0Z1PCyoE4qA=="
+  },
+  {
+    "id": "9c337758-3a6b-1528-8818-17db9d3fc006",
+    "email": "clerk-extra2@apexpost.local",
+    "fullName": "Counter Clerk Extra 2",
+    "role": "CounterClerk",
+    "branchId": "10000000-0000-0000-0000-000000000001",
+    "isActive": true,
+    "passwordHash": "AQAAAAIAAYagAAAAEGWGhbNU1vRdbeEObuklda/LPMxPvQQn5cn/5651MYv5At2jolzflV0f3\u002BMUtUpN\u002BA=="
+  },
+  {
+    "id": "9af395d4-390d-aa19-fc9c-e687f3eb36fd",
+    "email": "clerk-extra3@apexpost.local",
+    "fullName": "Counter Clerk Extra 3",
+    "role": "CounterClerk",
+    "branchId": "10000000-0000-0000-0000-000000000001",
+    "isActive": true,
+    "passwordHash": "AQAAAAIAAYagAAAAEN7e0wdE9uTAho7sFTNUMih8oAE55byzB7Uio4NQCq3qLmlrlw/KwZUPWTgWKMimbA=="
+  },
+  {
+    "id": "eb4a1d72-afb6-5ddf-0188-46688254a3c5",
+    "email": "auditor1@apexpost.local",
+    "fullName": "ApexPost Auditor",
+    "role": "Auditor",
+    "branchId": "10000000-0000-0000-0000-000000000001",
+    "isActive": true,
+    "passwordHash": "AQAAAAIAAYagAAAAEBypnc1LIRHUAk3hrEYXVi07siFnXQ3BlaSz76BzsnlEvgtk\u002BORQbp2f0se2rCkI9A=="
+  },
+  {
+    "id": "f73062d5-21ef-aee8-68ef-ac1def699a1b",
+    "email": "admin@apexpost.local",
+    "fullName": "ApexPost Administrator",
+    "role": "Administrator",
+    "branchId": null,
+    "isActive": true,
+    "passwordHash": "AQAAAAIAAYagAAAAEJ1o58cp3NZcwrUQqLpG\u002BHfGWrdOWLthdPh0L8s\u002B5lfXIJcbJ2YY4aDViHOT1D6KFg=="
+  }
+]

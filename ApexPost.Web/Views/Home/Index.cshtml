@@ -1,8 +1,13 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+@{
+    ViewData["Title"] = "Branch dashboard";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="mb-4">
+    <p class="text-uppercase text-muted mb-1">ApexPost Counter Platform</p>
+    <h1 class="display-5">Welcome, @User.Identity?.Name</h1>
+    <p class="lead">@ViewData["BranchName"] · @ViewData["StaffRole"]</p>
+</div>
+
+<div class="alert alert-info" role="status">
+    Branch and staff sign-in is ready. Counter operations will appear here as their feature slices are added.
 </div>

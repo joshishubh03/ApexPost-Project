@@ -1,3 +1,5 @@
 # Application data
 
-This directory is reserved for deterministic, non-sensitive JSON demo data used by the local assignment environment. Seed files will be added with the JSON persistence feature. Do not store production data, secrets, or real identity document numbers here.
+The application creates branches.json and staff.json here on first run in Development. The staff data contains password hashes only. Seed records are deterministic apart from salted password hashes.
+
+This is local training data only. Do not store production records, secrets, or real identity document numbers here.

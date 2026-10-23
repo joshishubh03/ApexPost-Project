@@ -1,0 +1,27 @@
+using ApexPost.Application.Abstractions;
+using ApexPost.Infrastructure.Repositories;
+using ApexPost.Infrastructure.Security;
+using ApexPost.Infrastructure.Seed;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace ApexPost.Infrastructure;
+
+public static class DependencyInjection
+{
+    public static IServiceCollection AddApexPostInfrastructure(
+        this IServiceCollection services,
+        string dataDirectory,
+        string demoPassword)
+    {
+        services.AddSingleton<IBranchRepository>(_ => new JsonBranchRepository(dataDirectory));
+        services.AddSingleton<IStaffRepository>(_ => new JsonStaffRepository(dataDirectory));
+        services.AddSingleton<IStaffPasswordService, AspNetStaffPasswordService>();
+        services.AddSingleton(serviceProvider => new DemoDataSeeder(
+            serviceProvider.GetRequiredService<IBranchRepository>(),
+            serviceProvider.GetRequiredService<IStaffRepository>(),
+            serviceProvider.GetRequiredService<IStaffPasswordService>(),
+            demoPassword));
+
+        return services;
+    }
+}
