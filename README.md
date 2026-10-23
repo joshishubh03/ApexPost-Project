@@ -4,7 +4,7 @@ Assignment 2 implementation of a secure retail and postal counter platform using
 
 ## Current stage
 
-The feature/solution-foundation branch establishes the layered solution and MVC host. Business functionality will be delivered in short-lived feature branches and merged into main through pull requests.
+The feature/branch-staff-auth branch adds branch and staff domain records, JSON demo data, and cookie-based staff sign-in. Business capabilities will continue in short-lived feature branches and merge into main through pull requests.
 
 ## Solution projects
 
@@ -14,21 +14,31 @@ The feature/solution-foundation branch establishes the layered solution and MVC 
 - ApexPost.Web — MVC controllers, Razor views, authentication, middleware, and filters.
 - ApexPost.Tests — unit and integration tests.
 - docs — design documentation and architecture decision records.
-- data — deterministic, non-sensitive JSON demo data.
+- data — deterministic, non-sensitive JSON demo data created at runtime.
 
 ## Prerequisites
 
 - .NET 10 SDK
 
-## Build and run
+## Restore, build, test, and run
 
 PowerShell commands:
 
     dotnet restore ApexPost.slnx
     dotnet build ApexPost.slnx
+    dotnet test ApexPost.slnx
     dotnet run --project ApexPost.Web
 
-JSON persistence and demo accounts will be documented as those features are implemented. Never commit real secrets or production personal data.
+The demo data is seeded on first run in Development. All seeded accounts use the password CounterDemo!2026. Example accounts:
+
+- admin@apexpost.local
+- manager1@apexpost.local
+- clerk11@apexpost.local
+- auditor1@apexpost.local
+
+The demo password is public training data and must never be reused outside this local demo. Password hashes, not plaintext passwords, are stored in JSON.
+
+Never commit real secrets or production personal data.
 
 ## Versioning
 

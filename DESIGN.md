@@ -9,15 +9,24 @@ The solution uses a layered design with dependencies pointing toward the domain:
     ApexPost.Infrastructure -> ApexPost.Domain
     ApexPost.Tests -> projects under test
 
-MVC controllers will translate HTTP input into application use cases and responses. Business rules belong in Domain and Application code. Infrastructure will implement repository and integration interfaces.
+MVC controllers translate HTTP input into application use cases and responses. Business rules belong in Domain and Application code. Infrastructure implements repository and integration interfaces.
+
+## Staff authentication slice
+
+- Staff and branch records are modeled in Domain.
+- Application authentication checks credentials, rejects inactive staff, and resolves assigned branch context.
+- Infrastructure persists branches and staff in JSON files under the root data directory.
+- Passwords are hashed with ASP.NET Core's PasswordHasher; plaintext demo passwords are not written to JSON.
+- The MVC host uses secure cookie authentication, a fallback authenticated-user policy, and antiforgery validation for unsafe MVC actions. Development uses ephemeral data-protection keys; production must configure durable protected keys for multi-instance deployments.
+- Role, staff ID, and assigned branch are emitted as claims after successful authentication.
 
 ## Persistence
 
-Assignment 2 requires JSON file persistence behind interfaces. The JSON implementation will remain in Infrastructure so a later database adapter can replace it without changing business rules. File write coordination and its process-local limits will be documented before implementing transactions.
+Assignment 2 requires JSON file persistence behind interfaces. The JSON implementation remains in Infrastructure so a later database adapter can replace it without changing business rules. JSON writes use a semaphore and a temporary file replacement; this protects a single process from overlapping writes but does not provide multi-process transactions.
 
 ## Security and audit
 
-Authentication, role and branch authorization, request middleware, action filters, and audit event shape will be decided and documented in feature branches before implementation. Sensitive identity values must be masked before persistence.
+Authentication and the first role/branch claims are now in place. Per-operation branch authorization, middleware, action filters, rate limiting, auditing, and the remaining security controls will be added in later feature slices. Sensitive identity values must be masked before persistence.
 
 ## Decisions
 

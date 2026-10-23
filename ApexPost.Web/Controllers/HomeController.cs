@@ -1,13 +1,18 @@
 using System.Diagnostics;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ApexPost.Web.Models;
 
 namespace ApexPost.Web.Controllers;
 
-public class HomeController : Controller
+[Authorize]
+public sealed class HomeController : Controller
 {
     public IActionResult Index()
     {
+        ViewData["BranchName"] = User.FindFirstValue("branch_name") ?? "Administration";
+        ViewData["StaffRole"] = User.FindFirstValue(ClaimTypes.Role) ?? "Staff";
         return View();
     }
 
@@ -16,6 +21,7 @@ public class HomeController : Controller
         return View();
     }
 
+    [AllowAnonymous]
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public IActionResult Error()
     {
