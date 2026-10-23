@@ -4,7 +4,7 @@ Assignment 2 implementation of a secure retail and postal counter platform using
 
 ## Current stage
 
-The staff-auth slice adds branch and staff domain records, JSON demo data, and cookie-based staff sign-in. The branch-staff-management slice adds Administrator-only branch and staff management. Business capabilities continue in short-lived feature branches and merge into main through pull requests.
+The staff-auth slice adds branch and staff domain records, JSON demo data, and cookie-based staff sign-in. The branch-staff-management slice adds Administrator-only branch and staff management. The product-catalogue slice adds product search and management, with 30 seeded demo products. Business capabilities continue in short-lived feature branches and merge into main through pull requests.
 
 ## Solution projects
 
@@ -43,6 +43,10 @@ The demo password is public training data and must never be reused outside this 
 Sign in as the seeded Administrator to use the **Branches** and **Staff** links. Administrators can create branches, create staff accounts, and activate or deactivate accounts. New passwords are hashed before they are saved. Non-administrator staff must be assigned to an existing branch, and the last active Administrator cannot be deactivated.
 
 The MVC administration controller calls `StaffManagementService` in the Application layer. That service uses repository interfaces; Infrastructure implements those interfaces with the JSON files in `data/`. This keeps web form handling, business rules, and persistence in their respective layers.
+
+## Product catalogue
+
+All signed-in staff can search active products by SKU, name, category, or description. Administrators and Branch Managers can create products and activate or deactivate them. Product SKUs are normalized to uppercase and must be unique; prices are non-negative and support up to two decimal places. Development seeding creates 30 sample catalogue products in `data/products.json` when the file is empty or missing.
 
 Never commit real secrets or production personal data.
 
