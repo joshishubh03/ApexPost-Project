@@ -4,7 +4,7 @@ Assignment 2 implementation of a secure retail and postal counter platform using
 
 ## Current stage
 
-The staff-auth slice adds branch and staff domain records, JSON demo data, and cookie-based staff sign-in. The branch-staff-management slice adds Administrator-only branch and staff management. The product-catalogue slice adds product search and management, with 30 seeded demo products. The inventory slice tracks branch-specific quantities and a reasoned movement history. Business capabilities continue in short-lived feature branches and merge into main through pull requests.
+The staff-auth slice adds branch and staff domain records, JSON demo data, and cookie-based staff sign-in. The branch-staff-management slice adds Administrator-only branch and staff management. The product-catalogue slice adds product search and management, with 30 seeded demo products. The inventory slice tracks branch-specific quantities and a reasoned movement history. The shipping-rates slice defines destination zones, service levels, and weight-based quotes. Business capabilities continue in short-lived feature branches and merge into main through pull requests.
 
 ## Solution projects
 
@@ -51,6 +51,10 @@ All signed-in staff can search active products by SKU, name, category, or descri
 ## Inventory
 
 Staff can view active-product stock for their assigned branch. Administrators can select a branch; Administrators and Branch Managers can record stock changes with a reason and reorder level. Each record stores the current quantity and recent movements. A stock change cannot reduce quantity below zero. Inventory data is written to `data/inventory.json` when the first adjustment is saved.
+
+## Shipping zones and rates
+
+Signed-in staff can view the shipping schedule and calculate a quote. Administrators can add zones and rates. Each rate has a service level, base charge, per-kilogram charge, and maximum weight. Development seeding provides 10 zones and Standard/Express rates in `data/shipping-zones.json` and `data/shipping-rates.json`.
 
 Never commit real secrets or production personal data.
 

@@ -17,11 +17,15 @@ public static class DependencyInjection
         services.AddSingleton<IStaffRepository>(_ => new JsonStaffRepository(dataDirectory));
         services.AddSingleton<IProductRepository>(_ => new JsonProductRepository(dataDirectory));
         services.AddSingleton<IInventoryRepository>(_ => new JsonInventoryRepository(dataDirectory));
+        services.AddSingleton<IShippingZoneRepository>(_ => new JsonShippingZoneRepository(dataDirectory));
+        services.AddSingleton<IShippingRateRepository>(_ => new JsonShippingRateRepository(dataDirectory));
         services.AddSingleton<IStaffPasswordService, AspNetStaffPasswordService>();
         services.AddSingleton(serviceProvider => new DemoDataSeeder(
             serviceProvider.GetRequiredService<IBranchRepository>(),
             serviceProvider.GetRequiredService<IStaffRepository>(),
             serviceProvider.GetRequiredService<IProductRepository>(),
+            serviceProvider.GetRequiredService<IShippingZoneRepository>(),
+            serviceProvider.GetRequiredService<IShippingRateRepository>(),
             serviceProvider.GetRequiredService<IStaffPasswordService>(),
             demoPassword));
 

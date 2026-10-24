@@ -8,6 +8,8 @@ public sealed class DemoDataSeeder(
     IBranchRepository branchRepository,
     IStaffRepository staffRepository,
     IProductRepository productRepository,
+    IShippingZoneRepository shippingZoneRepository,
+    IShippingRateRepository shippingRateRepository,
     IStaffPasswordService passwordService,
     string demoPassword)
 {
@@ -67,6 +69,53 @@ public sealed class DemoDataSeeder(
                 Guid.Parse($"20000000-0000-0000-0000-{index + 1:000000000000}"),
                 seed.Sku, seed.Name, seed.Description, seed.Category, seed.Price, isActive: true));
             await productRepository.SaveAllAsync(seededProducts, cancellationToken);
+        }
+
+        var zones = await shippingZoneRepository.GetAllAsync(cancellationToken);
+        if (zones.Count == 0)
+        {
+            var zoneSeeds = new (string Code, string Name, string Destination)[]
+            {
+                ("DOM-LOCAL", "Local Metro", "Same city or metropolitan area"),
+                ("DOM-STATE", "Intra-State", "Destinations within the same state"),
+                ("DOM-NORTH", "North Zone", "Northern India"),
+                ("DOM-SOUTH", "South Zone", "Southern India"),
+                ("DOM-EAST", "East Zone", "Eastern India"),
+                ("DOM-WEST", "West Zone", "Western India"),
+                ("DOM-CENTRAL", "Central Zone", "Central India"),
+                ("DOM-NE", "North-East Zone", "North-Eastern India"),
+                ("DOM-REMOTE", "Remote Areas", "Remote and difficult-to-reach areas"),
+                ("INT-REG", "International Regional", "International destinations")
+            };
+            zones = zoneSeeds.Select((seed, index) => new ShippingZone(
+                Guid.Parse($"30000000-0000-0000-0000-{index + 1:000000000000}"),
+                seed.Code, seed.Name, seed.Destination, isActive: true)).ToArray();
+            await shippingZoneRepository.SaveAllAsync(zones, cancellationToken);
+        }
+
+        var rates = await shippingRateRepository.GetAllAsync(cancellationToken);
+        if (rates.Count == 0)
+        {
+            var seededRates = zones.SelectMany((zone, index) => new[]
+            {
+                new ShippingRate(
+                    Guid.Parse($"40000000-0000-0000-0000-{index + 1:000000000000}"),
+                    zone.Id,
+                    ShippingServiceLevel.Standard,
+                    35m + index * 5m,
+                    12m + index * 2m,
+                    30m,
+                    isActive: true),
+                new ShippingRate(
+                    Guid.Parse($"50000000-0000-0000-0000-{index + 1:000000000000}"),
+                    zone.Id,
+                    ShippingServiceLevel.Express,
+                    65m + index * 7m,
+                    22m + index * 3m,
+                    30m,
+                    isActive: true)
+            });
+            await shippingRateRepository.SaveAllAsync(seededRates, cancellationToken);
         }
 
         var staff = await staffRepository.GetAllAsync(cancellationToken);
