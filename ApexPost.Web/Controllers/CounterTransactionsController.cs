@@ -3,6 +3,7 @@ using ApexPost.Application.Abstractions;
 using ApexPost.Application.Services;
 using ApexPost.Domain.Enums;
 using ApexPost.Web.Models;
+using ApexPost.Web.Middleware;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -86,6 +87,7 @@ public sealed class CounterTransactionsController(
                 input.PaymentMethod,
                 input.ShippingRateId,
                 input.ShippingWeightKilograms,
+                CorrelationIdMiddleware.GetCorrelationId(HttpContext),
                 cancellationToken);
             TempData["StatusMessage"] = $"Transaction {transaction.TransactionNumber} completed. Total: {transaction.TotalAmount:C2}.";
         }
