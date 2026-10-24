@@ -14,6 +14,10 @@ var dataDirectory = Path.GetFullPath(
     builder.Configuration["ApexPost:DataDirectory"] ??
     Path.Combine(builder.Environment.ContentRootPath, "..", "data"));
 var demoPassword = builder.Configuration["DemoData:Password"] ?? "CounterDemo!2026";
+var moneyOrderPolicy = new ApexPost.Application.Models.MoneyOrderPolicy(
+    builder.Configuration.GetValue<decimal>("MoneyOrders:IdentityVerificationThreshold", 10_000m),
+    builder.Configuration.GetValue<decimal>("MoneyOrders:FeeAmount", 50m),
+    builder.Configuration["MoneyOrders:DemoVerificationSuccessPrefix"] ?? "DEMO-VALID-");
 
 if (builder.Environment.IsDevelopment())
 {
@@ -30,7 +34,13 @@ builder.Services.AddScoped<ProductCatalogueService>();
 builder.Services.AddScoped<InventoryManagementService>();
 builder.Services.AddScoped<ShippingRateService>();
 builder.Services.AddScoped<CounterTransactionService>();
-builder.Services.AddApexPostInfrastructure(dataDirectory, demoPassword);
+builder.Services.AddScoped<MoneyOrderService>();
+builder.Services.AddSingleton(moneyOrderPolicy);
+builder.Services.AddApexPostInfrastructure(
+    dataDirectory,
+    demoPassword,
+    moneyOrderPolicy,
+    builder.Environment.IsDevelopment());
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {

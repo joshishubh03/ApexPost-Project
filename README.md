@@ -4,7 +4,7 @@ Assignment 2 implementation of a secure retail and postal counter platform using
 
 ## Current stage
 
-The staff-auth slice adds branch and staff domain records, JSON demo data, and cookie-based staff sign-in. The branch-staff-management slice adds Administrator-only branch and staff management. The product-catalogue slice adds product search and management, with 30 seeded demo products. The inventory slice tracks branch-specific quantities and a reasoned movement history. The shipping-rates slice defines destination zones, service levels, and weight-based quotes. The counter-transactions slice records product sales, optional shipping, payment method, and inventory deductions. Business capabilities continue in short-lived feature branches and merge into main through pull requests.
+The staff-auth slice adds branch and staff domain records, JSON demo data, and cookie-based staff sign-in. The branch-staff-management slice adds Administrator-only branch and staff management. The product-catalogue slice adds product search and management, with 30 seeded demo products. The inventory slice tracks branch-specific quantities and a reasoned movement history. The shipping-rates slice defines destination zones, service levels, and weight-based quotes. Counter transactions record product sales, optional shipping, payment method, and inventory deductions. The money-order slice adds configurable fees, high-value identity verification, and masked document recording. Business capabilities continue in short-lived feature branches and merge into main through pull requests.
 
 ## Solution projects
 
@@ -59,6 +59,10 @@ Signed-in staff can view the shipping schedule and calculate a quote. Administra
 ## Counter transactions
 
 Counter Clerks, Branch Managers, and Administrators can record sales for their assigned branch. A transaction can contain multiple catalogue products and an optional shipping service. Completing a sale checks available stock, stores price and product snapshots, records the payment method, and decreases inventory. Payment methods are recorded for the training workflow; no external payment is processed. Transactions are stored in `data/counter-transactions.json`.
+
+## Money orders and identity verification
+
+Counter Clerks, Branch Managers, and Administrators can issue money orders for an open branch. The flat fee and identity verification threshold are configured in `ApexPost.Web/appsettings.json`; the included values (`50.00` and `10000.00`) are demo defaults that can be replaced with trainer-approved rules. Amounts above the threshold require a successful identity check before an order is saved. In Development, the local simulated verifier accepts synthetic identifiers beginning with `DEMO-VALID-`; for example, `DEMO-VALID-1234`. Other values fail verification. Outside Development, verification fails closed until a real provider is configured. Raw identifiers are never persisted. The verification JSON records store the document type, outcome, and masked identifier; issued orders link to successful verification records. Replace the simulated verifier before any real use.
 
 Never commit real secrets or production personal data.
 

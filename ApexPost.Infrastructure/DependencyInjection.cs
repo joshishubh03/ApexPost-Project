@@ -1,5 +1,6 @@
 using ApexPost.Application.Abstractions;
 using ApexPost.Application.Events;
+using ApexPost.Application.Models;
 using ApexPost.Application.Services;
 using ApexPost.Infrastructure.Events;
 using ApexPost.Infrastructure.Repositories;
@@ -14,7 +15,9 @@ public static class DependencyInjection
     public static IServiceCollection AddApexPostInfrastructure(
         this IServiceCollection services,
         string dataDirectory,
-        string demoPassword)
+        string demoPassword,
+        MoneyOrderPolicy moneyOrderPolicy,
+        bool enableSimulatedIdentityVerification)
     {
         services.AddSingleton<IBranchRepository>(_ => new JsonBranchRepository(dataDirectory));
         services.AddSingleton<IStaffRepository>(_ => new JsonStaffRepository(dataDirectory));
@@ -23,9 +26,21 @@ public static class DependencyInjection
         services.AddSingleton<IShippingZoneRepository>(_ => new JsonShippingZoneRepository(dataDirectory));
         services.AddSingleton<IShippingRateRepository>(_ => new JsonShippingRateRepository(dataDirectory));
         services.AddSingleton<ICounterTransactionRepository>(_ => new JsonCounterTransactionRepository(dataDirectory));
+        services.AddSingleton<IMoneyOrderRepository>(_ => new JsonMoneyOrderRepository(dataDirectory));
+        services.AddSingleton<IIdentityVerificationRepository>(_ => new JsonIdentityVerificationRepository(dataDirectory));
         services.AddSingleton<IAuditLogRepository>(_ => new JsonAuditLogRepository(dataDirectory));
-        services.AddScoped<IApplicationEventHandler<CounterTransactionCompletedEvent>, CounterTransactionAuditHandler>();
-        services.AddScoped<IApplicationEventPublisher, ApplicationEventPublisher<CounterTransactionCompletedEvent>>();
+        if (enableSimulatedIdentityVerification)
+        {
+            services.AddSingleton<IIdentityVerificationService>(
+                _ => new SimulatedIdentityVerificationService(moneyOrderPolicy.DemoVerificationSuccessPrefix));
+        }
+        else
+        {
+            services.AddSingleton<IIdentityVerificationService, UnconfiguredIdentityVerificationService>();
+        }
+        services.AddScoped<IApplicationEventHandler, CounterTransactionAuditHandler>();
+        services.AddScoped<IApplicationEventHandler, MoneyOrderAuditHandler>();
+        services.AddScoped<IApplicationEventPublisher, ApplicationEventPublisher>();
         services.AddSingleton<IStaffPasswordService, AspNetStaffPasswordService>();
         services.AddSingleton(serviceProvider => new DemoDataSeeder(
             serviceProvider.GetRequiredService<IBranchRepository>(),

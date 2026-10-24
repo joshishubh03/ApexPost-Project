@@ -40,13 +40,17 @@ The Administrator-only MVC area lists branches and staff, creates branches and s
 
 `CounterTransaction` stores a completed receipt with line-item price snapshots, optional shipping quote details, payment method, branch, staff member, and timestamp. `CounterTransactionService` checks branch/product availability, calculates shipping using the existing service, deducts stock with a linked inventory movement, and persists the receipt. `CounterTransactionsController` enforces branch scope from the authenticated claims and allows Clerks, Managers, and Administrators to create transactions; Auditors can review. The training JSON implementation writes inventory and receipt collections separately, so it does not provide a cross-file database transaction or external payment settlement.
 
+## Money orders and identity verification
+
+`MoneyOrderService` verifies that the branch is open and the current staff record is active, authorized, and assigned to the selected branch before issuing an order. The configured flat fee is added to the order amount. When the amount exceeds the configured threshold, the service calls `IIdentityVerificationService`, stores a verification attempt with a masked identifier and result, and issues the money order only for a successful result. The order stores a reference to that verification record. Development uses a simulated adapter that accepts only synthetic identifiers with the configured `DEMO-VALID-` prefix; other environments fail closed until a real provider is configured. Money orders and verification attempts use separate JSON repositories, so they do not have cross-file transaction guarantees.
+
 ## Persistence
 
 Assignment 2 requires JSON file persistence behind interfaces. The JSON implementation remains in Infrastructure so a later database adapter can replace it without changing business rules. JSON writes use a semaphore and a temporary file replacement; this protects a single process from overlapping writes but does not provide multi-process transactions.
 
 ## Security and audit
 
-Authentication and the first role/branch claims are now in place. Per-operation branch authorization, middleware, action filters, rate limiting, auditing, and the remaining security controls will be added in later feature slices. Sensitive identity values must be masked before persistence.
+Authentication, role and branch authorization, correlation middleware, request exception logging, and audit events are in place. Counter sales and money order issuance publish application events that Infrastructure handlers append to `audit-records.json`. Audit failure is logged without making a committed sale or order appear unsuccessful; the JSON implementation therefore has an acknowledged audit consistency gap. Sensitive identity values are used transiently by the simulated verifier and masked before persistence. API-key/IP restrictions, rate limiting, security headers, maintenance mode, CORS policy, and action filters remain future slices.
 
 ## Decisions
 
