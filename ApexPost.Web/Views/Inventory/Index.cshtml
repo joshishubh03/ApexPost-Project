@@ -1,0 +1,70 @@
+@model InventoryPageModel
+@{
+    ViewData["Title"] = "Branch inventory";
+    var selectedBranch = Model.Branches.FirstOrDefault(branch => branch.Id == Model.SelectedBranchId);
+}
+
+<h1>Branch inventory</h1>
+<p class="text-muted">Review quantities and reorder levels for active catalogue products.</p>
+@if (TempData["StatusMessage"] is string status) { <div class="alert alert-success">@status</div> }
+@if (TempData["ErrorMessage"] is string error) { <div class="alert alert-danger">@error</div> }
+
+@if (User.IsInRole("Administrator"))
+{
+    <form asp-action="Index" method="get" class="row g-2 mb-4">
+        <div class="col-md-5"><label for="branchId" class="form-label">Branch</label><select id="branchId" name="branchId" class="form-select"><option value="">Select a branch</option>@foreach (var branch in Model.Branches) { <option value="@branch.Id" selected="@(branch.Id == Model.SelectedBranchId)">@branch.Code — @branch.Name</option> }</select></div>
+        <div class="col-auto align-self-end"><button class="btn btn-outline-primary" type="submit">View inventory</button></div>
+    </form>
+}
+else if (selectedBranch is not null)
+{
+    <p><strong>Branch:</strong> @selectedBranch.Code — @selectedBranch.Name</p>
+}
+
+@if (Model.SelectedBranchId is null)
+{
+    <div class="alert alert-info">Select a branch to view its stock.</div>
+}
+else
+{
+    var lowStockCount = Model.Products.Count(product => product.IsBelowReorderLevel);
+    <div class="mb-3"><span class="badge text-bg-warning">@lowStockCount at or below reorder level</span></div>
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead><tr><th>Product</th><th>Category</th><th>On hand</th><th>Reorder level</th><th>Status / recent activity</th>@if (Model.CanManage) { <th>Adjust stock</th> }</tr></thead>
+            <tbody>
+            @foreach (var product in Model.Products)
+            {
+                <tr>
+                    <td><strong>@product.Name</strong><br /><small class="text-muted">@product.Sku</small></td>
+                    <td>@product.Category</td>
+                    <td>@product.QuantityOnHand</td>
+                    <td>@(product.HasInventoryRecord ? product.ReorderLevel : "—")</td>
+                    <td>
+                        @if (!product.HasInventoryRecord) { <span class="badge text-bg-secondary">Not stocked</span> }
+                        else if (product.IsBelowReorderLevel) { <span class="badge text-bg-warning">Reorder</span> }
+                        else { <span class="badge text-bg-success">In stock</span> }
+                        @foreach (var movement in product.RecentMovements)
+                        {
+                            <div><small class="text-muted">@movement.OccurredAt.ToLocalTime().ToString("g") · @(movement.QuantityChange > 0 ? "+" : "")@movement.QuantityChange · @movement.Reason</small></div>
+                        }
+                    </td>
+                    @if (Model.CanManage)
+                    {
+                        <td>
+                            <form asp-action="Adjust" method="post" class="d-grid gap-2">
+                                <input type="hidden" name="BranchId" value="@Model.SelectedBranchId" />
+                                <input type="hidden" name="ProductId" value="@product.ProductId" />
+                                <input class="form-control form-control-sm" type="number" name="QuantityChange" step="1" required placeholder="+/- quantity" aria-label="Quantity change for @product.Name" />
+                                <input class="form-control form-control-sm" type="number" name="ReorderLevel" min="0" step="1" value="@(product.HasInventoryRecord ? product.ReorderLevel : 5)" required aria-label="Reorder level for @product.Name" />
+                                <input class="form-control form-control-sm" type="text" name="Reason" minlength="3" maxlength="200" required placeholder="Reason" aria-label="Reason for @product.Name stock change" />
+                                <button class="btn btn-sm btn-outline-primary" type="submit">Save adjustment</button>
+                            </form>
+                        </td>
+                    }
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

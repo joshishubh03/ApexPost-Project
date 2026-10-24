@@ -16,6 +16,7 @@ public static class DependencyInjection
         services.AddSingleton<IBranchRepository>(_ => new JsonBranchRepository(dataDirectory));
         services.AddSingleton<IStaffRepository>(_ => new JsonStaffRepository(dataDirectory));
         services.AddSingleton<IProductRepository>(_ => new JsonProductRepository(dataDirectory));
+        services.AddSingleton<IInventoryRepository>(_ => new JsonInventoryRepository(dataDirectory));
         services.AddSingleton<IStaffPasswordService, AspNetStaffPasswordService>();
         services.AddSingleton(serviceProvider => new DemoDataSeeder(
             serviceProvider.GetRequiredService<IBranchRepository>(),

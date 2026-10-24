@@ -4,7 +4,7 @@ Assignment 2 implementation of a secure retail and postal counter platform using
 
 ## Current stage
 
-The staff-auth slice adds branch and staff domain records, JSON demo data, and cookie-based staff sign-in. The branch-staff-management slice adds Administrator-only branch and staff management. The product-catalogue slice adds product search and management, with 30 seeded demo products. Business capabilities continue in short-lived feature branches and merge into main through pull requests.
+The staff-auth slice adds branch and staff domain records, JSON demo data, and cookie-based staff sign-in. The branch-staff-management slice adds Administrator-only branch and staff management. The product-catalogue slice adds product search and management, with 30 seeded demo products. The inventory slice tracks branch-specific quantities and a reasoned movement history. Business capabilities continue in short-lived feature branches and merge into main through pull requests.
 
 ## Solution projects
 
@@ -47,6 +47,10 @@ The MVC administration controller calls `StaffManagementService` in the Applicat
 ## Product catalogue
 
 All signed-in staff can search active products by SKU, name, category, or description. Administrators and Branch Managers can create products and activate or deactivate them. Product SKUs are normalized to uppercase and must be unique; prices are non-negative and support up to two decimal places. Development seeding creates 30 sample catalogue products in `data/products.json` when the file is empty or missing.
+
+## Inventory
+
+Staff can view active-product stock for their assigned branch. Administrators can select a branch; Administrators and Branch Managers can record stock changes with a reason and reorder level. Each record stores the current quantity and recent movements. A stock change cannot reduce quantity below zero. Inventory data is written to `data/inventory.json` when the first adjustment is saved.
 
 Never commit real secrets or production personal data.
 
