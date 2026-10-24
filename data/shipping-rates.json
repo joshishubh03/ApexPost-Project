@@ -1,0 +1,182 @@
+[
+  {
+    "id": "40000000-0000-0000-0000-000000000001",
+    "zoneId": "30000000-0000-0000-0000-000000000001",
+    "serviceLevel": "Standard",
+    "basePrice": 35,
+    "pricePerKilogram": 12,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  },
+  {
+    "id": "50000000-0000-0000-0000-000000000001",
+    "zoneId": "30000000-0000-0000-0000-000000000001",
+    "serviceLevel": "Express",
+    "basePrice": 65,
+    "pricePerKilogram": 22,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  },
+  {
+    "id": "40000000-0000-0000-0000-000000000002",
+    "zoneId": "30000000-0000-0000-0000-000000000002",
+    "serviceLevel": "Standard",
+    "basePrice": 40,
+    "pricePerKilogram": 14,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  },
+  {
+    "id": "50000000-0000-0000-0000-000000000002",
+    "zoneId": "30000000-0000-0000-0000-000000000002",
+    "serviceLevel": "Express",
+    "basePrice": 72,
+    "pricePerKilogram": 25,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  },
+  {
+    "id": "40000000-0000-0000-0000-000000000003",
+    "zoneId": "30000000-0000-0000-0000-000000000003",
+    "serviceLevel": "Standard",
+    "basePrice": 45,
+    "pricePerKilogram": 16,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  },
+  {
+    "id": "50000000-0000-0000-0000-000000000003",
+    "zoneId": "30000000-0000-0000-0000-000000000003",
+    "serviceLevel": "Express",
+    "basePrice": 79,
+    "pricePerKilogram": 28,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  },
+  {
+    "id": "40000000-0000-0000-0000-000000000004",
+    "zoneId": "30000000-0000-0000-0000-000000000004",
+    "serviceLevel": "Standard",
+    "basePrice": 50,
+    "pricePerKilogram": 18,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  },
+  {
+    "id": "50000000-0000-0000-0000-000000000004",
+    "zoneId": "30000000-0000-0000-0000-000000000004",
+    "serviceLevel": "Express",
+    "basePrice": 86,
+    "pricePerKilogram": 31,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  },
+  {
+    "id": "40000000-0000-0000-0000-000000000005",
+    "zoneId": "30000000-0000-0000-0000-000000000005",
+    "serviceLevel": "Standard",
+    "basePrice": 55,
+    "pricePerKilogram": 20,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  },
+  {
+    "id": "50000000-0000-0000-0000-000000000005",
+    "zoneId": "30000000-0000-0000-0000-000000000005",
+    "serviceLevel": "Express",
+    "basePrice": 93,
+    "pricePerKilogram": 34,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  },
+  {
+    "id": "40000000-0000-0000-0000-000000000006",
+    "zoneId": "30000000-0000-0000-0000-000000000006",
+    "serviceLevel": "Standard",
+    "basePrice": 60,
+    "pricePerKilogram": 22,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  },
+  {
+    "id": "50000000-0000-0000-0000-000000000006",
+    "zoneId": "30000000-0000-0000-0000-000000000006",
+    "serviceLevel": "Express",
+    "basePrice": 100,
+    "pricePerKilogram": 37,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  },
+  {
+    "id": "40000000-0000-0000-0000-000000000007",
+    "zoneId": "30000000-0000-0000-0000-000000000007",
+    "serviceLevel": "Standard",
+    "basePrice": 65,
+    "pricePerKilogram": 24,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  },
+  {
+    "id": "50000000-0000-0000-0000-000000000007",
+    "zoneId": "30000000-0000-0000-0000-000000000007",
+    "serviceLevel": "Express",
+    "basePrice": 107,
+    "pricePerKilogram": 40,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  },
+  {
+    "id": "40000000-0000-0000-0000-000000000008",
+    "zoneId": "30000000-0000-0000-0000-000000000008",
+    "serviceLevel": "Standard",
+    "basePrice": 70,
+    "pricePerKilogram": 26,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  },
+  {
+    "id": "50000000-0000-0000-0000-000000000008",
+    "zoneId": "30000000-0000-0000-0000-000000000008",
+    "serviceLevel": "Express",
+    "basePrice": 114,
+    "pricePerKilogram": 43,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  },
+  {
+    "id": "40000000-0000-0000-0000-000000000009",
+    "zoneId": "30000000-0000-0000-0000-000000000009",
+    "serviceLevel": "Standard",
+    "basePrice": 75,
+    "pricePerKilogram": 28,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  },
+  {
+    "id": "50000000-0000-0000-0000-000000000009",
+    "zoneId": "30000000-0000-0000-0000-000000000009",
+    "serviceLevel": "Express",
+    "basePrice": 121,
+    "pricePerKilogram": 46,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  },
+  {
+    "id": "40000000-0000-0000-0000-000000000010",
+    "zoneId": "30000000-0000-0000-0000-000000000010",
+    "serviceLevel": "Standard",
+    "basePrice": 80,
+    "pricePerKilogram": 30,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  },
+  {
+    "id": "50000000-0000-0000-0000-000000000010",
+    "zoneId": "30000000-0000-0000-0000-000000000010",
+    "serviceLevel": "Express",
+    "basePrice": 128,
+    "pricePerKilogram": 49,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  }
+]

@@ -1,0 +1,72 @@
+[
+  {
+    "id": "30000000-0000-0000-0000-000000000001",
+    "code": "DOM-LOCAL",
+    "name": "Local Metro",
+    "destination": "Same city or metropolitan area",
+    "isActive": true
+  },
+  {
+    "id": "30000000-0000-0000-0000-000000000002",
+    "code": "DOM-STATE",
+    "name": "Intra-State",
+    "destination": "Destinations within the same state",
+    "isActive": true
+  },
+  {
+    "id": "30000000-0000-0000-0000-000000000003",
+    "code": "DOM-NORTH",
+    "name": "North Zone",
+    "destination": "Northern India",
+    "isActive": true
+  },
+  {
+    "id": "30000000-0000-0000-0000-000000000004",
+    "code": "DOM-SOUTH",
+    "name": "South Zone",
+    "destination": "Southern India",
+    "isActive": true
+  },
+  {
+    "id": "30000000-0000-0000-0000-000000000005",
+    "code": "DOM-EAST",
+    "name": "East Zone",
+    "destination": "Eastern India",
+    "isActive": true
+  },
+  {
+    "id": "30000000-0000-0000-0000-000000000006",
+    "code": "DOM-WEST",
+    "name": "West Zone",
+    "destination": "Western India",
+    "isActive": true
+  },
+  {
+    "id": "30000000-0000-0000-0000-000000000007",
+    "code": "DOM-CENTRAL",
+    "name": "Central Zone",
+    "destination": "Central India",
+    "isActive": true
+  },
+  {
+    "id": "30000000-0000-0000-0000-000000000008",
+    "code": "DOM-NE",
+    "name": "North-East Zone",
+    "destination": "North-Eastern India",
+    "isActive": true
+  },
+  {
+    "id": "30000000-0000-0000-0000-000000000009",
+    "code": "DOM-REMOTE",
+    "name": "Remote Areas",
+    "destination": "Remote and difficult-to-reach areas",
+    "isActive": true
+  },
+  {
+    "id": "30000000-0000-0000-0000-000000000010",
+    "code": "INT-REG",
+    "name": "International Regional",
+    "destination": "International destinations",
+    "isActive": true
+  }
+]
