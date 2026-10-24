@@ -36,6 +36,10 @@ The Administrator-only MVC area lists branches and staff, creates branches and s
 
 `ShippingZone` models a destination group, while `ShippingRate` defines the service level, base charge, per-kilogram charge, and maximum supported weight. The Domain rate calculates a quote and enforces non-negative two-decimal prices and valid parcel weight. `ShippingRateService` coordinates zone/rate repositories, prevents duplicate zone codes and duplicate service levels within a zone, and calculates quotes. Infrastructure stores the two collections separately and development seeding creates 10 zones with Standard and Express rates. `ShippingController` allows all signed-in staff to view and quote; only Administrators can add zones and rates. Quote calculation is kept as a separate operation so a later counter transaction can use the same pricing rules without duplicating them.
 
+## Counter transactions slice
+
+`CounterTransaction` stores a completed receipt with line-item price snapshots, optional shipping quote details, payment method, branch, staff member, and timestamp. `CounterTransactionService` checks branch/product availability, calculates shipping using the existing service, deducts stock with a linked inventory movement, and persists the receipt. `CounterTransactionsController` enforces branch scope from the authenticated claims and allows Clerks, Managers, and Administrators to create transactions; Auditors can review. The training JSON implementation writes inventory and receipt collections separately, so it does not provide a cross-file database transaction or external payment settlement.
+
 ## Persistence
 
 Assignment 2 requires JSON file persistence behind interfaces. The JSON implementation remains in Infrastructure so a later database adapter can replace it without changing business rules. JSON writes use a semaphore and a temporary file replacement; this protects a single process from overlapping writes but does not provide multi-process transactions.

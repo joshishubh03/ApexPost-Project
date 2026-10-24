@@ -7,6 +7,7 @@ public sealed record ProductInventorySummary(
     string Sku,
     string Name,
     string Category,
+    decimal Price,
     int QuantityOnHand,
     int ReorderLevel,
     bool HasInventoryRecord,

@@ -1,0 +1,97 @@
+@model CounterTransactionPageModel
+@using ApexPost.Domain.Enums
+@{
+    ViewData["Title"] = "Counter transactions";
+    var inr = System.Globalization.CultureInfo.GetCultureInfo("en-IN");
+}
+
+<h1>Counter transactions</h1>
+<p class="text-muted">Sell stocked products, optionally add a shipping service, and record the payment method.</p>
+@if (TempData["StatusMessage"] is string status) { <div class="alert alert-success">@status</div> }
+@if (TempData["ErrorMessage"] is string error) { <div class="alert alert-danger">@error</div> }
+
+@if (User.IsInRole("Administrator"))
+{
+    <form asp-action="Index" method="get" class="row g-2 mb-4">
+        <div class="col-md-5"><label for="branchId" class="form-label">Branch</label><select id="branchId" name="branchId" class="form-select"><option value="">Select a branch</option>@foreach (var branch in Model.Branches) { <option value="@branch.Id" selected="@(branch.Id == Model.SelectedBranchId)">@branch.Code — @branch.Name</option> }</select></div>
+        <div class="col-auto align-self-end"><button class="btn btn-outline-primary" type="submit">Open register</button></div>
+    </form>
+}
+
+@if (Model.Register is null)
+{
+    <div class="alert alert-info">Select a branch to open its register.</div>
+}
+else
+{
+    <h2 class="h4">@Model.Register.Branch.Code — @Model.Register.Branch.Name</h2>
+    @if (!Model.Register.Branch.IsOpen)
+    {
+        <div class="alert alert-warning">This branch is closed. New transactions are disabled.</div>
+    }
+    else if (Model.CanCreate)
+    {
+        <form asp-action="Complete" method="post" class="card card-body mb-4">
+            <input type="hidden" name="BranchId" value="@Model.Register.Branch.Id" />
+            <h3 class="h5">Create transaction</h3>
+            <p class="text-muted">Enter a quantity for each item. Leave items at zero to exclude them.</p>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead><tr><th>Product</th><th>Category</th><th>Unit price</th><th>Available</th><th>Quantity</th></tr></thead>
+                    <tbody>
+                    @foreach (var product in Model.Register.Products)
+                    {
+                        <tr>
+                            <td>@product.Name<br /><small class="text-muted">@product.Sku</small></td>
+                            <td>@product.Category</td>
+                            <td>@product.Price.ToString("C2", inr)</td>
+                            <td>@product.QuantityOnHand</td>
+                            <td><input class="form-control form-control-sm" type="number" name="Quantities[@product.ProductId]" value="0" min="0" max="@product.QuantityOnHand" step="1" aria-label="Quantity for @product.Name" /></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label for="ShippingRateId" class="form-label">Shipping service (optional)</label>
+                    <select id="ShippingRateId" name="ShippingRateId" class="form-select">
+                        <option value="">No shipping service</option>
+                        @foreach (var schedule in Model.Register.ShippingSchedules)
+                        {
+                            @foreach (var rate in schedule.Rates.Where(rate => rate.IsActive))
+                            {
+                                <option value="@rate.Id">@schedule.Zone.Name — @rate.ServiceLevel</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3"><label for="ShippingWeightKilograms" class="form-label">Parcel weight (kg)</label><input id="ShippingWeightKilograms" name="ShippingWeightKilograms" type="number" min="0.01" max="30" step="0.01" class="form-control" /></div>
+                <div class="col-md-3"><label for="PaymentMethod" class="form-label">Payment method</label><select id="PaymentMethod" name="PaymentMethod" class="form-select"><option value="Cash">Cash</option><option value="Card">Card</option><option value="DigitalWallet">Digital wallet</option></select></div>
+                <div class="col-12"><button type="submit" class="btn btn-primary">Complete transaction</button><span class="ms-2 text-muted small">Payment is recorded for this training workflow; no external payment is processed.</span></div>
+            </div>
+        </form>
+    }
+    else
+    {
+        <div class="alert alert-info">You can review transactions for this branch. Your role cannot complete sales.</div>
+    }
+
+    <h3 class="h5">Recent transactions</h3>
+    @if (Model.Register.RecentTransactions.Count == 0)
+    {
+        <p class="text-muted">No transactions have been recorded for this branch.</p>
+    }
+    else
+    {
+        <div class="table-responsive"><table class="table table-striped">
+            <thead><tr><th>Receipt</th><th>Time</th><th>Items</th><th>Payment</th><th class="text-end">Total</th></tr></thead>
+            <tbody>
+            @foreach (var transaction in Model.Register.RecentTransactions)
+            {
+                <tr><td>@transaction.TransactionNumber</td><td>@transaction.OccurredAt.ToLocalTime().ToString("g")</td><td>@transaction.Lines.Count product line(s)@(transaction.ShippingRateId is not null ? $" + {transaction.ShippingServiceLevel} shipping" : "")</td><td>@transaction.PaymentMethod</td><td class="text-end">@transaction.TotalAmount.ToString("C2", inr)</td></tr>
+            }
+            </tbody>
+        </table></div>
+    }
+}
