@@ -4,7 +4,7 @@ Assignment 2 implementation of a secure retail and postal counter platform using
 
 ## Current stage
 
-The staff-auth slice adds branch and staff domain records, JSON demo data, and cookie-based staff sign-in. The branch-staff-management slice adds Administrator-only branch and staff management. The product-catalogue slice adds product search and management, with 30 seeded demo products. The inventory slice tracks branch-specific quantities and a reasoned movement history. The shipping-rates slice defines destination zones, service levels, and weight-based quotes. Business capabilities continue in short-lived feature branches and merge into main through pull requests.
+The staff-auth slice adds branch and staff domain records, JSON demo data, and cookie-based staff sign-in. The branch-staff-management slice adds Administrator-only branch and staff management. The product-catalogue slice adds product search and management, with 30 seeded demo products. The inventory slice tracks branch-specific quantities and a reasoned movement history. The shipping-rates slice defines destination zones, service levels, and weight-based quotes. The counter-transactions slice records product sales, optional shipping, payment method, and inventory deductions. Business capabilities continue in short-lived feature branches and merge into main through pull requests.
 
 ## Solution projects
 
@@ -55,6 +55,10 @@ Staff can view active-product stock for their assigned branch. Administrators ca
 ## Shipping zones and rates
 
 Signed-in staff can view the shipping schedule and calculate a quote. Administrators can add zones and rates. Each rate has a service level, base charge, per-kilogram charge, and maximum weight. Development seeding provides 10 zones and Standard/Express rates in `data/shipping-zones.json` and `data/shipping-rates.json`.
+
+## Counter transactions
+
+Counter Clerks, Branch Managers, and Administrators can record sales for their assigned branch. A transaction can contain multiple catalogue products and an optional shipping service. Completing a sale checks available stock, stores price and product snapshots, records the payment method, and decreases inventory. Payment methods are recorded for the training workflow; no external payment is processed. Transactions are stored in `data/counter-transactions.json`.
 
 Never commit real secrets or production personal data.
 

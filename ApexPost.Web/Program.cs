@@ -28,6 +28,7 @@ builder.Services.AddScoped<StaffManagementService>();
 builder.Services.AddScoped<ProductCatalogueService>();
 builder.Services.AddScoped<InventoryManagementService>();
 builder.Services.AddScoped<ShippingRateService>();
+builder.Services.AddScoped<CounterTransactionService>();
 builder.Services.AddApexPostInfrastructure(dataDirectory, demoPassword);
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>

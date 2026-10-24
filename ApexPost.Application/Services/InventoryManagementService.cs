@@ -34,6 +34,7 @@ public sealed class InventoryManagementService(
                     product.Sku,
                     product.Name,
                     product.Category,
+                    product.Price,
                     item?.QuantityOnHand ?? 0,
                     item?.ReorderLevel ?? 0,
                     hasRecord,
