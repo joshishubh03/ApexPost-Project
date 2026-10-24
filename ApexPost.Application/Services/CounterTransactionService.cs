@@ -1,4 +1,5 @@
 using ApexPost.Application.Abstractions;
+using ApexPost.Application.Events;
 using ApexPost.Application.Models;
 using ApexPost.Domain.Entities;
 using ApexPost.Domain.Enums;
@@ -10,6 +11,7 @@ public sealed class CounterTransactionService(
     IProductRepository productRepository,
     IInventoryRepository inventoryRepository,
     ICounterTransactionRepository transactionRepository,
+    IApplicationEventPublisher eventPublisher,
     InventoryManagementService inventoryManagementService,
     ShippingRateService shippingRateService)
 {
@@ -40,6 +42,7 @@ public sealed class CounterTransactionService(
         PaymentMethod paymentMethod,
         Guid? shippingRateId,
         decimal? shippingWeightKilograms,
+        string correlationId,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(quantities);
@@ -133,6 +136,17 @@ public sealed class CounterTransactionService(
         var transactions = (await transactionRepository.GetAllAsync(cancellationToken)).ToList();
         transactions.Add(transaction);
         await transactionRepository.SaveAllAsync(transactions, cancellationToken);
+
+        await eventPublisher.PublishAsync(new CounterTransactionCompletedEvent(
+            transaction.Id,
+            transaction.TransactionNumber,
+            transaction.BranchId,
+            transaction.StaffId,
+            transaction.OccurredAt,
+            transaction.TotalAmount,
+            transaction.PaymentMethod,
+            correlationId), CancellationToken.None);
+
         return transaction;
     }
 }

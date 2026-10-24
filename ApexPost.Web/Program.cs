@@ -2,6 +2,7 @@ using ApexPost.Application.Abstractions;
 using ApexPost.Application.Services;
 using ApexPost.Infrastructure;
 using ApexPost.Infrastructure.Seed;
+using ApexPost.Web.Middleware;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
@@ -52,6 +53,8 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
+app.UseMiddleware<CorrelationIdMiddleware>();
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
@@ -62,6 +65,8 @@ else
     using var scope = app.Services.CreateScope();
     await scope.ServiceProvider.GetRequiredService<DemoDataSeeder>().SeedAsync();
 }
+
+app.UseMiddleware<RequestExceptionLoggingMiddleware>();
 
 app.UseHttpsRedirection();
 app.UseRouting();
