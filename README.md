@@ -99,3 +99,16 @@ Never commit real secrets or production personal data.
 The application starts at version 0.1.0 during development. Git tags use a v prefix (for example, v0.1.0). Increment the patch number for compatible fixes, the minor number for backward-compatible features, and the major number for incompatible changes. The first stable release is v1.0.0.
 
 Architecture decisions are recorded in DESIGN.md and docs/adr/.
+
+## Trusted reverse-proxy configuration
+
+Forwarded headers are ignored by default. If the app is behind a reverse proxy, configure the exact IP address of the immediate proxy, for example:
+
+    $env:Security__ForwardedHeaders__KnownProxies__0 = "192.0.2.10"
+    dotnet run --project ApexPost.Web
+
+Replace the documentation-only address with the actual proxy IP. The app accepts one trusted proxy hop and processes only `X-Forwarded-For` and `X-Forwarded-Proto`; it does not trust `X-Forwarded-Host`. Configure the proxy to remove caller-supplied forwarding values and write its own. Do not add a broad client network to the trusted proxy list. The default empty list keeps direct local runs from trusting spoofed headers.
+
+## Assessment evidence index
+
+See [docs/ASSESSMENT-EVIDENCE.md](docs/ASSESSMENT-EVIDENCE.md) for a requirement-to-file map, seed counts, test locations, and the documented performance and persistence limits.

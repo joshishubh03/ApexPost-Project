@@ -125,6 +125,49 @@ public sealed class BusinessRuleTests
     }
 
     [Fact]
+    public async Task Counter_checkout_rejects_a_closed_branch_without_writing_a_receipt()
+    {
+        var fixture = new CounterCheckoutFixture(branchIsOpen: false);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.CompleteSaleAsync());
+
+        Assert.Empty(fixture.TransactionRepository.Transactions);
+        Assert.Equal(10, fixture.InventoryRepository.Items.Single().QuantityOnHand);
+    }
+
+    [Fact]
+    public async Task Counter_checkout_rejects_inactive_staff()
+    {
+        var fixture = new CounterCheckoutFixture(staffIsActive: false);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => fixture.CompleteSaleAsync());
+
+        Assert.Empty(fixture.TransactionRepository.Transactions);
+    }
+
+    [Fact]
+    public async Task Counter_checkout_rejects_staff_assigned_to_another_branch()
+    {
+        var fixture = new CounterCheckoutFixture(staffBranchId: Guid.NewGuid());
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => fixture.CompleteSaleAsync());
+
+        Assert.Empty(fixture.TransactionRepository.Transactions);
+    }
+
+    [Fact]
+    public async Task Counter_checkout_rejects_insufficient_stock_without_writing_a_receipt()
+    {
+        var fixture = new CounterCheckoutFixture(stockOnHand: 0);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.CompleteSaleAsync());
+
+        Assert.Contains("not enough stock", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(fixture.TransactionRepository.Transactions);
+        Assert.Equal(0, fixture.InventoryRepository.Items.Single().QuantityOnHand);
+    }
+
+    [Fact]
     public async Task Counter_checkout_links_money_order_and_retail_to_one_receipt()
     {
         var branch = new Branch(Guid.NewGuid(), "AP-020", "Mixed Basket Branch", "Central", true);
@@ -295,6 +338,84 @@ public sealed class BusinessRuleTests
             fixture.Branch.Id, order.Id, fixture.Staff.Id, "Cancel", "correlation-refund"));
 
         Assert.Equal(MoneyOrderStatus.Issued, fixture.MoneyOrderRepository.Orders.Single().Status);
+    }
+
+    private sealed class CounterCheckoutFixture
+    {
+        public Branch Branch { get; }
+        public StaffMember Staff { get; }
+        public Product Product { get; }
+        public CounterTerminal Terminal { get; }
+        public FakeInventoryRepository InventoryRepository { get; }
+        public FakeCounterRepository TransactionRepository { get; }
+        public CounterTransactionService Service { get; }
+
+        public CounterCheckoutFixture(
+            bool branchIsOpen = true,
+            bool staffIsActive = true,
+            Guid? staffBranchId = null,
+            int stockOnHand = 10)
+        {
+            Branch = new Branch(Guid.NewGuid(), "AP-021", "Checkout Branch", "Central", branchIsOpen);
+            Staff = new StaffMember(Guid.NewGuid(), "clerk@apexpost.local", "Checkout Clerk", StaffRole.CounterClerk,
+                staffBranchId ?? Branch.Id, staffIsActive, "hash");
+            Product = new Product(Guid.NewGuid(), "CHECKOUT-1", "Test item", "Test description", "Retail", 25m, true, "Standard");
+            Terminal = new CounterTerminal(Guid.NewGuid(), Branch.Id, "T-01", "Front counter");
+            InventoryRepository = new FakeInventoryRepository([new InventoryItem(Branch.Id, Product.Id, stockOnHand, 2, [])]);
+            TransactionRepository = new FakeCounterRepository();
+
+            var branches = new FakeBranchRepository(Branch);
+            var staff = new FakeStaffRepository(Staff);
+            var products = new FakeProductRepository([Product]);
+            var publisher = new FakeEventPublisher();
+            var moneyOrderPolicy = new MoneyOrderPolicy(10_000m, 50m, "DEMO-VALID-");
+            var moneyOrderService = new MoneyOrderService(
+                branches,
+                staff,
+                new FakeMoneyOrderRepository(),
+                TransactionRepository,
+                new FakeVerificationRepository(),
+                new FakeIdentityVerificationService(true),
+                publisher,
+                moneyOrderPolicy);
+            var inventoryService = new InventoryManagementService(InventoryRepository, products, branches, publisher);
+            var shippingService = new ShippingRateService(new FakeShippingZoneRepository(), new FakeShippingRateRepository());
+
+            Service = new CounterTransactionService(
+                branches,
+                products,
+                InventoryRepository,
+                TransactionRepository,
+                staff,
+                publisher,
+                inventoryService,
+                shippingService,
+                new TaxPolicy(new Dictionary<string, decimal> { ["Standard"] = 5m, ["Shipping"] = 0m }),
+                new FakeTerminalRepository([Terminal]),
+                moneyOrderService,
+                moneyOrderPolicy);
+        }
+
+        public Task<CounterTransaction> CompleteSaleAsync() => Service.CompleteSaleAsync(
+            Branch.Id,
+            Staff.Id,
+            new Dictionary<Guid, int> { [Product.Id] = 1 },
+            PaymentMethod.Cash,
+            shippingRateId: null,
+            shipmentType: null,
+            shippingWeightKilograms: null,
+            shippingRecipientName: null,
+            shippingAddress: null,
+            parcelLengthCentimeters: null,
+            parcelWidthCentimeters: null,
+            parcelHeightCentimeters: null,
+            terminalId: Terminal.Id,
+            moneyOrderAmount: null,
+            moneyOrderSenderName: null,
+            moneyOrderRecipientName: null,
+            moneyOrderDocumentType: null,
+            moneyOrderDocumentIdentifier: null,
+            correlationId: "counter-checkout-test");
     }
 
     private sealed class MoneyOrderFixture

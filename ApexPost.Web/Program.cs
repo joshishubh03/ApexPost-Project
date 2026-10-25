@@ -1,4 +1,6 @@
+using System.Net;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.HttpOverrides;
 using ApexPost.Application.Abstractions;
 using ApexPost.Application.Services;
 using ApexPost.Infrastructure;
@@ -12,6 +14,31 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
+var forwardedHeadersConfiguration = builder.Configuration.GetSection("Security:ForwardedHeaders");
+var knownProxyAddresses = forwardedHeadersConfiguration.GetSection("KnownProxies").Get<string[]>() ?? [];
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.ForwardLimit = 1;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+    foreach (var proxyAddress in knownProxyAddresses)
+    {
+        if (!IPAddress.TryParse(proxyAddress, out var parsedAddress))
+        {
+            throw new InvalidOperationException($"The configured forwarded-header proxy address '{proxyAddress}' is not a valid IP address.");
+        }
+
+        options.KnownProxies.Add(parsedAddress);
+    }
+
+    if (knownProxyAddresses.Length == 0)
+    {
+        // An empty known-proxy list means "trust every proxy" in ASP.NET Core.
+        // A sentinel keeps forwarded headers disabled until an operator configures trusted proxies.
+        options.KnownProxies.Add(IPAddress.None);
+    }
+});
 var dataDirectory = Path.GetFullPath(
     builder.Configuration["ApexPost:DataDirectory"] ??
     Path.Combine(builder.Environment.ContentRootPath, "..", "data"));
@@ -129,6 +156,7 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
+app.UseForwardedHeaders();
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseExceptionHandler();
