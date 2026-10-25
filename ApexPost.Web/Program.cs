@@ -125,6 +125,7 @@ builder.Services.AddAuthorization(options =>
 var app = builder.Build();
 
 app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseExceptionHandler();
 
 if (!app.Environment.IsDevelopment())
