@@ -33,7 +33,7 @@ else
     <h2 class="h4">@Model.Report.Branch.Code — @Model.Report.Branch.Name</h2>
     <div class="row g-3 mb-4">
         <div class="col-sm-6 col-lg-3"><div class="card card-body h-100"><div class="text-muted">Completed sales</div><strong class="fs-4">@Model.Report.CompletedSalesCount</strong><span>@Model.Report.CompletedSalesTotal.ToString("C2", inr)</span></div></div>
-        <div class="col-sm-6 col-lg-3"><div class="card card-body h-100"><div class="text-muted">Money orders</div><strong class="fs-4">@Model.Report.MoneyOrderCount</strong><span>@Model.Report.MoneyOrderTotal.ToString("C2", inr)</span></div></div>
+        <div class="col-sm-6 col-lg-3"><div class="card card-body h-100"><div class="text-muted">Issued money orders</div><strong class="fs-4">@Model.Report.MoneyOrderCount</strong><span>@Model.Report.MoneyOrderTotal.ToString("C2", inr)</span><small class="text-muted">Refunded: @Model.Report.RefundedMoneyOrderCount</small></div></div>
         <div class="col-sm-6 col-lg-2"><div class="card card-body h-100"><div class="text-muted">Low stock</div><strong class="fs-4">@Model.Report.LowStockItems.Count</strong></div></div>
         <div class="col-sm-6 col-lg-2"><div class="card card-body h-100"><div class="text-muted">Voids / refunds</div><strong class="fs-4">@Model.Report.VoidedTransactionsCount / @Model.Report.RefundedTransactionsCount</strong></div></div>
         <div class="col-sm-6 col-lg-2"><div class="card card-body h-100"><div class="text-muted">Failed ID checks</div><strong class="fs-4">@Model.Report.IdentityVerificationFailures</strong></div></div>
@@ -85,7 +85,7 @@ else
             <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Time</th><th>Action</th><th>Record</th><th>Actor</th><th>Correlation</th><th class="text-end">Amount</th></tr></thead><tbody>
             @foreach (var audit in Model.Report.RecentAuditEvents)
             {
-                <tr><td>@audit.OccurredAt.ToLocalTime().ToString("g")</td><td>@audit.Action</td><td>@audit.EntityType</td><td>@audit.ActorId</td><td><code>@audit.CorrelationId</code></td><td class="text-end">@(audit.Amount?.ToString("C2", inr) ?? "—")</td></tr>
+                <tr><td>@audit.OccurredAt.ToLocalTime().ToString("g")</td><td>@audit.Action</td><td>@audit.EntityType@if (audit.Details is not null) { <small class="text-muted d-block">@audit.Details</small> }</td><td>@audit.ActorId</td><td><code>@audit.CorrelationId</code></td><td class="text-end">@(audit.Amount?.ToString("C2", inr) ?? "—")</td></tr>
             }
             </tbody></table></div>
         }

@@ -62,7 +62,7 @@ Counter Clerks, Branch Managers, and Administrators can record sales for their a
 
 ### Voids and refunds
 
-Branch Managers can void or fully refund a completed counter transaction for their assigned branch. Both actions require a reason, are recorded with the manager and timestamp, restore the transaction's product quantities to branch inventory, and produce an audit event with the request correlation ID. A transaction can be reversed only once. Partial refunds and money-order refunds are not implemented yet. Inventory and transaction status are stored in separate JSON files, so a process or file failure between writes can leave them out of sync; this training adapter does not provide cross-file atomicity.
+Branch Managers can void or fully refund a completed counter transaction for their assigned branch. Both actions require a reason, are recorded with the manager and timestamp, restore the transaction's product quantities to branch inventory, and produce an audit event with the request correlation ID. Managers can also refund an issued money order once, with a reason and correlated audit event. Partial counter-transaction refunds are not supported. Inventory, transaction, and money order status are stored in separate JSON files, so a process or file failure between writes can leave them out of sync; this training adapter does not provide cross-file atomicity.
 
 ## Branch reports
 

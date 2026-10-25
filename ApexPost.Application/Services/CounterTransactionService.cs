@@ -293,7 +293,8 @@ public sealed class CounterTransactionService(
             now,
             reversed.TotalAmount,
             reversed.Status.ToString(),
-            correlationId), CancellationToken.None);
+            correlationId,
+            reversed.ResolutionReason!), CancellationToken.None);
 
         return reversed;
     }

@@ -11,4 +11,5 @@ public sealed class MoneyOrdersPageModel
     public decimal IdentityVerificationThreshold { get; init; }
     public decimal FeeAmount { get; init; }
     public bool CanIssue { get; init; }
+    public bool CanRefund { get; init; }
 }

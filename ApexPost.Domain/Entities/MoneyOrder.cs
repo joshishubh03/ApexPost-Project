@@ -18,6 +18,10 @@ public sealed record MoneyOrder
     public Guid? VerificationRecordId { get; }
     public IdentityDocumentType? DocumentType { get; }
     public string? MaskedDocumentIdentifier { get; }
+    public MoneyOrderStatus Status { get; }
+    public DateTimeOffset? RefundedAt { get; }
+    public Guid? RefundedByStaffId { get; }
+    public string? RefundReason { get; }
 
     public MoneyOrder(
         Guid id,
@@ -32,7 +36,11 @@ public sealed record MoneyOrder
         IdentityVerificationStatus verificationStatus,
         Guid? verificationRecordId,
         IdentityDocumentType? documentType,
-        string? maskedDocumentIdentifier)
+        string? maskedDocumentIdentifier,
+        MoneyOrderStatus status = MoneyOrderStatus.Issued,
+        DateTimeOffset? refundedAt = null,
+        Guid? refundedByStaffId = null,
+        string? refundReason = null)
     {
         if (id == Guid.Empty || branchId == Guid.Empty || staffId == Guid.Empty)
         {
@@ -48,6 +56,15 @@ public sealed record MoneyOrder
         {
             throw new ArgumentOutOfRangeException(nameof(verificationStatus));
         }
+
+        if (!Enum.IsDefined(status))
+            throw new ArgumentOutOfRangeException(nameof(status));
+        if (status == MoneyOrderStatus.Issued &&
+            (refundedAt is not null || refundedByStaffId is not null || refundReason is not null))
+            throw new ArgumentException("Issued money orders cannot contain refund details.", nameof(status));
+        if (status == MoneyOrderStatus.Refunded &&
+            (refundedAt is null || refundedByStaffId is null || refundedByStaffId == Guid.Empty || string.IsNullOrWhiteSpace(refundReason)))
+            throw new ArgumentException("A refunded money order requires an actor, time, and reason.", nameof(status));
 
         if (documentType is not null && !Enum.IsDefined(documentType.Value))
         {
@@ -85,6 +102,25 @@ public sealed record MoneyOrder
         VerificationRecordId = verificationRecordId;
         DocumentType = documentType;
         MaskedDocumentIdentifier = maskedDocumentIdentifier;
+        Status = status;
+        RefundedAt = refundedAt;
+        RefundedByStaffId = refundedByStaffId;
+        RefundReason = refundReason?.Trim();
+    }
+
+    public MoneyOrder Refund(Guid managerId, string reason, DateTimeOffset refundedAt)
+    {
+        if (Status != MoneyOrderStatus.Issued)
+            throw new InvalidOperationException("Only an issued money order can be refunded.");
+        if (managerId == Guid.Empty)
+            throw new ArgumentException("The manager performing the refund is required.", nameof(managerId));
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        if (reason.Trim().Length > 250)
+            throw new ArgumentException("The reason cannot exceed 250 characters.", nameof(reason));
+
+        return new MoneyOrder(Id, MoneyOrderNumber, BranchId, StaffId, OccurredAt, SenderName, RecipientName,
+            Amount, Fee, VerificationStatus, VerificationRecordId, DocumentType, MaskedDocumentIdentifier,
+            MoneyOrderStatus.Refunded, refundedAt, managerId, reason);
     }
 
     private static void ValidateAmount(decimal value, string parameterName, bool allowZero)

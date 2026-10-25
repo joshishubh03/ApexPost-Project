@@ -136,6 +136,43 @@ public sealed class MoneyOrderService(
         return order;
     }
 
+    public async Task<MoneyOrder> RefundAsync(
+        Guid branchId,
+        Guid moneyOrderId,
+        Guid managerId,
+        string reason,
+        string correlationId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        if (reason.Trim().Length > 250)
+            throw new ArgumentException("The reason cannot exceed 250 characters.", nameof(reason));
+
+        var branch = await branchRepository.GetByIdAsync(branchId, cancellationToken)
+            ?? throw new KeyNotFoundException("The branch could not be found.");
+        if (!branch.IsOpen)
+            throw new InvalidOperationException("A money order cannot be refunded at a closed branch.");
+
+        var manager = (await staffRepository.GetAllAsync(cancellationToken))
+            .FirstOrDefault(candidate => candidate.Id == managerId);
+        if (manager is null || !manager.IsActive || manager.Role != StaffRole.BranchManager || manager.BranchId != branchId)
+            throw new UnauthorizedAccessException("Only an active Branch Manager assigned to this branch can refund a money order.");
+
+        var orders = (await moneyOrderRepository.GetAllAsync(cancellationToken)).ToList();
+        var index = orders.FindIndex(order => order.Id == moneyOrderId && order.BranchId == branchId);
+        if (index < 0)
+            throw new KeyNotFoundException("The money order could not be found for this branch.");
+
+        var now = DateTimeOffset.UtcNow;
+        var refunded = orders[index].Refund(managerId, reason, now);
+        orders[index] = refunded;
+        await moneyOrderRepository.SaveAllAsync(orders, cancellationToken);
+        await eventPublisher.PublishAsync(new MoneyOrderRefundedEvent(
+            refunded.Id, refunded.MoneyOrderNumber, branchId, managerId, now, refunded.TotalAmount,
+            refunded.RefundReason!, correlationId), CancellationToken.None);
+        return refunded;
+    }
+
     private void ValidatePolicy()
     {
         if (policy.IdentityVerificationThreshold < 0 || decimal.Round(policy.IdentityVerificationThreshold, 2) != policy.IdentityVerificationThreshold)

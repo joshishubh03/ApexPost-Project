@@ -8,4 +8,5 @@ public sealed record CounterTransactionReversedEvent(
     DateTimeOffset OccurredAt,
     decimal Amount,
     string Status,
-    string CorrelationId);
+    string CorrelationId,
+    string Reason);

@@ -23,7 +23,8 @@ public sealed class CounterTransactionReversedAuditHandler(
                 applicationEvent.StaffId,
                 applicationEvent.BranchId,
                 applicationEvent.CorrelationId,
-                applicationEvent.Amount), cancellationToken);
+                applicationEvent.Amount,
+                applicationEvent.Reason), cancellationToken);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
