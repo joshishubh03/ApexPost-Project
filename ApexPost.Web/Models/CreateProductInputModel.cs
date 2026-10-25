@@ -17,6 +17,9 @@ public sealed class CreateProductInputModel
     [Required, StringLength(60)]
     public string Category { get; set; } = string.Empty;
 
+    [Required, StringLength(60, MinimumLength = 1)]
+    public string TaxCategory { get; set; } = "Standard";
+
     [Range(typeof(decimal), "0", "9999999.99")]
     public decimal Price { get; set; }
 }

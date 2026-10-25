@@ -37,13 +37,14 @@ else
             <p class="text-muted">Enter a quantity for each item. Add a shipping service to capture recipient details and parcel dimensions.</p>
             <div class="table-responsive">
                 <table class="table table-sm align-middle">
-                    <thead><tr><th>Product</th><th>Category</th><th>Unit price</th><th>Available</th><th>Quantity</th></tr></thead>
+                    <thead><tr><th>Product</th><th>Category</th><th>Tax category</th><th>Unit price</th><th>Available</th><th>Quantity</th></tr></thead>
                     <tbody>
                     @foreach (var product in Model.Register.Products)
                     {
                         <tr>
                             <td>@product.Name<br /><small class="text-muted">@product.Sku</small></td>
                             <td>@product.Category</td>
+                            <td>@product.TaxCategory</td>
                             <td>@product.Price.ToString("C2", inr)</td>
                             <td>@product.QuantityOnHand</td>
                             <td><input class="form-control form-control-sm" type="number" name="Quantities[@product.ProductId]" value="0" min="0" max="@product.QuantityOnHand" step="1" aria-label="Quantity for @product.Name" /></td>
@@ -90,7 +91,7 @@ else
     else
     {
         <div class="table-responsive"><table class="table table-striped">
-            <thead><tr><th>Receipt</th><th>Time</th><th>Items / label</th><th>Payment</th><th>Status</th><th class="text-end">Total</th>@if (User.IsInRole("BranchManager")) { <th>Manager action</th> }</tr></thead>
+            <thead><tr><th>Receipt</th><th>Time</th><th>Items / label</th><th>Payment</th><th>Status</th><th class="text-end">Tax</th><th class="text-end">Total</th>@if (User.IsInRole("BranchManager")) { <th>Manager action</th> }</tr></thead>
             <tbody>
             @foreach (var transaction in Model.Register.RecentTransactions)
             {
@@ -105,6 +106,7 @@ else
                     </td>
                     <td>@transaction.PaymentMethod</td>
                     <td>@transaction.Status @if (transaction.ResolvedAt is not null) { <small class="text-muted d-block">@transaction.ResolutionReason</small> }</td>
+                    <td class="text-end">@transaction.TaxTotal.ToString("C2", inr)</td>
                     <td class="text-end">@transaction.TotalAmount.ToString("C2", inr)</td>
                     @if (User.IsInRole("BranchManager"))
                     {

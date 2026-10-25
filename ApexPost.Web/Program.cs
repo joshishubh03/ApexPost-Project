@@ -20,6 +20,20 @@ var moneyOrderPolicy = new ApexPost.Application.Models.MoneyOrderPolicy(
     builder.Configuration.GetValue<decimal>("MoneyOrders:IdentityVerificationThreshold", 10_000m),
     builder.Configuration.GetValue<decimal>("MoneyOrders:FeeAmount", 50m),
     builder.Configuration["MoneyOrders:DemoVerificationSuccessPrefix"] ?? "DEMO-VALID-");
+var taxRates = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase)
+{
+    ["Standard"] = 0m,
+    [ApexPost.Application.Models.TaxPolicy.ShippingCategory] = 0m
+};
+var configuredTaxRates = builder.Configuration.GetSection("Taxation:Rates").Get<Dictionary<string, decimal>>();
+if (configuredTaxRates is not null)
+{
+    foreach (var (category, rate) in configuredTaxRates)
+    {
+        taxRates[category] = rate;
+    }
+}
+var taxPolicy = new ApexPost.Application.Models.TaxPolicy(taxRates);
 
 if (builder.Environment.IsDevelopment())
 {
@@ -44,6 +58,7 @@ builder.Services.AddScoped<MoneyOrderService>();
 builder.Services.AddScoped<ReportingService>();
 builder.Services.AddScoped<PartnerTrackingService>();
 builder.Services.AddSingleton(moneyOrderPolicy);
+builder.Services.AddSingleton(taxPolicy);
 builder.Services.AddCors(options =>
 {
     var origins = builder.Configuration.GetSection("PartnerApi:AllowedCorsOrigins").Get<string[]>() ?? [];

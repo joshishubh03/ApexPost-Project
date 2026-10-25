@@ -24,6 +24,7 @@
             <div class="col-md-2"><label asp-for="NewProduct.Sku" class="form-label">SKU</label><input asp-for="NewProduct.Sku" class="form-control" /><span asp-validation-for="NewProduct.Sku" class="text-danger"></span></div>
             <div class="col-md-3"><label asp-for="NewProduct.Name" class="form-label"></label><input asp-for="NewProduct.Name" class="form-control" /><span asp-validation-for="NewProduct.Name" class="text-danger"></span></div>
             <div class="col-md-2"><label asp-for="NewProduct.Category" class="form-label"></label><input asp-for="NewProduct.Category" class="form-control" /><span asp-validation-for="NewProduct.Category" class="text-danger"></span></div>
+            <div class="col-md-2"><label asp-for="NewProduct.TaxCategory" class="form-label"></label><input asp-for="NewProduct.TaxCategory" class="form-control" /><span asp-validation-for="NewProduct.TaxCategory" class="text-danger"></span></div>
             <div class="col-md-2"><label asp-for="NewProduct.Price" class="form-label">Price (INR)</label><input asp-for="NewProduct.Price" class="form-control" type="number" min="0" step="0.01" /><span asp-validation-for="NewProduct.Price" class="text-danger"></span></div>
             <div class="col-md-3"><label asp-for="NewProduct.Description" class="form-label"></label><input asp-for="NewProduct.Description" class="form-control" /><span asp-validation-for="NewProduct.Description" class="text-danger"></span></div>
             <div class="col-12"><button class="btn btn-primary" type="submit">Create product</button></div>
@@ -33,7 +34,7 @@
 
 <div class="table-responsive">
     <table class="table table-striped align-middle">
-        <thead><tr><th>SKU</th><th>Product</th><th>Category</th><th class="text-end">Price</th>@if (canManage) { <th>Status</th><th></th> }</tr></thead>
+        <thead><tr><th>SKU</th><th>Product</th><th>Category</th><th>Tax category</th><th class="text-end">Price</th>@if (canManage) { <th>Status</th><th></th> }</tr></thead>
         <tbody>
         @foreach (var product in Model.Products)
         {
@@ -41,6 +42,7 @@
                 <td>@product.Sku</td>
                 <td>@product.Name<br /><small class="text-muted">@product.Description</small></td>
                 <td>@product.Category</td>
+                <td>@product.TaxCategory</td>
                 <td class="text-end">@product.Price.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("en-IN"))</td>
                 @if (canManage)
                 {
