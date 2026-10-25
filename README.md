@@ -66,7 +66,7 @@ Branch Managers can void or fully refund a completed counter transaction for the
 
 ## Branch reports
 
-Administrators can select a branch; Branch Managers and Auditors are restricted to their assigned branch. The report summarizes completed sales, voids and refunds, low-stock active products, shipping volume by zone and service, money orders, failed identity checks, the latest 20 operational notifications, and the latest 50 audit events. Independent JSON reads are loaded concurrently with `Task.WhenAll`. Notifications are simulated operational records in `data/notifications.json`; they do not send email, SMS, or external messages.
+Administrators can select a branch; Branch Managers and Auditors are restricted to their assigned branch. The report summarizes completed sales, daily retail and service totals, voids and refunds, low-stock active products, shipping volume by zone and service, money orders, failed identity checks, the latest 20 operational notifications, and the latest 50 audit events. Service totals include Postage, Shipping, and Money Order catalogue lines, receipt shipping and money-order amounts, and standalone issued money orders. Daily grouping follows the server's local calendar date; rows distinguish completed receipts from standalone money orders. Independent JSON reads are loaded concurrently with `Task.WhenAll`. Notifications are simulated operational records in `data/notifications.json`; they do not send email, SMS, or external messages.
 
 ## Security and partner tracking
 
