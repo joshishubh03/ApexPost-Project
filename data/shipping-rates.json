@@ -178,5 +178,95 @@
     "pricePerKilogram": 49,
     "maximumWeightKilograms": 30,
     "isActive": true
+  },
+  {
+    "id": "60000000-0000-0000-0000-000000000001",
+    "zoneId": "30000000-0000-0000-0000-000000000001",
+    "serviceLevel": "Registered",
+    "basePrice": 85,
+    "pricePerKilogram": 30,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  },
+  {
+    "id": "60000000-0000-0000-0000-000000000002",
+    "zoneId": "30000000-0000-0000-0000-000000000002",
+    "serviceLevel": "Registered",
+    "basePrice": 93,
+    "pricePerKilogram": 34,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  },
+  {
+    "id": "60000000-0000-0000-0000-000000000003",
+    "zoneId": "30000000-0000-0000-0000-000000000003",
+    "serviceLevel": "Registered",
+    "basePrice": 101,
+    "pricePerKilogram": 38,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  },
+  {
+    "id": "60000000-0000-0000-0000-000000000004",
+    "zoneId": "30000000-0000-0000-0000-000000000004",
+    "serviceLevel": "Registered",
+    "basePrice": 109,
+    "pricePerKilogram": 42,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  },
+  {
+    "id": "60000000-0000-0000-0000-000000000005",
+    "zoneId": "30000000-0000-0000-0000-000000000005",
+    "serviceLevel": "Registered",
+    "basePrice": 117,
+    "pricePerKilogram": 46,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  },
+  {
+    "id": "60000000-0000-0000-0000-000000000006",
+    "zoneId": "30000000-0000-0000-0000-000000000006",
+    "serviceLevel": "Registered",
+    "basePrice": 125,
+    "pricePerKilogram": 50,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  },
+  {
+    "id": "60000000-0000-0000-0000-000000000007",
+    "zoneId": "30000000-0000-0000-0000-000000000007",
+    "serviceLevel": "Registered",
+    "basePrice": 133,
+    "pricePerKilogram": 54,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  },
+  {
+    "id": "60000000-0000-0000-0000-000000000008",
+    "zoneId": "30000000-0000-0000-0000-000000000008",
+    "serviceLevel": "Registered",
+    "basePrice": 141,
+    "pricePerKilogram": 58,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  },
+  {
+    "id": "60000000-0000-0000-0000-000000000009",
+    "zoneId": "30000000-0000-0000-0000-000000000009",
+    "serviceLevel": "Registered",
+    "basePrice": 149,
+    "pricePerKilogram": 62,
+    "maximumWeightKilograms": 30,
+    "isActive": true
+  },
+  {
+    "id": "60000000-0000-0000-0000-000000000010",
+    "zoneId": "30000000-0000-0000-0000-000000000010",
+    "serviceLevel": "Registered",
+    "basePrice": 157,
+    "pricePerKilogram": 66,
+    "maximumWeightKilograms": 30,
+    "isActive": true
   }
 ]
