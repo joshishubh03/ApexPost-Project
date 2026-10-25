@@ -60,6 +60,9 @@ public sealed record StaffMember
     public StaffMember WithActiveStatus(bool isActive) =>
         new(Id, Email, FullName, Role, BranchId, isActive, PasswordHash);
 
+    public StaffMember WithProfile(string email, string fullName, StaffRole role, Guid? branchId) =>
+        new(Id, email, fullName, role, branchId, IsActive, PasswordHash);
+
     public StaffMember WithBranch(Guid branchId) =>
         new(Id, Email, FullName, Role, branchId, IsActive, PasswordHash);
 }

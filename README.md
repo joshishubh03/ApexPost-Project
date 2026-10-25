@@ -40,7 +40,7 @@ The demo password is public training data and must never be reused outside this 
 
 ## Branch and staff administration
 
-Sign in as the seeded Administrator to use the **Branches** and **Staff** links. Administrators can create branches with opening and closing times, change a branch's operational status, add or deactivate branch counter terminals, create staff accounts, and activate or deactivate accounts. New passwords are hashed before they are saved. Non-administrator staff must be assigned to an existing branch, and the last active Administrator cannot be deactivated.
+Sign in as the seeded Administrator to use the **Branches** and **Staff** links. Administrators can create branches with opening and closing times, change a branch's operational status, add or deactivate branch counter terminals, create staff accounts, edit staff names, email addresses, roles and home branches, and activate or deactivate accounts. Staff profile edits preserve the current password hash. New passwords are hashed before they are saved. Non-administrator staff must be assigned to an existing branch, and the last active Administrator cannot be deactivated or reassigned to a non-administrator role.
 
 The MVC administration controller calls `StaffManagementService` in the Application layer. That service uses repository interfaces; Infrastructure implements those interfaces with the JSON files in `data/`. This keeps web form handling, business rules, and persistence in their respective layers.
 

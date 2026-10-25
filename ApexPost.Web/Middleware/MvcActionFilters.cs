@@ -45,6 +45,7 @@ public sealed class MvcAuditActionFilter(
         ("Administration", "CreateTerminal"),
         ("Administration", "SetTerminalActive"),
         ("Administration", "CreateStaff"),
+        ("Administration", "UpdateStaff"),
         ("Administration", "SetStaffActive"),
         ("Catalog", "Create"),
         ("Catalog", "SetActive"),
@@ -165,6 +166,10 @@ public sealed class MvcAuditActionFilter(
                 case CreateStaffInputModel input:
                     AddSafeValue(values, "branchId", input.BranchId);
                     break;
+                case UpdateStaffInputModel input:
+                    AddSafeValue(values, "staffId", input.Id);
+                    AddSafeValue(values, "branchId", input.BranchId);
+                    break;
                 case CreateShippingRateInputModel input:
                     AddSafeValue(values, "zoneId", input.ZoneId);
                     break;
@@ -216,6 +221,7 @@ public sealed class MvcAuditActionFilter(
             ("Administration", "SetBranchOpen") => "id",
             ("Administration", "SetTerminalActive") => "id",
             ("Administration", "SetStaffActive") => "id",
+            ("Administration", "UpdateStaff") => "staffId",
             ("Catalog", "SetActive") => "id",
             _ => string.Empty
         };

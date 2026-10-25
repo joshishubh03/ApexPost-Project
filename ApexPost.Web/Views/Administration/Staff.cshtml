@@ -37,7 +37,7 @@
                 <tr>
                     <td>@member.FullName<br /><small class="text-muted">@member.Email</small></td>
                     <td>@member.Role</td><td>@(branch?.Code ?? "—")</td><td>@(member.IsActive ? "Active" : "Inactive")</td>
-                    <td><form asp-action="SetStaffActive" method="post"><input type="hidden" name="id" value="@member.Id" /><input type="hidden" name="isActive" value="@(!member.IsActive)" /><button class="btn btn-sm @(member.IsActive ? "btn-outline-danger" : "btn-outline-success")" type="submit">@(member.IsActive ? "Deactivate" : "Activate")</button></form></td>
+                    <td class="text-nowrap"><a asp-action="EditStaff" asp-route-id="@member.Id" class="btn btn-sm btn-outline-primary">Edit</a> <form asp-action="SetStaffActive" method="post" class="d-inline"><input type="hidden" name="id" value="@member.Id" /><input type="hidden" name="isActive" value="@(!member.IsActive)" /><button class="btn btn-sm @(member.IsActive ? "btn-outline-danger" : "btn-outline-success")" type="submit">@(member.IsActive ? "Deactivate" : "Activate")</button></form></td>
                 </tr>
             }
             </tbody>

@@ -105,6 +105,61 @@ public sealed class AdministrationController(StaffManagementService staffManagem
         return View(new CreateStaffInputModel());
     }
 
+    [HttpGet]
+    public async Task<IActionResult> EditStaff(Guid id, CancellationToken cancellationToken)
+    {
+        var member = (await staffManagementService.GetStaffAsync(cancellationToken))
+            .FirstOrDefault(candidate => candidate.Id == id);
+        if (member is null)
+        {
+            return NotFound();
+        }
+
+        ViewData["Branches"] = await staffManagementService.GetBranchesAsync(cancellationToken);
+        return View(new UpdateStaffInputModel
+        {
+            Id = member.Id,
+            Email = member.Email,
+            FullName = member.FullName,
+            Role = member.Role,
+            BranchId = member.BranchId
+        });
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> UpdateStaff(UpdateStaffInputModel input, CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+        {
+            if (!await PopulateStaffEditBranchesAsync(input.Id, cancellationToken))
+            {
+                return NotFound();
+            }
+            return View("EditStaff", input);
+        }
+
+        try
+        {
+            await staffManagementService.UpdateStaffAsync(
+                input.Id, input.Email, input.FullName, input.Role, input.BranchId, cancellationToken);
+            TempData["StatusMessage"] = $"Staff account for {input.Email.Trim()} was updated.";
+            return RedirectToAction(nameof(Staff));
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
+        {
+            ModelState.AddModelError(string.Empty, exception.Message);
+            if (!await PopulateStaffEditBranchesAsync(input.Id, cancellationToken))
+            {
+                return NotFound();
+            }
+            return View("EditStaff", input);
+        }
+    }
+
     [HttpPost]
     public async Task<IActionResult> CreateStaff(CreateStaffInputModel input, CancellationToken cancellationToken)
     {
@@ -159,6 +214,17 @@ public sealed class AdministrationController(StaffManagementService staffManagem
     {
         ViewData["Staff"] = await staffManagementService.GetStaffAsync(cancellationToken);
         ViewData["Branches"] = await staffManagementService.GetBranchesAsync(cancellationToken);
+    }
+
+    private async Task<bool> PopulateStaffEditBranchesAsync(Guid staffId, CancellationToken cancellationToken)
+    {
+        var staff = await staffManagementService.GetStaffAsync(cancellationToken);
+        if (staff.All(member => member.Id != staffId))
+        {
+            return false;
+        }
+        ViewData["Branches"] = await staffManagementService.GetBranchesAsync(cancellationToken);
+        return true;
     }
 
     private async Task PopulateBranchesPageAsync(CancellationToken cancellationToken)
