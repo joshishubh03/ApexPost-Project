@@ -17,3 +17,9 @@ Configure partner keys under `PartnerApi:Partners:{partnerId}`. Validate each `X
 - The rate limiter partitions only on configured partner IDs; raw keys are not partition keys or log values.
 - CORS preflight requests remain exempt from key validation.
 - Partner secrets belong in user-secrets or deployment secret configuration, not appsettings or source control.
+
+## Alternatives considered
+
+- Partition every partner by remote IP: rejected because partner traffic can move between addresses and unrelated partners may share an egress address.
+- Use one global API bucket: rejected because a busy partner could consume capacity for all other partners.
+- Rate-limit before API-key validation: rejected because the limiter would not yet have a verified partner identity.

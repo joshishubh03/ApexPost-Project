@@ -14,3 +14,9 @@ Define repository abstractions in Application and implement them in Infrastructu
 ## Consequences
 
 JSON DTOs and mapping may differ from domain types. The infrastructure must handle malformed or missing files safely. JSON storage is a teaching-stage adapter and does not provide database-grade multi-process transactions.
+
+## Alternatives considered
+
+- Add a database or ORM now: rejected because this week's constraints prohibit both.
+- Read and write JSON directly in Application services: rejected because it would couple use cases to file paths and serialization.
+- Keep one unstructured JSON document for the whole application: rejected because repository interfaces and separate collections make the planned database replacement clearer, while the remaining cross-file atomicity limit is documented.

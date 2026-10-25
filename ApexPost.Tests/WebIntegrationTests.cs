@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
@@ -90,6 +91,33 @@ public sealed class WebIntegrationTests
         Assert.Equal(HttpStatusCode.Forbidden, productMutation.StatusCode);
     }
 
+    [Fact]
+    public async Task Trusted_proxy_forwarded_for_is_used_for_admin_ip_allowlist()
+    {
+        using var factory = new ApexPostWebFactory(trustLoopbackProxy: true);
+        using var client = CreateSecureClient(factory, allowAutoRedirect: false);
+        client.DefaultRequestHeaders.Add("X-Test-Role", nameof(StaffRole.Administrator));
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/Administration/Branches");
+        request.Headers.Add("X-Forwarded-For", "192.0.2.10");
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Untrusted_forwarded_for_cannot_bypass_admin_ip_allowlist()
+    {
+        using var factory = new ApexPostWebFactory();
+        using var client = CreateSecureClient(factory, allowAutoRedirect: false);
+        client.DefaultRequestHeaders.Add("X-Test-Role", nameof(StaffRole.Administrator));
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/Administration/Branches");
+        request.Headers.Add("X-Forwarded-For", "192.0.2.10");
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
     [Fact]
     public async Task Login_post_is_rate_limited_after_five_attempts()
     {
@@ -204,7 +232,8 @@ public sealed class WebIntegrationTests
 
     private sealed class ApexPostWebFactory(
         bool maintenanceMode = false,
-        string? integrationAllowedIpAddress = null) : WebApplicationFactory<Program>
+        string? integrationAllowedIpAddress = null,
+        bool trustLoopbackProxy = false) : WebApplicationFactory<Program>
     {
         private readonly string dataDirectory = Path.Combine(Path.GetTempPath(), $"apexpost-web-tests-{Guid.NewGuid():N}");
 
@@ -230,6 +259,16 @@ public sealed class WebIntegrationTests
             });
             builder.ConfigureTestServices(services =>
             {
+                if (trustLoopbackProxy)
+                {
+                    services.PostConfigure<ForwardedHeadersOptions>(options =>
+                    {
+                        options.KnownIPNetworks.Clear();
+                        options.KnownProxies.Clear();
+                        options.KnownProxies.Add(IPAddress.Loopback);
+                        options.KnownProxies.Add(IPAddress.IPv6Loopback);
+                    });
+                }
                 services.AddSingleton<IStartupFilter, LoopbackAddressStartupFilter>();
                 services.RemoveAll<ApexPost.Application.Abstractions.IAuthenticationService>();
                 services.AddSingleton<ApexPost.Application.Abstractions.IAuthenticationService, TestAuthenticationService>();

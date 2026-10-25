@@ -14,3 +14,9 @@ Use built-in ASP.NET Core rate limiting and CORS policies. Apply security header
 ## Consequences
 
 The training app has explicit defaults and configuration points. The admin allowlist defaults to loopback and must be set to deployment IPs. The partner API returns only shipment receipt metadata. CORS limits browser origins but is not authentication. Reverse-proxy deployments need trusted forwarded-header configuration before IP allowlists can identify the original client.
+
+## Alternatives considered
+
+- Perform IP checks only inside individual controllers: rejected because it is easy to omit a route and duplicates transport-level policy.
+- Trust every `X-Forwarded-For` value: rejected because a direct caller could spoof the address used by the allowlist.
+- Delegate API keys, rate limits, and origin policy to an external gateway: deferred because the assignment requires the application pipeline to demonstrate these controls and no gateway is part of the local lab setup.
