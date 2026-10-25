@@ -12,4 +12,5 @@ public sealed record AuditRecord(
     Guid ActorId,
     Guid BranchId,
     string CorrelationId,
-    decimal? Amount);
+    decimal? Amount,
+    string? Details = null);

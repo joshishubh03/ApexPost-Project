@@ -142,6 +142,52 @@ public sealed class BusinessRuleTests
         Assert.Equal(IdentityVerificationStatus.Failed, fixture.VerificationRepository.Records[0].Status);
     }
 
+    [Fact]
+    public async Task Money_order_refund_records_manager_and_reason_once()
+    {
+        var fixture = new MoneyOrderFixture(verificationResult: true);
+        var order = await fixture.Service.IssueAsync(
+            fixture.Branch.Id, fixture.Staff.Id, "Sender", "Recipient", 100m,
+            null, null, "correlation-issue");
+
+        var refunded = await fixture.Service.RefundAsync(
+            fixture.Branch.Id, order.Id, fixture.Staff.Id, "Customer cancellation", "correlation-refund");
+
+        Assert.Equal(MoneyOrderStatus.Refunded, refunded.Status);
+        Assert.Equal(fixture.Staff.Id, refunded.RefundedByStaffId);
+        Assert.Equal("Customer cancellation", refunded.RefundReason);
+        Assert.Equal(MoneyOrderStatus.Refunded, Assert.Single(fixture.MoneyOrderRepository.Orders).Status);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Service.RefundAsync(
+            fixture.Branch.Id, order.Id, fixture.Staff.Id, "Second attempt", "correlation-refund"));
+    }
+
+    [Fact]
+    public void Existing_money_order_json_defaults_to_issued_status()
+    {
+        var json = """{"id":"21000000-0000-0000-0000-000000000001","moneyOrderNumber":"APM-20261025-00000001","branchId":"22000000-0000-0000-0000-000000000001","staffId":"23000000-0000-0000-0000-000000000001","occurredAt":"2026-10-25T10:00:00+00:00","senderName":"Sender","recipientName":"Recipient","amount":100,"fee":50,"totalAmount":150,"verificationStatus":"NotRequired","verificationRecordId":null,"documentType":null,"maskedDocumentIdentifier":null}""";
+
+        var options = new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web);
+        options.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+        var order = System.Text.Json.JsonSerializer.Deserialize<MoneyOrder>(json, options);
+
+        Assert.NotNull(order);
+        Assert.Equal(MoneyOrderStatus.Issued, order.Status);
+    }
+
+    [Fact]
+    public async Task Counter_clerk_cannot_refund_a_money_order()
+    {
+        var fixture = new MoneyOrderFixture(verificationResult: true, role: StaffRole.CounterClerk);
+        var order = await fixture.Service.IssueAsync(
+            fixture.Branch.Id, fixture.Staff.Id, "Sender", "Recipient", 100m,
+            null, null, "correlation-issue");
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => fixture.Service.RefundAsync(
+            fixture.Branch.Id, order.Id, fixture.Staff.Id, "Customer cancellation", "correlation-refund"));
+
+        Assert.Equal(MoneyOrderStatus.Issued, Assert.Single(fixture.MoneyOrderRepository.Orders).Status);
+    }
+
     private sealed class MoneyOrderFixture
     {
         public Branch Branch { get; }
@@ -150,10 +196,10 @@ public sealed class BusinessRuleTests
         public FakeVerificationRepository VerificationRepository { get; }
         public MoneyOrderService Service { get; }
 
-        public MoneyOrderFixture(bool verificationResult)
+        public MoneyOrderFixture(bool verificationResult, StaffRole role = StaffRole.BranchManager)
         {
             Branch = new Branch(Guid.NewGuid(), "AP-001", "Central", "North", true);
-            Staff = new StaffMember(Guid.NewGuid(), "manager@apexpost.local", "Manager", StaffRole.BranchManager, Branch.Id, true, "hash");
+            Staff = new StaffMember(Guid.NewGuid(), "manager@apexpost.local", "Staff", role, Branch.Id, true, "hash");
             MoneyOrderRepository = new FakeMoneyOrderRepository();
             VerificationRepository = new FakeVerificationRepository();
             Service = new MoneyOrderService(

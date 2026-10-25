@@ -51,8 +51,49 @@ public sealed class MoneyOrdersController(
                 : [],
             IdentityVerificationThreshold = policy.IdentityVerificationThreshold,
             FeeAmount = policy.FeeAmount,
-            CanIssue = CanIssueOrders()
+            CanIssue = CanIssueOrders(),
+            CanRefund = User.IsInRole(nameof(StaffRole.BranchManager))
         });
+    }
+
+    [HttpPost]
+    [Authorize(Roles = nameof(StaffRole.BranchManager))]
+    public async Task<IActionResult> Refund(RefundMoneyOrderInputModel input, CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(User.FindFirstValue("branch_id"), out var branchId) ||
+            !Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var managerId))
+            return Forbid();
+
+        if (!ModelState.IsValid)
+        {
+            TempData["ErrorMessage"] = "Enter a refund reason between 3 and 250 characters.";
+            return RedirectToAction(nameof(Index), new { branchId });
+        }
+
+        try
+        {
+            var order = await moneyOrderService.RefundAsync(branchId, input.MoneyOrderId, managerId,
+                input.Reason, CorrelationIdMiddleware.GetCorrelationId(HttpContext), cancellationToken);
+            TempData["StatusMessage"] = $"Money order {order.MoneyOrderNumber} refunded for {order.TotalAmount:C2}.";
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (InvalidOperationException exception)
+        {
+            TempData["ErrorMessage"] = exception.Message;
+        }
+        catch (ArgumentException exception)
+        {
+            TempData["ErrorMessage"] = exception.Message;
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+
+        return RedirectToAction(nameof(Index), new { branchId });
     }
 
     [HttpPost]

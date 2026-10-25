@@ -49,11 +49,11 @@ else
     else
     {
         <div class="table-responsive"><table class="table table-striped">
-            <thead><tr><th>Number</th><th>Issued</th><th>Sender</th><th>Recipient</th><th>Verification</th><th class="text-end">Amount</th><th class="text-end">Fee</th><th class="text-end">Total</th></tr></thead>
+            <thead><tr><th>Number</th><th>Issued</th><th>Sender</th><th>Recipient</th><th>Verification</th><th>Status</th><th class="text-end">Amount</th><th class="text-end">Fee</th><th class="text-end">Total</th>@if (Model.CanRefund) { <th>Manager action</th> }</tr></thead>
             <tbody>
             @foreach (var order in Model.Orders)
             {
-                <tr><td>@order.MoneyOrderNumber</td><td>@order.OccurredAt.ToLocalTime().ToString("g")</td><td>@order.SenderName</td><td>@order.RecipientName</td><td>@order.VerificationStatus@if (order.MaskedDocumentIdentifier is not null) { <span> (@order.DocumentType, @order.MaskedDocumentIdentifier)</span> }</td><td class="text-end">@order.Amount.ToString("C2", inr)</td><td class="text-end">@order.Fee.ToString("C2", inr)</td><td class="text-end">@order.TotalAmount.ToString("C2", inr)</td></tr>
+                <tr><td>@order.MoneyOrderNumber</td><td>@order.OccurredAt.ToLocalTime().ToString("g")</td><td>@order.SenderName</td><td>@order.RecipientName</td><td>@order.VerificationStatus@if (order.MaskedDocumentIdentifier is not null) { <span> (@order.DocumentType, @order.MaskedDocumentIdentifier)</span> }</td><td>@order.Status@if (order.RefundReason is not null) { <small class="text-muted d-block">@order.RefundReason</small> }</td><td class="text-end">@order.Amount.ToString("C2", inr)</td><td class="text-end">@order.Fee.ToString("C2", inr)</td><td class="text-end">@order.TotalAmount.ToString("C2", inr)</td>@if (Model.CanRefund) { <td>@if (order.Status == MoneyOrderStatus.Issued) { <form asp-action="Refund" method="post" class="d-flex gap-1"><input type="hidden" name="MoneyOrderId" value="@order.Id" /><input class="form-control form-control-sm" name="Reason" maxlength="250" minlength="3" required placeholder="Reason" aria-label="Refund reason for @order.MoneyOrderNumber" /><button class="btn btn-sm btn-outline-danger" type="submit">Refund</button></form> } else { <span class="text-muted">Resolved</span> }</td> }</tr>
             }
             </tbody>
         </table></div>

@@ -42,6 +42,7 @@ public static class DependencyInjection
         services.AddScoped<IApplicationEventHandler, CounterTransactionAuditHandler>();
         services.AddScoped<IApplicationEventHandler, CounterTransactionReversedAuditHandler>();
         services.AddScoped<IApplicationEventHandler, MoneyOrderAuditHandler>();
+        services.AddScoped<IApplicationEventHandler, MoneyOrderRefundAuditHandler>();
         services.AddScoped<IApplicationEventPublisher, ApplicationEventPublisher>();
         services.AddSingleton<IStaffPasswordService, AspNetStaffPasswordService>();
         services.AddSingleton(serviceProvider => new DemoDataSeeder(

@@ -51,6 +51,7 @@ public sealed class ReportingService(
             .ThenBy(item => item.ZoneName)
             .ToArray();
         var moneyOrders = (await moneyOrdersTask).Where(item => item.BranchId == branchId).ToArray();
+        var issuedMoneyOrders = moneyOrders.Where(item => item.Status == ApexPost.Domain.Enums.MoneyOrderStatus.Issued).ToArray();
         var failures = (await verificationsTask).Count(item =>
             item.BranchId == branchId && item.Status == IdentityVerificationStatus.Failed);
         var recentAudit = (await auditTask).Where(item => item.BranchId == branchId)
@@ -66,8 +67,9 @@ public sealed class ReportingService(
             transactions.Count(item => item.Status == TransactionStatus.Refunded),
             lowStock,
             shippingVolumes,
-            moneyOrders.Length,
-            moneyOrders.Sum(item => item.TotalAmount),
+            issuedMoneyOrders.Length,
+            issuedMoneyOrders.Sum(item => item.TotalAmount),
+            moneyOrders.Count(item => item.Status == ApexPost.Domain.Enums.MoneyOrderStatus.Refunded),
             failures,
             recentAudit);
     }
