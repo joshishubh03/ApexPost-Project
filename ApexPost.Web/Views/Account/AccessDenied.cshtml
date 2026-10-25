@@ -2,6 +2,9 @@
     ViewData["Title"] = "Access denied";
 }
 
-<h1 class="h3">Access denied</h1>
-<p>Your staff account does not have permission to open this page.</p>
-<a asp-controller="Home" asp-action="Index" class="btn btn-outline-primary">Return to dashboard</a>
+<section class="message-card" aria-labelledby="access-heading">
+    <p class="eyebrow">STAFF ACCESS</p>
+    <h1 id="access-heading" class="h3">Access denied</h1>
+    <p class="text-muted">Your staff account does not have permission to open this page. Contact an administrator if you believe you need access.</p>
+    <a asp-controller="Home" asp-action="Index" class="btn btn-outline-primary">Return to dashboard</a>
+</section>
