@@ -49,6 +49,18 @@ public sealed class WebIntegrationTests
     }
 
     [Fact]
+    public async Task Partner_endpoint_is_forbidden_when_remote_ip_is_not_allowlisted()
+    {
+        using var factory = new ApexPostWebFactory(integrationAllowedIpAddress: "192.0.2.10");
+        using var client = CreateSecureClient(factory);
+        client.DefaultRequestHeaders.Add("X-API-Key", "integration-test-key");
+
+        using var response = await client.GetAsync("/api/partner/tracking/unknown");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Tracking_widget_origin_can_make_a_cors_preflight_request()
     {
         using var factory = new ApexPostWebFactory();
@@ -114,7 +126,7 @@ public sealed class WebIntegrationTests
     }
 
     [Fact]
-    public async Task Counter_clerk_cannot_post_a_transaction_reversal()
+    public async Task Counter_clerk_gets_forbidden_when_posting_a_transaction_reversal()
     {
         using var factory = new ApexPostWebFactory();
         using var client = CreateSecureClient(factory, allowAutoRedirect: false);
@@ -127,8 +139,7 @@ public sealed class WebIntegrationTests
             ["IsRefund"] = "true"
         }));
 
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Contains("AccessDenied", response.Headers.Location?.AbsolutePath);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Fact]
@@ -190,21 +201,32 @@ public sealed class WebIntegrationTests
             AllowAutoRedirect = allowAutoRedirect
         });
 
-    private sealed class ApexPostWebFactory(bool maintenanceMode = false) : WebApplicationFactory<Program>
+    private sealed class ApexPostWebFactory(
+        bool maintenanceMode = false,
+        string? integrationAllowedIpAddress = null) : WebApplicationFactory<Program>
     {
         private readonly string dataDirectory = Path.Combine(Path.GetTempPath(), $"apexpost-web-tests-{Guid.NewGuid():N}");
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Testing");
-            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            builder.ConfigureAppConfiguration((_, configuration) =>
             {
-                ["ApexPost:DataDirectory"] = dataDirectory,
-                ["PartnerApi:ApiKey"] = "integration-test-key",
-                ["PartnerApi:AllowedCorsOrigins:0"] = "https://widget.example",
-                ["Security:MaintenanceMode"] = maintenanceMode.ToString(),
-                ["Security:AdminAllowedIpAddresses:0"] = "192.0.2.10"
-            }));
+                var testSettings = new Dictionary<string, string?>
+                {
+                    ["ApexPost:DataDirectory"] = dataDirectory,
+                    ["PartnerApi:ApiKey"] = "integration-test-key",
+                    ["PartnerApi:AllowedCorsOrigins:0"] = "https://widget.example",
+                    ["Security:MaintenanceMode"] = maintenanceMode.ToString(),
+                    ["Security:AdminAllowedIpAddresses:0"] = "192.0.2.10"
+                };
+                if (integrationAllowedIpAddress is not null)
+                {
+                    testSettings["Security:IntegrationAllowedIpAddresses:0"] = integrationAllowedIpAddress;
+                    testSettings["Security:IntegrationAllowedIpAddresses:1"] = "192.0.2.11";
+                }
+                configuration.AddInMemoryCollection(testSettings);
+            });
             builder.ConfigureTestServices(services =>
             {
                 services.RemoveAll<ApexPost.Application.Abstractions.IAuthenticationService>();
