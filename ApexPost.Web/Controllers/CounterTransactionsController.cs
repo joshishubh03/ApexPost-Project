@@ -74,7 +74,7 @@ public sealed class CounterTransactionsController(
 
         if (!ModelState.IsValid)
         {
-            TempData["ErrorMessage"] = "Check the quantities and shipping weight, then try again.";
+            TempData["ErrorMessage"] = "Check the quantities and shipment details, then try again.";
             return RedirectToAction(nameof(Index), new { branchId });
         }
 
@@ -87,6 +87,11 @@ public sealed class CounterTransactionsController(
                 input.PaymentMethod,
                 input.ShippingRateId,
                 input.ShippingWeightKilograms,
+                input.ShippingRecipientName,
+                input.ShippingAddress,
+                input.ParcelLengthCentimeters,
+                input.ParcelWidthCentimeters,
+                input.ParcelHeightCentimeters,
                 CorrelationIdMiddleware.GetCorrelationId(HttpContext),
                 cancellationToken);
             TempData["StatusMessage"] = $"Transaction {transaction.TransactionNumber} completed. Total: {transaction.TotalAmount:C2}.";
@@ -105,6 +110,29 @@ public sealed class CounterTransactionsController(
         }
 
         return RedirectToAction(nameof(Index), new { branchId });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Label(Guid id, Guid? branchId, CancellationToken cancellationToken)
+    {
+        Guid? permittedBranchId = User.IsInRole(nameof(StaffRole.Administrator))
+            ? branchId
+            : Guid.TryParse(User.FindFirstValue("branch_id"), out var assignedBranchId)
+                ? assignedBranchId
+                : null;
+        if (permittedBranchId is null)
+        {
+            return Forbid();
+        }
+
+        var transaction = await transactionService.GetTransactionForBranchAsync(
+            permittedBranchId.Value, id, cancellationToken);
+        if (transaction is null || transaction.ShippingRateId is null || transaction.ShippingRecipientName is null)
+        {
+            return NotFound();
+        }
+
+        return View("~/Views/Shipping/Label.cshtml", transaction);
     }
 
     [HttpPost]

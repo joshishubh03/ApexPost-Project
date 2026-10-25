@@ -43,6 +43,11 @@ public sealed class CounterTransactionService(
         PaymentMethod paymentMethod,
         Guid? shippingRateId,
         decimal? shippingWeightKilograms,
+        string? shippingRecipientName,
+        string? shippingAddress,
+        decimal? parcelLengthCentimeters,
+        decimal? parcelWidthCentimeters,
+        decimal? parcelHeightCentimeters,
         string correlationId,
         CancellationToken cancellationToken = default)
     {
@@ -86,11 +91,19 @@ public sealed class CounterTransactionService(
                 throw new InvalidOperationException("Enter the parcel weight for the selected shipping rate.");
             }
 
+            if (string.IsNullOrWhiteSpace(shippingRecipientName) || string.IsNullOrWhiteSpace(shippingAddress) ||
+                parcelLengthCentimeters is null || parcelWidthCentimeters is null || parcelHeightCentimeters is null)
+            {
+                throw new InvalidOperationException("Enter the shipment recipient, destination address, and parcel dimensions.");
+            }
+
             shippingQuote = await shippingRateService.QuoteAsync(rateId, shippingWeightKilograms.Value, cancellationToken);
         }
-        else if (shippingWeightKilograms is not null)
+        else if (shippingWeightKilograms is not null || !string.IsNullOrWhiteSpace(shippingRecipientName) ||
+                 !string.IsNullOrWhiteSpace(shippingAddress) || parcelLengthCentimeters is not null ||
+                 parcelWidthCentimeters is not null || parcelHeightCentimeters is not null)
         {
-            throw new InvalidOperationException("Select a shipping service or clear the parcel weight.");
+            throw new InvalidOperationException("Select a shipping service or clear the shipment details.");
         }
 
         var transactionId = Guid.NewGuid();
@@ -108,7 +121,12 @@ public sealed class CounterTransactionService(
             shippingQuote?.ServiceLevel,
             shippingQuote?.WeightKilograms,
             shippingQuote?.Price ?? 0,
-            paymentMethod);
+            paymentMethod,
+            shippingRecipientName: shippingRecipientName,
+            shippingAddress: shippingAddress,
+            parcelLengthCentimeters: parcelLengthCentimeters,
+            parcelWidthCentimeters: parcelWidthCentimeters,
+            parcelHeightCentimeters: parcelHeightCentimeters);
 
         var adjustmentReason = $"Counter sale {transactionNumber}";
         foreach (var requested in requestedQuantities)
@@ -149,6 +167,15 @@ public sealed class CounterTransactionService(
             correlationId), CancellationToken.None);
 
         return transaction;
+    }
+
+    public async Task<CounterTransaction?> GetTransactionForBranchAsync(
+        Guid branchId,
+        Guid transactionId,
+        CancellationToken cancellationToken = default)
+    {
+        var transactions = await transactionRepository.GetAllAsync(cancellationToken);
+        return transactions.FirstOrDefault(item => item.Id == transactionId && item.BranchId == branchId);
     }
 
     public async Task<CounterTransaction> ReverseAsync(

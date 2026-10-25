@@ -33,6 +33,15 @@ public sealed class BusinessRuleTests
     }
 
     [Fact]
+    public void Shipment_receipt_requires_recipient_address_and_dimensions_together()
+    {
+        Assert.Throws<ArgumentException>(() => new CounterTransaction(
+            Guid.NewGuid(), "APT-20261025-12345678", Guid.NewGuid(), Guid.NewGuid(), DateTimeOffset.UtcNow,
+            [], Guid.NewGuid(), "Local", ShippingServiceLevel.Standard, 1m, 25m, PaymentMethod.Cash,
+            shippingRecipientName: "Recipient", shippingAddress: "1 Main Street"));
+    }
+
+    [Fact]
     public async Task Money_order_at_threshold_does_not_require_identity_check()
     {
         var fixture = new MoneyOrderFixture(verificationResult: true);

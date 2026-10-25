@@ -4,6 +4,7 @@ using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using ApexPost.Application.Abstractions;
 using ApexPost.Application.Models;
+using ApexPost.Domain.Entities;
 using ApexPost.Domain.Enums;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
@@ -131,6 +132,22 @@ public sealed class WebIntegrationTests
     }
 
     [Fact]
+    public async Task Shipping_label_is_rendered_only_for_the_staff_members_branch()
+    {
+        using var factory = new ApexPostWebFactory();
+        using var client = CreateSecureClient(factory, allowAutoRedirect: false);
+        client.DefaultRequestHeaders.Add("X-Test-Role", nameof(StaffRole.CounterClerk));
+
+        using var authorizedLabel = await client.GetAsync("/CounterTransactions/Label?id=30000000-0000-0000-0000-000000000001&branchId=20000000-0000-0000-0000-000000000002");
+        var authorizedHtml = await authorizedLabel.Content.ReadAsStringAsync();
+        using var crossBranchLabel = await client.GetAsync("/CounterTransactions/Label?id=30000000-0000-0000-0000-000000000002");
+
+        Assert.Equal(HttpStatusCode.OK, authorizedLabel.StatusCode);
+        Assert.Contains("Test Recipient", authorizedHtml);
+        Assert.Equal(HttpStatusCode.NotFound, crossBranchLabel.StatusCode);
+    }
+
+    [Fact]
     public async Task Correlation_id_is_returned_to_the_caller()
     {
         using var factory = new ApexPostWebFactory();
@@ -193,6 +210,8 @@ public sealed class WebIntegrationTests
                 services.RemoveAll<ApexPost.Application.Abstractions.IAuthenticationService>();
                 services.AddSingleton<ApexPost.Application.Abstractions.IAuthenticationService, TestAuthenticationService>();
                 services.AddDataProtection().UseEphemeralDataProtectionProvider();
+                services.RemoveAll<ICounterTransactionRepository>();
+                services.AddSingleton<ICounterTransactionRepository, FakeCounterTransactionRepository>();
                 services.AddAuthentication(options =>
                     options.DefaultAuthenticateScheme = "IntegrationTest")
                     .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>("IntegrationTest", _ => { });
@@ -251,5 +270,40 @@ public sealed class WebIntegrationTests
             var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, Scheme.Name));
             return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(principal, Scheme.Name)));
         }
+    }
+
+    private sealed class FakeCounterTransactionRepository : ICounterTransactionRepository
+    {
+        private static readonly Guid BranchId = Guid.Parse("20000000-0000-0000-0000-000000000001");
+        private readonly IReadOnlyList<CounterTransaction> transactions =
+        [
+            CreateShipment(Guid.Parse("30000000-0000-0000-0000-000000000001"), BranchId, "APT-20261025-LABEL001"),
+            CreateShipment(Guid.Parse("30000000-0000-0000-0000-000000000002"), Guid.Parse("20000000-0000-0000-0000-000000000002"), "APT-20261025-LABEL002")
+        ];
+
+        public Task<IReadOnlyList<CounterTransaction>> GetAllAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(transactions);
+
+        public Task SaveAllAsync(IEnumerable<CounterTransaction> transactions, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        private static CounterTransaction CreateShipment(Guid id, Guid branchId, string number) => new(
+            id,
+            number,
+            branchId,
+            Guid.Parse("10000000-0000-0000-0000-000000000001"),
+            DateTimeOffset.UtcNow,
+            [],
+            Guid.NewGuid(),
+            "Local Metro",
+            ShippingServiceLevel.Standard,
+            1m,
+            25m,
+            PaymentMethod.Cash,
+            shippingRecipientName: "Test Recipient",
+            shippingAddress: "1 Main Street, Central",
+            parcelLengthCentimeters: 20m,
+            parcelWidthCentimeters: 15m,
+            parcelHeightCentimeters: 10m);
     }
 }

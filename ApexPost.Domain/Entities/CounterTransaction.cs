@@ -22,6 +22,11 @@ public sealed record CounterTransaction
     public DateTimeOffset? ResolvedAt { get; }
     public Guid? ResolvedByStaffId { get; }
     public string? ResolutionReason { get; }
+    public string? ShippingRecipientName { get; }
+    public string? ShippingAddress { get; }
+    public decimal? ParcelLengthCentimeters { get; }
+    public decimal? ParcelWidthCentimeters { get; }
+    public decimal? ParcelHeightCentimeters { get; }
 
     public CounterTransaction(
         Guid id,
@@ -39,7 +44,12 @@ public sealed record CounterTransaction
         TransactionStatus status = TransactionStatus.Completed,
         DateTimeOffset? resolvedAt = null,
         Guid? resolvedByStaffId = null,
-        string? resolutionReason = null)
+        string? resolutionReason = null,
+        string? shippingRecipientName = null,
+        string? shippingAddress = null,
+        decimal? parcelLengthCentimeters = null,
+        decimal? parcelWidthCentimeters = null,
+        decimal? parcelHeightCentimeters = null)
     {
         if (id == Guid.Empty || branchId == Guid.Empty || staffId == Guid.Empty)
         {
@@ -87,6 +97,29 @@ public sealed record CounterTransaction
             throw new ArgumentException("Complete shipping details are required when a rate is selected.", nameof(shippingRateId));
         }
 
+        var hasAddressDetails = shippingRecipientName is not null || shippingAddress is not null ||
+            parcelLengthCentimeters is not null || parcelWidthCentimeters is not null || parcelHeightCentimeters is not null;
+        if (hasAddressDetails &&
+            (shippingRateId is null || string.IsNullOrWhiteSpace(shippingRecipientName) ||
+             string.IsNullOrWhiteSpace(shippingAddress) || parcelLengthCentimeters is null ||
+             parcelWidthCentimeters is null || parcelHeightCentimeters is null))
+        {
+            throw new ArgumentException("Recipient, destination address, and all parcel dimensions are required together for a shipment.");
+        }
+
+        if (shippingRecipientName?.Trim().Length > 100 || shippingAddress?.Trim().Length > 300)
+        {
+            throw new ArgumentException("Recipient name and destination address exceed their maximum lengths.");
+        }
+
+        foreach (var dimension in new[] { parcelLengthCentimeters, parcelWidthCentimeters, parcelHeightCentimeters })
+        {
+            if (dimension is { } value && (value <= 0 || decimal.Round(value, 2) != value))
+            {
+                throw new ArgumentOutOfRangeException(nameof(parcelLengthCentimeters), "Parcel dimensions must be positive and use no more than two decimal places.");
+            }
+        }
+
         if (shippingCharge < 0 || decimal.Round(shippingCharge, 2) != shippingCharge)
         {
             throw new ArgumentOutOfRangeException(nameof(shippingCharge));
@@ -110,6 +143,11 @@ public sealed record CounterTransaction
         ResolvedAt = resolvedAt;
         ResolvedByStaffId = resolvedByStaffId;
         ResolutionReason = resolutionReason?.Trim();
+        ShippingRecipientName = shippingRecipientName?.Trim();
+        ShippingAddress = shippingAddress?.Trim();
+        ParcelLengthCentimeters = parcelLengthCentimeters;
+        ParcelWidthCentimeters = parcelWidthCentimeters;
+        ParcelHeightCentimeters = parcelHeightCentimeters;
     }
 
     public CounterTransaction Void(Guid managerId, string reason, DateTimeOffset occurredAt) =>
@@ -139,6 +177,7 @@ public sealed record CounterTransaction
         return new CounterTransaction(
             Id, TransactionNumber, BranchId, StaffId, OccurredAt, Lines, ShippingRateId,
             ShippingZoneName, ShippingServiceLevel, ShippingWeightKilograms, ShippingCharge,
-            PaymentMethod, status, occurredAt, managerId, reason);
+            PaymentMethod, status, occurredAt, managerId, reason, ShippingRecipientName,
+            ShippingAddress, ParcelLengthCentimeters, ParcelWidthCentimeters, ParcelHeightCentimeters);
     }
 }

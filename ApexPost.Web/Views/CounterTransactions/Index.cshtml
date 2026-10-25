@@ -34,7 +34,7 @@ else
         <form asp-action="Complete" method="post" class="card card-body mb-4">
             <input type="hidden" name="BranchId" value="@Model.Register.Branch.Id" />
             <h3 class="h5">Create transaction</h3>
-            <p class="text-muted">Enter a quantity for each item. Leave items at zero to exclude them.</p>
+            <p class="text-muted">Enter a quantity for each item. Add a shipping service to capture recipient details and parcel dimensions.</p>
             <div class="table-responsive">
                 <table class="table table-sm align-middle">
                     <thead><tr><th>Product</th><th>Category</th><th>Unit price</th><th>Available</th><th>Quantity</th></tr></thead>
@@ -66,7 +66,12 @@ else
                         }
                     </select>
                 </div>
-                <div class="col-md-3"><label for="ShippingWeightKilograms" class="form-label">Parcel weight (kg)</label><input id="ShippingWeightKilograms" name="ShippingWeightKilograms" type="number" min="0.01" max="30" step="0.01" class="form-control" /></div>
+                <div class="col-md-3"><label for="ShippingWeightKilograms" class="form-label">Parcel weight (kg)</label><input id="ShippingWeightKilograms" name="ShippingWeightKilograms" type="number" min="0.01" step="0.01" class="form-control" /></div>
+                <div class="col-md-4"><label for="ShippingRecipientName" class="form-label">Recipient name</label><input id="ShippingRecipientName" name="ShippingRecipientName" maxlength="100" class="form-control" /></div>
+                <div class="col-md-8"><label for="ShippingAddress" class="form-label">Destination address</label><textarea id="ShippingAddress" name="ShippingAddress" maxlength="300" rows="2" class="form-control"></textarea></div>
+                <div class="col-md-2"><label for="ParcelLengthCentimeters" class="form-label">Length (cm)</label><input id="ParcelLengthCentimeters" name="ParcelLengthCentimeters" type="number" min="0.01" step="0.01" class="form-control" /></div>
+                <div class="col-md-2"><label for="ParcelWidthCentimeters" class="form-label">Width (cm)</label><input id="ParcelWidthCentimeters" name="ParcelWidthCentimeters" type="number" min="0.01" step="0.01" class="form-control" /></div>
+                <div class="col-md-2"><label for="ParcelHeightCentimeters" class="form-label">Height (cm)</label><input id="ParcelHeightCentimeters" name="ParcelHeightCentimeters" type="number" min="0.01" step="0.01" class="form-control" /></div>
                 <div class="col-md-3"><label for="PaymentMethod" class="form-label">Payment method</label><select id="PaymentMethod" name="PaymentMethod" class="form-select"><option value="Cash">Cash</option><option value="Card">Card</option><option value="DigitalWallet">Digital wallet</option></select></div>
                 <div class="col-12"><button type="submit" class="btn btn-primary">Complete transaction</button><span class="ms-2 text-muted small">Payment is recorded for this training workflow; no external payment is processed.</span></div>
             </div>
@@ -85,14 +90,19 @@ else
     else
     {
         <div class="table-responsive"><table class="table table-striped">
-            <thead><tr><th>Receipt</th><th>Time</th><th>Items</th><th>Payment</th><th>Status</th><th class="text-end">Total</th>@if (User.IsInRole("BranchManager")) { <th>Manager action</th> }</tr></thead>
+            <thead><tr><th>Receipt</th><th>Time</th><th>Items / label</th><th>Payment</th><th>Status</th><th class="text-end">Total</th>@if (User.IsInRole("BranchManager")) { <th>Manager action</th> }</tr></thead>
             <tbody>
             @foreach (var transaction in Model.Register.RecentTransactions)
             {
                 <tr>
                     <td>@transaction.TransactionNumber</td>
                     <td>@transaction.OccurredAt.ToLocalTime().ToString("g")</td>
-                    <td>@transaction.Lines.Count product line(s)@(transaction.ShippingRateId is not null ? $" + {transaction.ShippingServiceLevel} shipping" : "")</td>
+                    <td>@transaction.Lines.Count product line(s)@(transaction.ShippingRateId is not null ? $" + {transaction.ShippingServiceLevel} shipping" : "")
+                        @if (transaction.ShippingRecipientName is not null)
+                        {
+                            <a class="d-block small" asp-action="Label" asp-route-id="@transaction.Id" asp-route-branchId="@Model.SelectedBranchId">Preview label</a>
+                        }
+                    </td>
                     <td>@transaction.PaymentMethod</td>
                     <td>@transaction.Status @if (transaction.ResolvedAt is not null) { <small class="text-muted d-block">@transaction.ResolutionReason</small> }</td>
                     <td class="text-end">@transaction.TotalAmount.ToString("C2", inr)</td>
