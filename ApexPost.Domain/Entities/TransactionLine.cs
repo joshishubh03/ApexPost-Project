@@ -8,8 +8,18 @@ public sealed record TransactionLine
     public int Quantity { get; }
     public decimal UnitPrice { get; }
     public decimal LineTotal { get; }
+    public string TaxCategory { get; }
+    public decimal TaxRatePercent { get; }
+    public decimal TaxAmount { get; }
 
-    public TransactionLine(Guid productId, string sku, string productName, int quantity, decimal unitPrice)
+    public TransactionLine(
+        Guid productId,
+        string sku,
+        string productName,
+        int quantity,
+        decimal unitPrice,
+        string taxCategory = "Standard",
+        decimal taxRatePercent = 0m)
     {
         if (productId == Guid.Empty)
         {
@@ -18,6 +28,7 @@ public sealed record TransactionLine
 
         ArgumentException.ThrowIfNullOrWhiteSpace(sku);
         ArgumentException.ThrowIfNullOrWhiteSpace(productName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(taxCategory);
         if (quantity <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(quantity), "Transaction quantity must be positive.");
@@ -28,11 +39,20 @@ public sealed record TransactionLine
             throw new ArgumentOutOfRangeException(nameof(unitPrice), "Unit price must be non-negative with at most two decimal places.");
         }
 
+        if (taxCategory.Trim().Length > 60 || taxRatePercent < 0 || taxRatePercent > 100 ||
+            decimal.Round(taxRatePercent, 2) != taxRatePercent)
+        {
+            throw new ArgumentOutOfRangeException(nameof(taxRatePercent), "Tax rate must be from 0 to 100 percent with no more than two decimal places.");
+        }
+
         ProductId = productId;
         Sku = sku.Trim();
         ProductName = productName.Trim();
         Quantity = quantity;
         UnitPrice = unitPrice;
         LineTotal = decimal.Round(quantity * unitPrice, 2, MidpointRounding.AwayFromZero);
+        TaxCategory = taxCategory.Trim();
+        TaxRatePercent = taxRatePercent;
+        TaxAmount = decimal.Round(LineTotal * taxRatePercent / 100m, 2, MidpointRounding.AwayFromZero);
     }
 }

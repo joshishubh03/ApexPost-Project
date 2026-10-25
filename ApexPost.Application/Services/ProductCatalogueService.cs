@@ -39,10 +39,11 @@ public sealed class ProductCatalogueService(IProductRepository productRepository
         string description,
         string category,
         decimal price,
+        string taxCategory = "Standard",
         CancellationToken cancellationToken = default)
     {
         var products = (await productRepository.GetAllAsync(cancellationToken)).ToList();
-        var product = new Product(Guid.NewGuid(), sku, name, description, category, price, isActive: true);
+        var product = new Product(Guid.NewGuid(), sku, name, description, category, price, isActive: true, taxCategory: taxCategory);
 
         if (products.Any(existing => string.Equals(existing.Sku, product.Sku, StringComparison.OrdinalIgnoreCase)))
         {

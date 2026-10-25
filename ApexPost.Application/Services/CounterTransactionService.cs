@@ -14,7 +14,8 @@ public sealed class CounterTransactionService(
     IStaffRepository staffRepository,
     IApplicationEventPublisher eventPublisher,
     InventoryManagementService inventoryManagementService,
-    ShippingRateService shippingRateService)
+    ShippingRateService shippingRateService,
+    TaxPolicy taxPolicy)
 {
     public async Task<CounterRegisterContext> GetRegisterContextAsync(
         Guid branchId,
@@ -80,7 +81,14 @@ public sealed class CounterTransactionService(
                 throw new InvalidOperationException($"There is not enough stock for {product.Name}.");
             }
 
-            lines.Add(new TransactionLine(product.Id, product.Sku, product.Name, requested.Value, product.Price));
+            lines.Add(new TransactionLine(
+                product.Id,
+                product.Sku,
+                product.Name,
+                requested.Value,
+                product.Price,
+                product.TaxCategory,
+                taxPolicy.GetRatePercent(product.TaxCategory)));
         }
 
         ShippingQuote? shippingQuote = null;
@@ -126,7 +134,8 @@ public sealed class CounterTransactionService(
             shippingAddress: shippingAddress,
             parcelLengthCentimeters: parcelLengthCentimeters,
             parcelWidthCentimeters: parcelWidthCentimeters,
-            parcelHeightCentimeters: parcelHeightCentimeters);
+            parcelHeightCentimeters: parcelHeightCentimeters,
+            shippingTaxRatePercent: shippingRateId is null ? 0m : taxPolicy.GetRatePercent(TaxPolicy.ShippingCategory));
 
         var adjustmentReason = $"Counter sale {transactionNumber}";
         foreach (var requested in requestedQuantities)

@@ -15,7 +15,10 @@ public sealed record CounterTransaction
     public ShippingServiceLevel? ShippingServiceLevel { get; }
     public decimal? ShippingWeightKilograms { get; }
     public decimal Subtotal { get; }
+    public decimal TaxTotal { get; }
     public decimal ShippingCharge { get; }
+    public decimal ShippingTaxRatePercent { get; }
+    public decimal ShippingTaxAmount { get; }
     public decimal TotalAmount { get; }
     public PaymentMethod PaymentMethod { get; }
     public TransactionStatus Status { get; }
@@ -49,7 +52,8 @@ public sealed record CounterTransaction
         string? shippingAddress = null,
         decimal? parcelLengthCentimeters = null,
         decimal? parcelWidthCentimeters = null,
-        decimal? parcelHeightCentimeters = null)
+        decimal? parcelHeightCentimeters = null,
+        decimal shippingTaxRatePercent = 0m)
     {
         if (id == Guid.Empty || branchId == Guid.Empty || staffId == Guid.Empty)
         {
@@ -125,6 +129,11 @@ public sealed record CounterTransaction
             throw new ArgumentOutOfRangeException(nameof(shippingCharge));
         }
 
+        if (shippingTaxRatePercent < 0 || shippingTaxRatePercent > 100 || decimal.Round(shippingTaxRatePercent, 2) != shippingTaxRatePercent)
+        {
+            throw new ArgumentOutOfRangeException(nameof(shippingTaxRatePercent));
+        }
+
         Id = id;
         TransactionNumber = transactionNumber.Trim();
         BranchId = branchId;
@@ -136,8 +145,12 @@ public sealed record CounterTransaction
         ShippingServiceLevel = shippingServiceLevel;
         ShippingWeightKilograms = shippingWeightKilograms;
         Subtotal = decimal.Round(Lines.Sum(line => line.LineTotal), 2, MidpointRounding.AwayFromZero);
+        TaxTotal = decimal.Round(Lines.Sum(line => line.TaxAmount), 2, MidpointRounding.AwayFromZero);
         ShippingCharge = shippingCharge;
-        TotalAmount = decimal.Round(Subtotal + ShippingCharge, 2, MidpointRounding.AwayFromZero);
+        ShippingTaxRatePercent = shippingTaxRatePercent;
+        ShippingTaxAmount = decimal.Round(ShippingCharge * shippingTaxRatePercent / 100m, 2, MidpointRounding.AwayFromZero);
+        TaxTotal = decimal.Round(TaxTotal + ShippingTaxAmount, 2, MidpointRounding.AwayFromZero);
+        TotalAmount = decimal.Round(Subtotal + TaxTotal + ShippingCharge, 2, MidpointRounding.AwayFromZero);
         PaymentMethod = paymentMethod;
         Status = status;
         ResolvedAt = resolvedAt;
@@ -178,6 +191,7 @@ public sealed record CounterTransaction
             Id, TransactionNumber, BranchId, StaffId, OccurredAt, Lines, ShippingRateId,
             ShippingZoneName, ShippingServiceLevel, ShippingWeightKilograms, ShippingCharge,
             PaymentMethod, status, occurredAt, managerId, reason, ShippingRecipientName,
-            ShippingAddress, ParcelLengthCentimeters, ParcelWidthCentimeters, ParcelHeightCentimeters);
+            ShippingAddress, ParcelLengthCentimeters, ParcelWidthCentimeters, ParcelHeightCentimeters,
+            ShippingTaxRatePercent);
     }
 }

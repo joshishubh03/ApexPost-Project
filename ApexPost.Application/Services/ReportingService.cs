@@ -33,7 +33,7 @@ public sealed class ReportingService(
         var lowStock = inventory.Where(item => item.IsBelowReorderLevel)
             .Select(item => products.TryGetValue(item.ProductId, out var product) && product.IsActive
                 ? new ProductInventorySummary(
-                    product.Id, product.Sku, product.Name, product.Category, product.Price,
+                    product.Id, product.Sku, product.Name, product.Category, product.TaxCategory, product.Price,
                     item.QuantityOnHand, item.ReorderLevel, true, true,
                     item.Movements.OrderByDescending(movement => movement.OccurredAt).Take(3).ToArray())
                 : null)

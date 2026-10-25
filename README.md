@@ -46,7 +46,7 @@ The MVC administration controller calls `StaffManagementService` in the Applicat
 
 ## Product catalogue
 
-All signed-in staff can search active products by SKU, name, category, or description. Administrators and Branch Managers can create products and activate or deactivate them. Product SKUs are normalized to uppercase and must be unique; prices are non-negative and support up to two decimal places. Development seeding creates 30 sample catalogue products in `data/products.json` when the file is empty or missing.
+All signed-in staff can search active products by SKU, name, category, or description. Administrators and Branch Managers can create products and activate or deactivate them. Product SKUs are normalized to uppercase and must be unique; prices are non-negative and support up to two decimal places. Products carry a tax category (Standard by default). Development seeding creates 30 sample catalogue products in `data/products.json` when the file is empty or missing.
 
 ## Inventory
 
@@ -58,7 +58,7 @@ Signed-in staff can view the shipping schedule and calculate a quote. Administra
 
 ## Counter transactions
 
-Counter Clerks, Branch Managers, and Administrators can record sales for their assigned branch. A transaction can contain multiple catalogue products and an optional shipping service. Completing a sale checks available stock, stores price and product snapshots, records the payment method, and decreases inventory. Payment methods are recorded for the training workflow; no external payment is processed. Transactions are stored in `data/counter-transactions.json`.
+Counter Clerks, Branch Managers, and Administrators can record sales for their assigned branch. A transaction can contain multiple catalogue products and an optional shipping service. Completing a sale checks available stock, stores price and product snapshots, records the payment method, and decreases inventory. Line and shipping tax rates and amounts are snapshotted on the receipt. Configure category rates in `ApexPost.Web/appsettings.json` under `Taxation:Rates`; the demo defaults are 0% for Standard and Shipping because the assignment provides no approved tax values. Unknown categories fail closed. Payment methods are recorded for the training workflow; no external payment is processed. Transactions are stored in `data/counter-transactions.json`.
 
 ### Voids and refunds
 

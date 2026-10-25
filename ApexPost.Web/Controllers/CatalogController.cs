@@ -38,6 +38,7 @@ public sealed class CatalogController(ProductCatalogueService catalogueService) 
                 input.NewProduct.Description,
                 input.NewProduct.Category,
                 input.NewProduct.Price,
+                input.NewProduct.TaxCategory,
                 cancellationToken);
             TempData["StatusMessage"] = $"Product {input.NewProduct.Sku.Trim().ToUpperInvariant()} was created.";
             return RedirectToAction(nameof(Index));

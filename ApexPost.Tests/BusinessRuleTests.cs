@@ -42,6 +42,55 @@ public sealed class BusinessRuleTests
     }
 
     [Fact]
+    public void Transaction_line_snapshots_tax_rate_and_rounded_tax_amount()
+    {
+        var line = new TransactionLine(Guid.NewGuid(), "SKU-1", "Taxed item", 2, 100m, "Retail", 5m);
+
+        Assert.Equal("Retail", line.TaxCategory);
+        Assert.Equal(5m, line.TaxRatePercent);
+        Assert.Equal(10m, line.TaxAmount);
+    }
+
+    [Fact]
+    public void Transaction_total_includes_tax_and_shipping()
+    {
+        var line = new TransactionLine(Guid.NewGuid(), "SKU-1", "Taxed item", 1, 100m, "Standard", 5m);
+        var transaction = new CounterTransaction(
+            Guid.NewGuid(), "APT-20261025-TAX00001", Guid.NewGuid(), Guid.NewGuid(), DateTimeOffset.UtcNow,
+            [line], Guid.NewGuid(), "Local", ShippingServiceLevel.Standard, 1m, 25m, PaymentMethod.Cash);
+
+        Assert.Equal(100m, transaction.Subtotal);
+        Assert.Equal(5m, transaction.TaxTotal);
+        Assert.Equal(130m, transaction.TotalAmount);
+    }
+
+    [Fact]
+    public void Transaction_snapshots_shipping_tax_rate_and_amount()
+    {
+        var transaction = new CounterTransaction(
+            Guid.NewGuid(), "APT-20261025-TAX00002", Guid.NewGuid(), Guid.NewGuid(), DateTimeOffset.UtcNow,
+            [], Guid.NewGuid(), "Local", ShippingServiceLevel.Standard, 1m, 25m, PaymentMethod.Cash,
+            shippingTaxRatePercent: 5m);
+
+        Assert.Equal(5m, transaction.ShippingTaxRatePercent);
+        Assert.Equal(1.25m, transaction.ShippingTaxAmount);
+        Assert.Equal(1.25m, transaction.TaxTotal);
+        Assert.Equal(26.25m, transaction.TotalAmount);
+    }
+
+    [Fact]
+    public void Tax_policy_looks_up_categories_without_case_sensitivity_and_rejects_unknown_categories()
+    {
+        var policy = new TaxPolicy(new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Retail"] = 5m
+        });
+
+        Assert.Equal(5m, policy.GetRatePercent("retail"));
+        Assert.Throws<InvalidOperationException>(() => policy.GetRatePercent("Unconfigured"));
+    }
+
+    [Fact]
     public async Task Money_order_at_threshold_does_not_require_identity_check()
     {
         var fixture = new MoneyOrderFixture(verificationResult: true);
