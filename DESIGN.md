@@ -45,7 +45,15 @@ Correlation ID
   -> MVC or partner endpoint
 ```
 
-Middleware handles concerns that apply to the HTTP request regardless of which MVC action runs: correlation, error logging, headers, maintenance, CORS, rate limits, IP checks, and partner keys. MVC action filters run around controller actions and are used for slow-action timing and auditing successful configuration changes. Domain and Application services remain responsible for business rules; filters do not decide whether a stock change, sale, or refund is valid.
+Middleware handles concerns that apply to the HTTP request regardless of which MVC action runs: correlation, error logging, headers, maintenance, CORS, rate limits, IP checks, and partner keys. MVC action filters run around controller actions for model validation, slow-action timing, and auditing successful configuration changes. Domain and Application services remain responsible for business rules; filters do not decide whether a stock change, sale, or refund is valid.
+
+| Concern | Mechanism | Why |
+|---|---|---|
+| Correlation, request errors, security headers, maintenance, CORS, rate limits, IP allowlists, partner keys | Middleware | These checks apply at the HTTP request boundary before MVC action selection or model binding. |
+| Antiforgery tokens | Built-in MVC filter | The check uses MVC form and endpoint metadata and applies to unsafe MVC actions. |
+| Invalid model state | `ModelValidationActionFilter` | It runs after MVC model binding. JSON callers receive a consistent `400` validation problem; HTML forms retain the controller's correctly typed view and validation messages. |
+| Audit of successful configuration changes | `MvcAuditActionFilter` | It needs controller/action identity, bound route/action values, the authenticated staff principal, and the MVC result. |
+| Slow-action warnings | `RequestTimingActionFilter` | It measures controller/action execution and reports an MVC action name with the elapsed duration. |
 
 ## Domain flow
 
