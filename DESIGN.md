@@ -26,6 +26,110 @@ flowchart LR
     Tests --> Domain
 ```
 
+The following domain diagram shows the main entities and their ID-based associations. The JSON records store identifiers rather than object navigation properties.
+
+```mermaid
+classDiagram
+    direction LR
+    class Branch {
+        +Guid Id
+        +string Code
+        +bool IsOpen
+        +TimeOnly OpeningTime
+        +TimeOnly ClosingTime
+    }
+    class StaffMember {
+        +Guid Id
+        +StaffRole Role
+        +Guid? BranchId
+        +bool IsActive
+    }
+    class CounterTerminal {
+        +Guid Id
+        +Guid BranchId
+        +bool IsActive
+    }
+    class Product {
+        +Guid Id
+        +string Sku
+        +string Category
+        +decimal Price
+        +string TaxCategory
+    }
+    class InventoryItem {
+        +Guid BranchId
+        +Guid ProductId
+        +int QuantityOnHand
+        +int ReorderLevel
+    }
+    class InventoryMovement {
+        +Guid StaffId
+        +int QuantityChange
+        +DateTimeOffset OccurredAt
+    }
+    class CounterTransaction {
+        +Guid Id
+        +Guid BranchId
+        +Guid StaffId
+        +Guid? TerminalId
+        +Guid? MoneyOrderId
+        +Guid? ShippingRateId
+        +TransactionStatus Status
+        +decimal TotalAmount
+    }
+    class TransactionLine {
+        +Guid ProductId
+        +int Quantity
+        +decimal UnitPrice
+        +decimal TaxAmount
+    }
+    class ShippingZone {
+        +Guid Id
+        +string Code
+        +string Destination
+    }
+    class ShippingRate {
+        +Guid Id
+        +Guid ZoneId
+        +ShippingServiceLevel ServiceLevel
+        +decimal MaximumWeightKilograms
+    }
+    class MoneyOrder {
+        +Guid Id
+        +Guid BranchId
+        +Guid StaffId
+        +Guid? VerificationRecordId
+        +decimal Amount
+        +MoneyOrderStatus Status
+    }
+    class IdentityVerificationRecord {
+        +Guid Id
+        +Guid BranchId
+        +Guid StaffId
+        +IdentityVerificationStatus Status
+        +string MaskedDocumentIdentifier
+    }
+    Branch "1" --> "0..*" StaffMember : home branch
+    Branch "1" --> "0..*" CounterTerminal : has
+    Branch "1" --> "0..*" InventoryItem : stocks
+    Product "1" --> "0..*" InventoryItem : stocked as
+    InventoryItem "1" *-- "0..*" InventoryMovement : history
+    StaffMember "1" --> "0..*" InventoryMovement : records
+    Branch "1" --> "0..*" CounterTransaction : accepts
+    StaffMember "1" --> "0..*" CounterTransaction : processes
+    CounterTerminal "0..1" --> "0..*" CounterTransaction : used for
+    CounterTransaction "1" *-- "0..*" TransactionLine : contains
+    Product "1" --> "0..*" TransactionLine : snapshotted as
+    ShippingZone "1" --> "0..*" ShippingRate : offers
+    ShippingRate "0..1" --> "0..*" CounterTransaction : selected by
+    MoneyOrder "0..1" --> "0..1" CounterTransaction : included in
+    Branch "1" --> "0..*" MoneyOrder : issues
+    StaffMember "1" --> "0..*" MoneyOrder : issues
+    MoneyOrder "0..1" --> "0..1" IdentityVerificationRecord : verified by
+    Branch "1" --> "0..*" IdentityVerificationRecord : records
+    StaffMember "1" --> "0..*" IdentityVerificationRecord : performs
+```
+
 ## Middleware and MVC filters
 
 The HTTP pipeline is ordered as follows so cross-cutting checks happen before endpoint execution:
@@ -128,6 +232,19 @@ Assignment 2 requires JSON file persistence behind interfaces. The JSON implemen
 Cookie authentication, server-side role and branch checks, antiforgery validation, correlation IDs, request exception logging, security headers, maintenance mode, IP restrictions, rate limiting, partner API keys, and a restricted tracking-widget CORS policy are in place. Middleware order is: correlation ID; exception logging; security headers; maintenance gate; HTTPS redirection; routing; endpoint CORS; admin IP restriction; partner API-key validation; rate limiter; authentication; authorization; endpoints. Partner keys are configured by partner ID, compared using fixed-time hashes, and never written to logs. `/health` is anonymous and remains available during maintenance. Missing or invalid keys return 401; an unconfigured partner API returns 500.
 
 MVC action filters log slow actions and append request audit records for branch status/hours, terminals, staff, catalogue, inventory, shipping rates, sales, reversals, money-order issue/refund, and identity verification requests. Each MVC audit entry records actor, role, branch, action, whitelisted IDs, result status, duration, and correlation ID. The filter never serializes action models or request bodies. Application events separately append committed sales, reversals, money-order issuance/refunds, and identity verification outcomes to `audit-records.json`; identity audit events contain document type/result but no document identifier. Audit failures are logged without making a committed operation appear unsuccessful; JSON audit storage therefore has an acknowledged consistency gap. Sensitive identity values are used transiently by the simulated verifier and masked before persistence. Partner API keys are supplied through secret configuration and compared in constant time. The default admin allowlist is loopback-only; deployments behind proxies must configure trusted forwarded headers before IP restrictions can identify the original client.
+
+| Threat | Mitigation | Remaining limitation |
+|---|---|---|
+| Password guessing | Login is limited to five attempts per minute per client IP; passwords are stored as ASP.NET Core password hashes and login errors do not reveal which credential failed. | IP-based limits depend on correctly configured forwarded headers behind a proxy. |
+| Unauthorized staff or cross-branch access | Cookie claims, role authorization, branch-scoped controllers, and application-service checks enforce staff and branch boundaries. | A signed-in user's cookie claims remain a snapshot until the cookie is renewed or expires. |
+| Cross-site form submission | Global antiforgery validation protects unsafe MVC actions. | External clients still need authentication and authorization; antiforgery is not an API credential. |
+| Partner API key theft or guessing | Unique partner keys live in user-secrets or deployment secret configuration, are compared using fixed-time hash comparisons, and are never written to logs. Each validated partner gets an independent request limit. | CORS only controls browser behavior; it does not authenticate a partner or prevent direct HTTP clients. |
+| API overload | Partner requests are limited to 30 per minute per configured partner; login requests use a separate limit. | The fixed-window policy can allow bursts around a window boundary. |
+| Forged client IP behind a proxy | Admin routes use a configured IP allowlist; forwarded headers must be restricted to trusted proxies before the app relies on them. | Trusting arbitrary forwarded headers can let clients spoof their IP and bypass an allowlist. |
+| Exposure of personal or payment information | Identity document numbers are masked before persistence; audit filters whitelist identifiers and never serialize form bodies; partner tracking omits recipient and identity information. | Local JSON files still require appropriate filesystem access controls and backups. |
+| Audit loss or alteration | Business events and MVC requests write append-only JSON audit entries with actor, branch, time, and correlation context; write failures are logged. | JSON audit storage is best-effort and is not tamper-evident or multi-process transactional. |
+| Concurrent or partial JSON writes | Shared writes use `SemaphoreSlim` and temporary-file replacement. | The guarantee is single-process; it does not coordinate multiple application instances. |
+| Script injection, framing, or MIME confusion | Content Security Policy, frame restrictions, `nosniff`, and referrer headers are set centrally. | Policy directives need review when new scripts, integrations, or external origins are added. |
 
 ## SOLID mapping and advanced C# usage
 
