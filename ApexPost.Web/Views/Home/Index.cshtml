@@ -1,13 +1,86 @@
 @{
     ViewData["Title"] = "Branch dashboard";
+    var canSeeReports = User.IsInRole("Administrator") || User.IsInRole("BranchManager") || User.IsInRole("Auditor");
+    var isAdministrator = User.IsInRole("Administrator");
 }
 
-<div class="mb-4">
-    <p class="text-uppercase text-muted mb-1">ApexPost Counter Platform</p>
-    <h1 class="display-5">Welcome, @User.Identity?.Name</h1>
-    <p class="lead">@ViewData["BranchName"] · @ViewData["StaffRole"]</p>
-</div>
+<section class="dashboard-intro">
+    <div>
+        <p class="eyebrow">STAFF WORKSPACE</p>
+        <h1>Welcome, @User.Identity?.Name</h1>
+        <p class="dashboard-context">@ViewData["BranchName"] <span aria-hidden="true">·</span> @ViewData["StaffRole"]</p>
+    </div>
+    <a asp-controller="CounterTransactions" asp-action="Index" class="btn btn-primary">Open counter</a>
+</section>
 
-<div class="alert alert-info" role="status">
-    Branch and staff sign-in is ready. Counter operations will appear here as their feature slices are added.
-</div>
+<section class="mb-4" aria-labelledby="operations-heading">
+    <div class="section-heading">
+        <h2 id="operations-heading" class="h5 mb-0">Daily operations</h2>
+        <span class="text-muted small">Common branch tasks</span>
+    </div>
+    <div class="row g-3">
+        <div class="col-md-6 col-xl-4">
+            <a asp-controller="CounterTransactions" asp-action="Index" class="dashboard-link">
+                <span class="dashboard-link-title">Counter transactions <span aria-hidden="true">→</span></span>
+                <span class="dashboard-link-description">Process sales, shipping, and money orders.</span>
+            </a>
+        </div>
+        <div class="col-md-6 col-xl-4">
+            <a asp-controller="Inventory" asp-action="Index" class="dashboard-link">
+                <span class="dashboard-link-title">Branch inventory <span aria-hidden="true">→</span></span>
+                <span class="dashboard-link-description">Review stock levels and record adjustments.</span>
+            </a>
+        </div>
+        <div class="col-md-6 col-xl-4">
+            <a asp-controller="Catalog" asp-action="Index" class="dashboard-link">
+                <span class="dashboard-link-title">Product catalogue <span aria-hidden="true">→</span></span>
+                <span class="dashboard-link-description">Find postage, packaging, and counter services.</span>
+            </a>
+        </div>
+        <div class="col-md-6 col-xl-4">
+            <a asp-controller="Shipping" asp-action="Index" class="dashboard-link">
+                <span class="dashboard-link-title">Shipping services <span aria-hidden="true">→</span></span>
+                <span class="dashboard-link-description">Check service zones and calculate a quote.</span>
+            </a>
+        </div>
+        <div class="col-md-6 col-xl-4">
+            <a asp-controller="MoneyOrders" asp-action="Index" class="dashboard-link">
+                <span class="dashboard-link-title">Money orders <span aria-hidden="true">→</span></span>
+                <span class="dashboard-link-description">Issue and review branch money orders.</span>
+            </a>
+        </div>
+        @if (canSeeReports)
+        {
+            <div class="col-md-6 col-xl-4">
+                <a asp-controller="Reports" asp-action="Index" class="dashboard-link">
+                    <span class="dashboard-link-title">Branch reports <span aria-hidden="true">→</span></span>
+                    <span class="dashboard-link-description">Review sales and operational activity.</span>
+                </a>
+            </div>
+        }
+    </div>
+</section>
+
+@if (isAdministrator)
+{
+    <section aria-labelledby="management-heading">
+        <div class="section-heading">
+            <h2 id="management-heading" class="h5 mb-0">Administration</h2>
+            <span class="text-muted small">Configuration and access</span>
+        </div>
+        <div class="row g-3">
+            <div class="col-md-6 col-xl-4">
+                <a asp-controller="Administration" asp-action="Branches" class="dashboard-link">
+                    <span class="dashboard-link-title">Branches and terminals <span aria-hidden="true">→</span></span>
+                    <span class="dashboard-link-description">Manage branch hours and counter terminals.</span>
+                </a>
+            </div>
+            <div class="col-md-6 col-xl-4">
+                <a asp-controller="Administration" asp-action="Staff" class="dashboard-link">
+                    <span class="dashboard-link-title">Staff accounts <span aria-hidden="true">→</span></span>
+                    <span class="dashboard-link-description">Manage staff roles and account access.</span>
+                </a>
+            </div>
+        </div>
+    </section>
+}

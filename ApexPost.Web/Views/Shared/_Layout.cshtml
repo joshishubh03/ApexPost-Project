@@ -10,47 +10,56 @@
     <link rel="stylesheet" href="~/ApexPost.Web.styles.css" asp-append-version="true" />
 </head>
 <body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-light bg-white border-bottom shadow-sm mb-3">
-            <div class="container-fluid">
+    <header class="site-header">
+        <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
+            <div class="container-xxl">
                 <a class="navbar-brand fw-semibold" asp-controller="Home" asp-action="Index">ApexPost</a>
-                <div class="d-flex align-items-center gap-3">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavigation" aria-controls="mainNavigation" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="mainNavigation">
                     @if (User.Identity?.IsAuthenticated == true)
                     {
-                        <a asp-controller="Catalog" asp-action="Index" class="btn btn-outline-primary btn-sm">Catalogue</a>
-                        <a asp-controller="Inventory" asp-action="Index" class="btn btn-outline-primary btn-sm">Inventory</a>
-                        <a asp-controller="Shipping" asp-action="Index" class="btn btn-outline-primary btn-sm">Shipping</a>
-                        <a asp-controller="CounterTransactions" asp-action="Index" class="btn btn-outline-primary btn-sm">Counter</a>
-                        <a asp-controller="MoneyOrders" asp-action="Index" class="btn btn-outline-primary btn-sm">Money orders</a>
-                        @if (User.IsInRole("Administrator") || User.IsInRole("BranchManager") || User.IsInRole("Auditor"))
-                        {
-                            <a asp-controller="Reports" asp-action="Index" class="btn btn-outline-primary btn-sm">Reports</a>
-                        }
-                        @if (User.IsInRole("Administrator"))
-                        {
-                            <a asp-controller="Administration" asp-action="Branches" class="btn btn-outline-primary btn-sm">Branches</a>
-                            <a asp-controller="Administration" asp-action="Staff" class="btn btn-outline-primary btn-sm">Staff</a>
-                        }
-                        <span class="text-muted small">@User.Identity.Name</span>
-                        <form asp-controller="Account" asp-action="Logout" method="post">
-                            <button type="submit" class="btn btn-outline-secondary btn-sm">Sign out</button>
-                        </form>
+                        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                            <li class="nav-item"><a asp-controller="Catalog" asp-action="Index" class="nav-link">Catalogue</a></li>
+                            <li class="nav-item"><a asp-controller="Inventory" asp-action="Index" class="nav-link">Inventory</a></li>
+                            <li class="nav-item"><a asp-controller="Shipping" asp-action="Index" class="nav-link">Shipping</a></li>
+                            <li class="nav-item"><a asp-controller="CounterTransactions" asp-action="Index" class="nav-link">Counter</a></li>
+                            <li class="nav-item"><a asp-controller="MoneyOrders" asp-action="Index" class="nav-link">Money orders</a></li>
+                            @if (User.IsInRole("Administrator") || User.IsInRole("BranchManager") || User.IsInRole("Auditor"))
+                            {
+                                <li class="nav-item"><a asp-controller="Reports" asp-action="Index" class="nav-link">Reports</a></li>
+                            }
+                            @if (User.IsInRole("Administrator"))
+                            {
+                                <li class="nav-item"><a asp-controller="Administration" asp-action="Branches" class="nav-link">Branches</a></li>
+                                <li class="nav-item"><a asp-controller="Administration" asp-action="Staff" class="nav-link">Staff</a></li>
+                            }
+                        </ul>
+                        <div class="d-flex flex-column flex-lg-row align-items-lg-center gap-2 py-2 py-lg-0">
+                            <span class="nav-user small text-muted">@User.Identity.Name</span>
+                            <form asp-controller="Account" asp-action="Logout" method="post" class="m-0">
+                                <button type="submit" class="btn btn-outline-secondary btn-sm">Sign out</button>
+                            </form>
+                        </div>
                     }
                     else
                     {
-                        <a asp-controller="Account" asp-action="Login" class="btn btn-primary btn-sm">Staff sign in</a>
+                        <div class="ms-lg-auto py-2 py-lg-0">
+                            <a asp-controller="Account" asp-action="Login" class="btn btn-primary btn-sm">Staff sign in</a>
+                        </div>
                     }
                 </div>
             </div>
         </nav>
     </header>
-    <div class="container">
-        <main role="main" class="pb-3">
+    <div class="container-xxl site-content">
+        <main role="main" class="site-main">
             @RenderBody()
         </main>
     </div>
-    <footer class="border-top footer text-muted">
-        <div class="container py-3">
+    <footer class="site-footer border-top text-muted">
+        <div class="container-xxl py-3">
             &copy; 2026 - ApexPost Counter Platform
         </div>
     </footer>
