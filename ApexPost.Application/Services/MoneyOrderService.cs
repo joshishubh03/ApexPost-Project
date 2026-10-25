@@ -97,6 +97,15 @@ public sealed class MoneyOrderService(
             verifications.Add(verification);
             await verificationRepository.SaveAllAsync(verifications, cancellationToken);
             verificationRecordId = verification.Id;
+            await eventPublisher.PublishAsync(new IdentityVerificationRecordedEvent(
+                verification.Id,
+                verification.BranchId,
+                verification.StaffId,
+                verification.OccurredAt,
+                verification.DocumentType,
+                verification.MoneyOrderAmount,
+                verification.Status,
+                verification.CorrelationId), CancellationToken.None);
 
             if (verificationStatus != IdentityVerificationStatus.Verified)
             {

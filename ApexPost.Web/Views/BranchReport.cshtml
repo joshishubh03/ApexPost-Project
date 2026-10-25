@@ -116,10 +116,10 @@ else
         }
         else
         {
-            <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Time</th><th>Action</th><th>Record</th><th>Actor</th><th>Correlation</th><th class="text-end">Amount</th></tr></thead><tbody>
+            <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Time</th><th>Action</th><th>Record</th><th>Actor / role</th><th>Result</th><th>Duration</th><th>Correlation</th><th class="text-end">Amount</th></tr></thead><tbody>
             @foreach (var audit in Model.Report.RecentAuditEvents)
             {
-                <tr><td>@audit.OccurredAt.ToLocalTime().ToString("g")</td><td>@audit.Action</td><td>@audit.EntityType@if (audit.Details is not null) { <small class="text-muted d-block">@audit.Details</small> }</td><td>@audit.ActorId</td><td><code>@audit.CorrelationId</code></td><td class="text-end">@(audit.Amount?.ToString("C2", inr) ?? "—")</td></tr>
+                <tr><td>@audit.OccurredAt.ToLocalTime().ToString("g")</td><td>@audit.Action</td><td>@audit.EntityType <code class="d-block">@audit.EntityId</code>@if (audit.Details is not null) { <small class="text-muted d-block">@audit.Details</small> }@if (audit.RouteValues?.Count > 0) { <small class="text-muted d-block">@string.Join(", ", audit.RouteValues.Select(value => $"{value.Key}={value.Value}"))</small> }</td><td>@audit.ActorId@if (audit.Role is not null) { <small class="text-muted d-block">@audit.Role</small> }</td><td>@(audit.ResultStatusCode?.ToString() ?? "—")</td><td>@(audit.DurationMilliseconds is { } duration ? $"{duration} ms" : "—")</td><td><code>@audit.CorrelationId</code></td><td class="text-end">@(audit.Amount?.ToString("C2", inr) ?? "—")</td></tr>
             }
             </tbody></table></div>
         }
