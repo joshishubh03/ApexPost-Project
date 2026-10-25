@@ -8,6 +8,9 @@ public sealed class CreateCounterTransactionInputModel : IValidatableObject
     [Required]
     public Guid? BranchId { get; set; }
 
+    [Required]
+    public Guid? TerminalId { get; set; }
+
     public Dictionary<Guid, int> Quantities { get; set; } = [];
 
     [EnumDataType(typeof(PaymentMethod))]

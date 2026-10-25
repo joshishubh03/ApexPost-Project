@@ -12,6 +12,7 @@ public sealed class DemoDataSeeder(
     ICounterTransactionRepository transactionRepository,
     IShippingZoneRepository shippingZoneRepository,
     IShippingRateRepository shippingRateRepository,
+    ICounterTerminalRepository terminalRepository,
     IStaffPasswordService passwordService,
     string demoPassword)
 {
@@ -29,6 +30,14 @@ public sealed class DemoDataSeeder(
                     isOpen: true))
                 .ToArray();
             await branchRepository.SaveAllAsync(branches, cancellationToken);
+        }
+
+        var terminals = await terminalRepository.GetAllAsync(cancellationToken);
+        if (terminals.Count == 0)
+        {
+            terminals = branches.SelectMany(branch => Enumerable.Range(1, 2).Select(number => new CounterTerminal(
+                StableGuid($"terminal-{branch.Code}-{number}"), branch.Id, $"T-{number:00}", $"Counter {number}"))).ToArray();
+            await terminalRepository.SaveAllAsync(terminals, cancellationToken);
         }
 
         var products = await productRepository.GetAllAsync(cancellationToken);
@@ -190,13 +199,14 @@ public sealed class DemoDataSeeder(
             staff = seededStaff;
         }
 
-        await SeedHistoricalTransactionsAsync(branches, staff, products, cancellationToken);
+        await SeedHistoricalTransactionsAsync(branches, staff, products, terminals, cancellationToken);
     }
 
     private async Task SeedHistoricalTransactionsAsync(
         IReadOnlyList<Branch> branches,
         IReadOnlyList<StaffMember> staff,
         IReadOnlyList<Product> products,
+        IReadOnlyList<CounterTerminal> terminals,
         CancellationToken cancellationToken)
     {
         var transactions = await transactionRepository.GetAllAsync(cancellationToken);
@@ -285,7 +295,7 @@ public sealed class DemoDataSeeder(
                     0 => PaymentMethod.Cash,
                     1 => PaymentMethod.Card,
                     _ => PaymentMethod.DigitalWallet
-                }));
+                }, terminalId: terminals.First(terminal => terminal.BranchId == branch.Id && terminal.IsActive).Id));
 
             inventory[itemIndex] = inventory[itemIndex].ApplyChange(
                 -quantity,

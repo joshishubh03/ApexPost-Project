@@ -26,6 +26,7 @@ public static class DependencyInjection
         services.AddSingleton<IShippingZoneRepository>(_ => new JsonShippingZoneRepository(dataDirectory));
         services.AddSingleton<IShippingRateRepository>(_ => new JsonShippingRateRepository(dataDirectory));
         services.AddSingleton<ICounterTransactionRepository>(_ => new JsonCounterTransactionRepository(dataDirectory));
+        services.AddSingleton<ICounterTerminalRepository>(_ => new JsonCounterTerminalRepository(dataDirectory));
         services.AddSingleton<IMoneyOrderRepository>(_ => new JsonMoneyOrderRepository(dataDirectory));
         services.AddSingleton<IIdentityVerificationRepository>(_ => new JsonIdentityVerificationRepository(dataDirectory));
         services.AddSingleton<IAuditLogRepository>(_ => new JsonAuditLogRepository(dataDirectory));
@@ -51,6 +52,7 @@ public static class DependencyInjection
             serviceProvider.GetRequiredService<ICounterTransactionRepository>(),
             serviceProvider.GetRequiredService<IShippingZoneRepository>(),
             serviceProvider.GetRequiredService<IShippingRateRepository>(),
+            serviceProvider.GetRequiredService<ICounterTerminalRepository>(),
             serviceProvider.GetRequiredService<IStaffPasswordService>(),
             demoPassword));
 

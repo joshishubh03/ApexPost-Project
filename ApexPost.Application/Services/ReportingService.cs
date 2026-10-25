@@ -11,7 +11,8 @@ public sealed class ReportingService(
     IProductRepository productRepository,
     IMoneyOrderRepository moneyOrderRepository,
     IIdentityVerificationRepository verificationRepository,
-    IAuditLogRepository auditLogRepository)
+    IAuditLogRepository auditLogRepository,
+    LowStockRule lowStockRule)
 {
     public async Task<BranchOperationsReport> GetBranchReportAsync(
         Guid branchId,
@@ -30,7 +31,7 @@ public sealed class ReportingService(
         var transactions = (await transactionsTask).Where(item => item.BranchId == branchId).ToArray();
         var products = (await productsTask).ToDictionary(product => product.Id);
         var inventory = (await inventoryTask).Where(item => item.BranchId == branchId).ToArray();
-        var lowStock = inventory.Where(item => item.IsBelowReorderLevel)
+        var lowStock = inventory.Where(item => lowStockRule.IsLowStock(item.QuantityOnHand, item.ReorderLevel))
             .Select(item => products.TryGetValue(item.ProductId, out var product) && product.IsActive
                 ? new ProductInventorySummary(
                     product.Id, product.Sku, product.Name, product.Category, product.TaxCategory, product.Price,

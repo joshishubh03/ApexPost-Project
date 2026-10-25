@@ -15,7 +15,8 @@ public sealed class CounterTransactionService(
     IApplicationEventPublisher eventPublisher,
     InventoryManagementService inventoryManagementService,
     ShippingRateService shippingRateService,
-    TaxPolicy taxPolicy)
+    TaxPolicy taxPolicy,
+    ICounterTerminalRepository terminalRepository)
 {
     public async Task<CounterRegisterContext> GetRegisterContextAsync(
         Guid branchId,
@@ -25,12 +26,17 @@ public sealed class CounterTransactionService(
             ?? throw new KeyNotFoundException("The branch could not be found.");
         var products = await inventoryManagementService.GetBranchInventoryAsync(branchId, cancellationToken);
         var shippingSchedules = await shippingRateService.GetScheduleAsync(includeInactive: false, cancellationToken);
+        var terminals = (await terminalRepository.GetAllAsync(cancellationToken))
+            .Where(terminal => terminal.BranchId == branchId && terminal.IsActive)
+            .OrderBy(terminal => terminal.Code)
+            .ToArray();
         var transactions = await transactionRepository.GetAllAsync(cancellationToken);
 
         return new CounterRegisterContext(
             branch,
             products,
             shippingSchedules,
+            terminals,
             transactions.Where(transaction => transaction.BranchId == branchId)
                 .OrderByDescending(transaction => transaction.OccurredAt)
                 .Take(20)
@@ -49,6 +55,7 @@ public sealed class CounterTransactionService(
         decimal? parcelLengthCentimeters,
         decimal? parcelWidthCentimeters,
         decimal? parcelHeightCentimeters,
+        Guid terminalId,
         string correlationId,
         CancellationToken cancellationToken = default)
     {
@@ -59,6 +66,10 @@ public sealed class CounterTransactionService(
         {
             throw new InvalidOperationException("A sale cannot be completed at a closed branch.");
         }
+
+        var terminal = (await terminalRepository.GetAllAsync(cancellationToken))
+            .FirstOrDefault(candidate => candidate.Id == terminalId && candidate.BranchId == branchId && candidate.IsActive)
+            ?? throw new InvalidOperationException("Select an active counter terminal assigned to this branch.");
 
         var requestedQuantities = quantities.Where(pair => pair.Value != 0).ToArray();
         if (requestedQuantities.Any(pair => pair.Value < 0))
@@ -135,7 +146,8 @@ public sealed class CounterTransactionService(
             parcelLengthCentimeters: parcelLengthCentimeters,
             parcelWidthCentimeters: parcelWidthCentimeters,
             parcelHeightCentimeters: parcelHeightCentimeters,
-            shippingTaxRatePercent: shippingRateId is null ? 0m : taxPolicy.GetRatePercent(TaxPolicy.ShippingCategory));
+            shippingTaxRatePercent: shippingRateId is null ? 0m : taxPolicy.GetRatePercent(TaxPolicy.ShippingCategory),
+            terminalId: terminal.Id);
 
         var adjustmentReason = $"Counter sale {transactionNumber}";
         foreach (var requested in requestedQuantities)

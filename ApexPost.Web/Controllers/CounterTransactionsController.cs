@@ -92,6 +92,7 @@ public sealed class CounterTransactionsController(
                 input.ParcelLengthCentimeters,
                 input.ParcelWidthCentimeters,
                 input.ParcelHeightCentimeters,
+                input.TerminalId!.Value,
                 CorrelationIdMiddleware.GetCorrelationId(HttpContext),
                 cancellationToken);
             TempData["StatusMessage"] = $"Transaction {transaction.TransactionNumber} completed. Total: {transaction.TotalAmount:C2}.";

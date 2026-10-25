@@ -54,6 +54,7 @@ else
                 </table>
             </div>
             <div class="row g-3">
+                <div class="col-md-3"><label for="TerminalId" class="form-label">Counter terminal</label><select id="TerminalId" name="TerminalId" class="form-select" required><option value="">Select terminal</option>@foreach (var terminal in Model.Register.Terminals) { <option value="@terminal.Id">@terminal.Code — @terminal.Name</option> }</select></div>
                 <div class="col-md-4">
                     <label for="ShippingRateId" class="form-label">Shipping service (optional)</label>
                     <select id="ShippingRateId" name="ShippingRateId" class="form-select">
@@ -91,12 +92,13 @@ else
     else
     {
         <div class="table-responsive"><table class="table table-striped">
-            <thead><tr><th>Receipt</th><th>Time</th><th>Items / label</th><th>Payment</th><th>Status</th><th class="text-end">Tax</th><th class="text-end">Total</th>@if (User.IsInRole("BranchManager")) { <th>Manager action</th> }</tr></thead>
+            <thead><tr><th>Receipt</th><th>Terminal</th><th>Time</th><th>Items / label</th><th>Payment</th><th>Status</th><th class="text-end">Tax</th><th class="text-end">Total</th>@if (User.IsInRole("BranchManager")) { <th>Manager action</th> }</tr></thead>
             <tbody>
             @foreach (var transaction in Model.Register.RecentTransactions)
             {
                 <tr>
                     <td>@transaction.TransactionNumber</td>
+                    <td>@(Model.Register.Terminals.FirstOrDefault(terminal => terminal.Id == transaction.TerminalId)?.Code ?? "Legacy")</td>
                     <td>@transaction.OccurredAt.ToLocalTime().ToString("g")</td>
                     <td>@transaction.Lines.Count product line(s)@(transaction.ShippingRateId is not null ? $" + {transaction.ShippingServiceLevel} shipping" : "")
                         @if (transaction.ShippingRecipientName is not null)
