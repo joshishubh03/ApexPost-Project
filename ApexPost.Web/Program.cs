@@ -50,6 +50,8 @@ builder.Services.AddControllersWithViews(options =>
 builder.Services.AddScoped<RequestTimingActionFilter>();
 builder.Services.AddScoped<MvcAuditActionFilter>();
 builder.Services.AddScoped<ModelValidationActionFilter>();
+builder.Services.AddExceptionHandler<SafeProblemDetailsExceptionHandler>();
+builder.Services.AddProblemDetails();
 builder.Services.AddScoped<ApexPost.Application.Abstractions.IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<StaffManagementService>();
 builder.Services.AddScoped<ProductCatalogueService>();
@@ -123,10 +125,10 @@ builder.Services.AddAuthorization(options =>
 var app = builder.Build();
 
 app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseExceptionHandler();
 
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
 }
 else
