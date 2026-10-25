@@ -33,6 +33,9 @@ public sealed class CreateCounterTransactionInputModel : IValidatableObject
 
     public Guid? ShippingRateId { get; set; }
 
+    [EnumDataType(typeof(ShipmentType))]
+    public ShipmentType? ShipmentType { get; set; }
+
     public decimal? ShippingWeightKilograms { get; set; }
 
     [StringLength(100, MinimumLength = 2)]
@@ -71,25 +74,40 @@ public sealed class CreateCounterTransactionInputModel : IValidatableObject
             yield return new ValidationResult("Select an identity document type for its identifier.",
                 [nameof(MoneyOrderDocumentType), nameof(MoneyOrderDocumentIdentifier)]);
 
+        if (ShippingRateId is not null && ShipmentType is null)
+            yield return new ValidationResult("Select a shipment type.", [nameof(ShipmentType)]);
+
         if (ShippingRateId is not null && ShippingWeightKilograms is null)
         {
             yield return new ValidationResult("Enter a weight for the selected shipping service.", [nameof(ShippingWeightKilograms)]);
         }
         else if (ShippingWeightKilograms is { } weight && (weight <= 0 || decimal.Round(weight, 2) != weight))
         {
-            yield return new ValidationResult("Parcel weight must be positive and use no more than two decimal places.", [nameof(ShippingWeightKilograms)]);
+            yield return new ValidationResult("Shipment weight must be positive and use no more than two decimal places.", [nameof(ShippingWeightKilograms)]);
         }
 
         var hasAddressDetails = !string.IsNullOrWhiteSpace(ShippingRecipientName) ||
             !string.IsNullOrWhiteSpace(ShippingAddress) || ParcelLengthCentimeters is not null ||
             ParcelWidthCentimeters is not null || ParcelHeightCentimeters is not null;
         if (ShippingRateId is not null &&
-            (string.IsNullOrWhiteSpace(ShippingRecipientName) || string.IsNullOrWhiteSpace(ShippingAddress) ||
-             ParcelLengthCentimeters is null || ParcelWidthCentimeters is null || ParcelHeightCentimeters is null))
+            (string.IsNullOrWhiteSpace(ShippingRecipientName) || string.IsNullOrWhiteSpace(ShippingAddress)))
         {
-            yield return new ValidationResult("Enter the recipient, destination address, and all parcel dimensions for the selected shipping service.",
-                [nameof(ShippingRecipientName), nameof(ShippingAddress), nameof(ParcelLengthCentimeters), nameof(ParcelWidthCentimeters), nameof(ParcelHeightCentimeters)]);
+            yield return new ValidationResult("Enter the recipient and destination address for the selected shipping service.",
+                [nameof(ShippingRecipientName), nameof(ShippingAddress)]);
         }
+
+        if (ShippingRateId is not null && ShipmentType == ApexPost.Domain.Enums.ShipmentType.Parcel &&
+            (ParcelLengthCentimeters is null || ParcelWidthCentimeters is null || ParcelHeightCentimeters is null))
+            yield return new ValidationResult("Enter all parcel dimensions for a parcel shipment.",
+                [nameof(ParcelLengthCentimeters), nameof(ParcelWidthCentimeters), nameof(ParcelHeightCentimeters)]);
+
+        if (ShipmentType == ApexPost.Domain.Enums.ShipmentType.Letter &&
+            (ParcelLengthCentimeters is not null || ParcelWidthCentimeters is not null || ParcelHeightCentimeters is not null))
+            yield return new ValidationResult("Letters do not have parcel dimensions.",
+                [nameof(ParcelLengthCentimeters), nameof(ParcelWidthCentimeters), nameof(ParcelHeightCentimeters)]);
+
+        if (ShippingRateId is null && ShipmentType is not null)
+            yield return new ValidationResult("Select a shipping service or clear the shipment type.", [nameof(ShipmentType)]);
 
         if (ShippingRateId is null && hasAddressDetails)
         {

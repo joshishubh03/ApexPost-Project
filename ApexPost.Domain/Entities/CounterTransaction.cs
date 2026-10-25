@@ -17,6 +17,7 @@ public sealed record CounterTransaction
     public Guid? ShippingRateId { get; }
     public string? ShippingZoneName { get; }
     public ShippingServiceLevel? ShippingServiceLevel { get; }
+    public ShipmentType? ShipmentType { get; }
     public decimal? ShippingWeightKilograms { get; }
     public decimal Subtotal { get; }
     public decimal TaxTotal { get; }
@@ -61,7 +62,8 @@ public sealed record CounterTransaction
         Guid? terminalId = null,
         Guid? moneyOrderId = null,
         decimal moneyOrderAmount = 0m,
-        decimal moneyOrderFee = 0m)
+        decimal moneyOrderFee = 0m,
+        ShipmentType? shipmentType = null)
     {
         if (id == Guid.Empty || branchId == Guid.Empty || staffId == Guid.Empty)
         {
@@ -104,7 +106,7 @@ public sealed record CounterTransaction
             throw new ArgumentOutOfRangeException(nameof(moneyOrderAmount), "Money order amount and fee must be valid currency amounts.");
 
         if (shippingRateId is null &&
-            (shippingZoneName is not null || shippingServiceLevel is not null || shippingWeightKilograms is not null || shippingCharge != 0))
+            (shippingZoneName is not null || shippingServiceLevel is not null || shippingWeightKilograms is not null || shippingCharge != 0 || shipmentType is not null))
         {
             throw new ArgumentException("Shipping details require a shipping rate.", nameof(shippingRateId));
         }
@@ -115,15 +117,26 @@ public sealed record CounterTransaction
             throw new ArgumentException("Complete shipping details are required when a rate is selected.", nameof(shippingRateId));
         }
 
+        if (shipmentType is { } selectedShipmentType && !Enum.IsDefined(selectedShipmentType))
+            throw new ArgumentOutOfRangeException(nameof(shipmentType));
+
         var hasAddressDetails = shippingRecipientName is not null || shippingAddress is not null ||
             parcelLengthCentimeters is not null || parcelWidthCentimeters is not null || parcelHeightCentimeters is not null;
         if (hasAddressDetails &&
             (shippingRateId is null || string.IsNullOrWhiteSpace(shippingRecipientName) ||
-             string.IsNullOrWhiteSpace(shippingAddress) || parcelLengthCentimeters is null ||
-             parcelWidthCentimeters is null || parcelHeightCentimeters is null))
+             string.IsNullOrWhiteSpace(shippingAddress) ||
+             (shipmentType != ApexPost.Domain.Enums.ShipmentType.Letter &&
+              (parcelLengthCentimeters is null || parcelWidthCentimeters is null || parcelHeightCentimeters is null))))
         {
-            throw new ArgumentException("Recipient, destination address, and all parcel dimensions are required together for a shipment.");
+            throw new ArgumentException("Recipient and destination address are required; parcels also require all dimensions.");
         }
+
+        if (shipmentType == ApexPost.Domain.Enums.ShipmentType.Letter &&
+            (parcelLengthCentimeters is not null || parcelWidthCentimeters is not null || parcelHeightCentimeters is not null))
+            throw new ArgumentException("Letter shipments do not have parcel dimensions.", nameof(shipmentType));
+
+        if (shipmentType is not null && !hasAddressDetails)
+            throw new ArgumentException("Shipment recipient and address details are required.", nameof(shippingRecipientName));
 
         if (shippingRecipientName?.Trim().Length > 100 || shippingAddress?.Trim().Length > 300)
         {
@@ -161,6 +174,7 @@ public sealed record CounterTransaction
         ShippingRateId = shippingRateId;
         ShippingZoneName = shippingZoneName;
         ShippingServiceLevel = shippingServiceLevel;
+        ShipmentType = shipmentType;
         ShippingWeightKilograms = shippingWeightKilograms;
         Subtotal = decimal.Round(Lines.Sum(line => line.LineTotal), 2, MidpointRounding.AwayFromZero);
         TaxTotal = decimal.Round(Lines.Sum(line => line.TaxAmount), 2, MidpointRounding.AwayFromZero);
@@ -210,6 +224,6 @@ public sealed record CounterTransaction
             ShippingZoneName, ShippingServiceLevel, ShippingWeightKilograms, ShippingCharge,
             PaymentMethod, status, occurredAt, managerId, reason, ShippingRecipientName,
             ShippingAddress, ParcelLengthCentimeters, ParcelWidthCentimeters, ParcelHeightCentimeters,
-            ShippingTaxRatePercent, TerminalId, MoneyOrderId, MoneyOrderAmount, MoneyOrderFee);
+            ShippingTaxRatePercent, TerminalId, MoneyOrderId, MoneyOrderAmount, MoneyOrderFee, ShipmentType);
     }
 }

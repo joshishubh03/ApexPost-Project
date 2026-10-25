@@ -89,6 +89,7 @@ public sealed class CounterTransactionsController(
                 input.Quantities,
                 input.PaymentMethod,
                 input.ShippingRateId,
+                input.ShipmentType,
                 input.ShippingWeightKilograms,
                 input.ShippingRecipientName,
                 input.ShippingAddress,
@@ -140,7 +141,8 @@ public sealed class CounterTransactionsController(
 
         var transaction = await transactionService.GetTransactionForBranchAsync(
             permittedBranchId.Value, id, cancellationToken);
-        if (transaction is null || transaction.ShippingRateId is null || transaction.ShippingRecipientName is null)
+        if (transaction is null || transaction.Status != TransactionStatus.Completed ||
+            transaction.ShippingRateId is null || transaction.ShippingRecipientName is null)
         {
             return NotFound();
         }

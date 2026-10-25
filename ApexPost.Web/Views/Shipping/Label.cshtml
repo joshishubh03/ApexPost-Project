@@ -14,7 +14,7 @@
 <section class="card label-card" aria-label="Shipping label">
     <div class="card-body p-4">
         <div class="d-flex justify-content-between border-bottom pb-3 mb-3">
-            <div><div class="text-muted small">APEXPOST</div><strong>PARCEL SERVICE</strong></div>
+            <div><div class="text-muted small">APEXPOST</div><strong>@((Model.ShipmentType?.ToString() ?? "Parcel").ToUpperInvariant()) SERVICE</strong></div>
             <div class="text-end"><div class="text-muted small">Tracking number</div><strong class="fs-5">@Model.TransactionNumber</strong></div>
         </div>
         <div class="row g-4">
@@ -26,8 +26,12 @@
             <div class="col-md-5 text-md-end">
                 <div class="text-muted small text-uppercase">Service</div>
                 <strong>@Model.ShippingZoneName — @Model.ShippingServiceLevel</strong>
-                <div>@Model.ShippingWeightKilograms?.ToString("0.##") kg</div>
-                <div>@Model.ParcelLengthCentimeters?.ToString("0.##") × @Model.ParcelWidthCentimeters?.ToString("0.##") × @Model.ParcelHeightCentimeters?.ToString("0.##") cm</div>
+                <div>Weight: @Model.ShippingWeightKilograms?.ToString("0.##") kg</div>
+                <div>Charge: @Model.ShippingCharge.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("en-IN"))</div>
+                @if (Model.ShipmentType != ApexPost.Domain.Enums.ShipmentType.Letter)
+                {
+                    <div>@Model.ParcelLengthCentimeters?.ToString("0.##") × @Model.ParcelWidthCentimeters?.ToString("0.##") × @Model.ParcelHeightCentimeters?.ToString("0.##") cm</div>
+                }
             </div>
         </div>
         <div class="border-top mt-4 pt-3 d-flex justify-content-between small text-muted">

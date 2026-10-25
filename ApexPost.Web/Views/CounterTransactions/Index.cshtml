@@ -6,7 +6,7 @@
 }
 
 <h1>Counter transactions</h1>
-<p class="text-muted">Sell stocked products, optionally add a shipping service, and record the payment method.</p>
+<p class="text-muted">Sell stocked products, process parcel or letter shipments, issue money orders, and take one payment.</p>
 @if (TempData["StatusMessage"] is string status) { <div class="alert alert-success">@status</div> }
 @if (TempData["ErrorMessage"] is string error) { <div class="alert alert-danger">@error</div> }
 
@@ -68,12 +68,11 @@ else
                         }
                     </select>
                 </div>
-                <div class="col-md-3"><label for="ShippingWeightKilograms" class="form-label">Parcel weight (kg)</label><input id="ShippingWeightKilograms" name="ShippingWeightKilograms" type="number" min="0.01" step="0.01" class="form-control" /></div>
+                <div class="col-md-3"><label for="ShipmentType" class="form-label">Shipment type</label><select id="ShipmentType" name="ShipmentType" class="form-select"><option value="">Select type</option><option value="Parcel">Parcel</option><option value="Letter">Letter</option></select></div>
+                <div class="col-md-3"><label for="ShippingWeightKilograms" class="form-label">Shipment weight (kg)</label><input id="ShippingWeightKilograms" name="ShippingWeightKilograms" type="number" min="0.01" step="0.01" class="form-control" /></div>
                 <div class="col-md-4"><label for="ShippingRecipientName" class="form-label">Recipient name</label><input id="ShippingRecipientName" name="ShippingRecipientName" maxlength="100" class="form-control" /></div>
                 <div class="col-md-8"><label for="ShippingAddress" class="form-label">Destination address</label><textarea id="ShippingAddress" name="ShippingAddress" maxlength="300" rows="2" class="form-control"></textarea></div>
-                <div class="col-md-2"><label for="ParcelLengthCentimeters" class="form-label">Length (cm)</label><input id="ParcelLengthCentimeters" name="ParcelLengthCentimeters" type="number" min="0.01" step="0.01" class="form-control" /></div>
-                <div class="col-md-2"><label for="ParcelWidthCentimeters" class="form-label">Width (cm)</label><input id="ParcelWidthCentimeters" name="ParcelWidthCentimeters" type="number" min="0.01" step="0.01" class="form-control" /></div>
-                <div class="col-md-2"><label for="ParcelHeightCentimeters" class="form-label">Height (cm)</label><input id="ParcelHeightCentimeters" name="ParcelHeightCentimeters" type="number" min="0.01" step="0.01" class="form-control" /></div>
+                <div class="col-12" data-parcel-dimensions><span class="form-label">Parcel dimensions (parcels only)</span><div class="row g-2"><div class="col-md-2"><label for="ParcelLengthCentimeters" class="form-label">Length (cm)</label><input id="ParcelLengthCentimeters" name="ParcelLengthCentimeters" type="number" min="0.01" step="0.01" class="form-control" /></div><div class="col-md-2"><label for="ParcelWidthCentimeters" class="form-label">Width (cm)</label><input id="ParcelWidthCentimeters" name="ParcelWidthCentimeters" type="number" min="0.01" step="0.01" class="form-control" /></div><div class="col-md-2"><label for="ParcelHeightCentimeters" class="form-label">Height (cm)</label><input id="ParcelHeightCentimeters" name="ParcelHeightCentimeters" type="number" min="0.01" step="0.01" class="form-control" /></div></div></div>
                 <div class="col-12"><h4 class="h6 mb-0">Optional money order</h4><small class="text-muted">The order principal and configured @Model.MoneyOrderFee.ToString("C2", inr) fee are included in this receipt total. Identity verification is required above @Model.MoneyOrderIdentityVerificationThreshold.ToString("C2", inr).</small></div>
                 <div class="col-md-3"><label for="MoneyOrderAmount" class="form-label">Money order amount</label><input id="MoneyOrderAmount" name="MoneyOrderAmount" type="number" min="0.01" max="10000000" step="0.01" class="form-control" /></div>
                 <div class="col-md-3"><label for="MoneyOrderSenderName" class="form-label">Money order sender</label><input id="MoneyOrderSenderName" name="MoneyOrderSenderName" maxlength="100" class="form-control" /></div>
@@ -109,7 +108,7 @@ else
                     <td>@transaction.Lines.Count product line(s)@(transaction.ShippingRateId is not null ? $" + {transaction.ShippingServiceLevel} shipping" : "")@(transaction.MoneyOrderId is not null ? $" + money order {transaction.MoneyOrderAmount.ToString("C2", inr)}" : "")
                         @if (transaction.ShippingRecipientName is not null)
                         {
-                            <a class="d-block small" asp-action="Label" asp-route-id="@transaction.Id" asp-route-branchId="@Model.SelectedBranchId">Preview label</a>
+                            <span class="d-block small">@transaction.ShipmentType shipment</span><a class="d-block small" asp-action="Label" asp-route-id="@transaction.Id" asp-route-branchId="@Model.SelectedBranchId">Preview label</a>
                         }
                     </td>
                     <td>@transaction.PaymentMethod</td>

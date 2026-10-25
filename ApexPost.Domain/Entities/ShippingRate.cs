@@ -56,7 +56,7 @@ public sealed record ShippingRate
 
         if (weightKilograms > MaximumWeightKilograms)
         {
-            throw new InvalidOperationException($"This rate supports parcels up to {MaximumWeightKilograms:0.##} kg.");
+            throw new InvalidOperationException($"This rate supports shipments up to {MaximumWeightKilograms:0.##} kg.");
         }
 
         return decimal.Round(BasePrice + PricePerKilogram * weightKilograms, 2, MidpointRounding.AwayFromZero);
