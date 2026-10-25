@@ -15,12 +15,6 @@ Counter transaction completion is published as an application event after the st
 
 Money order issuance follows the same event-to-audit path. Identity verification attempts are stored separately with their result, actor, branch, timestamp, correlation ID, document type, and masked identifier; a failed attempt is recorded but does not issue an order.
 
-## Alternatives considered
-
-- General application logs alone were rejected because they do not provide a stable, queryable business-action record with actor and branch fields.
-- Writing audit entries before a sale commits could record an operation that never happened; committed business events are therefore appended after the business writes succeed.
-- A transactional outbox would make audit publication atomic, but it requires database transactions outside this JSON-only assignment.
-
 ## Consequences
 
 Audit persistence is best-effort after the business write: a failed audit append is logged with the correlation ID and does not make the completed sale appear to fail (which could cause a duplicate retry). This is an acknowledged consistency gap in the JSON implementation; a database-backed transactional outbox is the intended production direction. JSON persistence cannot atomically commit inventory, a transaction, and an audit event together. Never log raw identity numbers or secrets.
