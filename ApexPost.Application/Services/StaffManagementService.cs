@@ -131,4 +131,56 @@ public sealed class StaffManagementService(
         staff[index] = target.WithActiveStatus(isActive);
         await staffRepository.SaveAllAsync(staff, cancellationToken);
     }
+
+    public async Task UpdateStaffAsync(
+        Guid staffId,
+        string email,
+        string fullName,
+        StaffRole role,
+        Guid? branchId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(email);
+        ArgumentException.ThrowIfNullOrWhiteSpace(fullName);
+        if (!Enum.IsDefined(role))
+        {
+            throw new ArgumentOutOfRangeException(nameof(role));
+        }
+
+        var staff = (await staffRepository.GetAllAsync(cancellationToken)).ToList();
+        var index = staff.FindIndex(member => member.Id == staffId);
+        if (index < 0)
+        {
+            throw new KeyNotFoundException("The staff account could not be found.");
+        }
+
+        var target = staff[index];
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+        if (staff.Any(existing => existing.Id != staffId &&
+            string.Equals(existing.Email, normalizedEmail, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException("A staff account with this email already exists.");
+        }
+
+        if (role != StaffRole.Administrator)
+        {
+            if (branchId is null || await branchRepository.GetByIdAsync(branchId.Value, cancellationToken) is null)
+            {
+                throw new InvalidOperationException("Select an existing branch for this staff role.");
+            }
+        }
+        else if (branchId is not null && await branchRepository.GetByIdAsync(branchId.Value, cancellationToken) is null)
+        {
+            throw new InvalidOperationException("The selected branch does not exist.");
+        }
+
+        if (target.IsActive && target.Role == StaffRole.Administrator && role != StaffRole.Administrator &&
+            staff.Count(member => member.IsActive && member.Role == StaffRole.Administrator) <= 1)
+        {
+            throw new InvalidOperationException("The last active administrator cannot be changed to another role.");
+        }
+
+        staff[index] = target.WithProfile(normalizedEmail, fullName, role, branchId);
+        await staffRepository.SaveAllAsync(staff, cancellationToken);
+    }
 }
