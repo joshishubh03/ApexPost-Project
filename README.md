@@ -54,7 +54,7 @@ Staff can view active-product stock for their assigned branch. Administrators ca
 
 ## Shipping zones and rates
 
-Signed-in staff can view the shipping schedule and calculate a quote. Administrators can add zones and rates. Each rate has a service level, base charge, per-kilogram charge, and maximum weight. Development seeding provides 10 zones and Standard/Express rates in `data/shipping-zones.json` and `data/shipping-rates.json`.
+Signed-in staff can view the shipping schedule and calculate a quote. Administrators can add zones and rates. Each rate has a service level, base charge, per-kilogram charge, and maximum weight. A counter shipment captures recipient, destination address, parcel weight, and dimensions; completed shipment receipts have a branch-scoped printable label preview. Development seeding provides 10 zones and Standard/Express rates in `data/shipping-zones.json` and `data/shipping-rates.json`.
 
 ## Counter transactions
 
