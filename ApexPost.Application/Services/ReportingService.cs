@@ -15,6 +15,13 @@ public sealed class ReportingService(
     INotificationRepository notificationRepository,
     LowStockRule lowStockRule)
 {
+    private static readonly HashSet<string> ServiceProductCategories = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Postage",
+        "Shipping",
+        "Money Order"
+    };
+
     public async Task<BranchOperationsReport> GetBranchReportAsync(
         Guid branchId,
         CancellationToken cancellationToken = default)
@@ -46,13 +53,55 @@ public sealed class ReportingService(
             .ThenBy(item => item.Name)
             .ToArray();
         var completedSales = transactions.Where(item => item.Status == TransactionStatus.Completed).ToArray();
+        var moneyOrders = (await moneyOrdersTask).Where(item => item.BranchId == branchId).ToArray();
+        var linkedMoneyOrderIds = transactions
+            .Where(item => item.MoneyOrderId is not null)
+            .Select(item => item.MoneyOrderId!.Value)
+            .ToHashSet();
+        var standaloneIssuedMoneyOrders = moneyOrders
+            .Where(item => item.Status == MoneyOrderStatus.Issued && !linkedMoneyOrderIds.Contains(item.Id))
+            .ToArray();
+        var dailySalesByDate = completedSales
+            .GroupBy(item => DateOnly.FromDateTime(item.OccurredAt.ToLocalTime().DateTime))
+            .Select(group =>
+            {
+                var retailSales = group.Sum(transaction => transaction.Lines
+                    .Where(line => !IsServiceProduct(line.ProductId, products))
+                    .Sum(line => line.LineTotal + line.TaxAmount));
+                var serviceSales = group.Sum(transaction => transaction.Lines
+                    .Where(line => IsServiceProduct(line.ProductId, products))
+                    .Sum(line => line.LineTotal + line.TaxAmount)
+                    + transaction.ShippingCharge + transaction.ShippingTaxAmount
+                    + transaction.MoneyOrderAmount + transaction.MoneyOrderFee);
+                return new DailySalesSummary(
+                    group.Key,
+                    group.Count(),
+                    0,
+                    retailSales,
+                    serviceSales,
+                    retailSales + serviceSales);
+            })
+            .ToDictionary(item => item.Date);
+        foreach (var group in standaloneIssuedMoneyOrders
+            .GroupBy(item => DateOnly.FromDateTime(item.OccurredAt.ToLocalTime().DateTime)))
+        {
+            var standaloneMoneyOrderTotal = group.Sum(item => item.TotalAmount);
+            dailySalesByDate[group.Key] = dailySalesByDate.TryGetValue(group.Key, out var existing)
+                ? existing with
+                {
+                    StandaloneMoneyOrderCount = group.Count(),
+                    ServiceSales = existing.ServiceSales + standaloneMoneyOrderTotal,
+                    TotalSales = existing.TotalSales + standaloneMoneyOrderTotal
+                }
+                : new DailySalesSummary(group.Key, 0, group.Count(), 0m, standaloneMoneyOrderTotal, standaloneMoneyOrderTotal);
+        }
+        var dailySales = dailySalesByDate.Values.OrderByDescending(item => item.Date).ToArray();
         var shippingVolumes = completedSales.Where(item => item.ShippingRateId is not null)
             .GroupBy(item => (Zone: item.ShippingZoneName ?? "Unknown", Level: item.ShippingServiceLevel?.ToString() ?? "Unknown"))
             .Select(group => new ShippingVolumeSummary(group.Key.Zone, group.Key.Level, group.Count()))
             .OrderByDescending(item => item.Shipments)
             .ThenBy(item => item.ZoneName)
             .ToArray();
-        var moneyOrders = (await moneyOrdersTask).Where(item => item.BranchId == branchId).ToArray();
         var issuedMoneyOrders = moneyOrders.Where(item => item.Status == ApexPost.Domain.Enums.MoneyOrderStatus.Issued).ToArray();
         var failures = (await verificationsTask).Count(item =>
             item.BranchId == branchId && item.Status == IdentityVerificationStatus.Failed);
@@ -65,6 +114,7 @@ public sealed class ReportingService(
             branch,
             completedSales.Length,
             completedSales.Sum(item => item.TotalAmount),
+            dailySales,
             transactions.Count(item => item.Status == TransactionStatus.Voided),
             transactions.Count(item => item.Status == TransactionStatus.Refunded),
             lowStock,
@@ -76,4 +126,7 @@ public sealed class ReportingService(
             await notificationsTask,
             recentAudit);
     }
+
+    private static bool IsServiceProduct(Guid productId, IReadOnlyDictionary<Guid, ApexPost.Domain.Entities.Product> products) =>
+        products.TryGetValue(productId, out var product) && ServiceProductCategories.Contains(product.Category);
 }
