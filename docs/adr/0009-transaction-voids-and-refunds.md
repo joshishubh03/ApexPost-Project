@@ -1,0 +1,16 @@
+# ADR 0009: Manager-controlled transaction reversals
+
+- Status: Accepted
+- Date: 2026-10-25
+
+## Context
+
+The assignment requires controlled voids and refunds, with Branch Manager permission and a recorded reason.
+
+## Decision
+
+Represent transaction status in the domain and permit a one-way transition from Completed to Voided or Refunded. Require a non-empty reason and retain the manager ID and timestamp. The Application service rechecks active staff role and branch assignment, restores sold inventory, and publishes a correlated audit event. The current training slice supports full refunds only.
+
+## Consequences
+
+The user interface and authorization attributes provide convenient access control, while the service and domain enforce the business rule independently. Inventory and transaction status remain separate JSON collections; the service compensates a failed inventory write by rolling back the status update, but this is not equivalent to a database transaction.

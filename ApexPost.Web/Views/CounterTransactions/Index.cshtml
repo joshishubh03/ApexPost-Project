@@ -85,11 +85,36 @@ else
     else
     {
         <div class="table-responsive"><table class="table table-striped">
-            <thead><tr><th>Receipt</th><th>Time</th><th>Items</th><th>Payment</th><th class="text-end">Total</th></tr></thead>
+            <thead><tr><th>Receipt</th><th>Time</th><th>Items</th><th>Payment</th><th>Status</th><th class="text-end">Total</th>@if (User.IsInRole("BranchManager")) { <th>Manager action</th> }</tr></thead>
             <tbody>
             @foreach (var transaction in Model.Register.RecentTransactions)
             {
-                <tr><td>@transaction.TransactionNumber</td><td>@transaction.OccurredAt.ToLocalTime().ToString("g")</td><td>@transaction.Lines.Count product line(s)@(transaction.ShippingRateId is not null ? $" + {transaction.ShippingServiceLevel} shipping" : "")</td><td>@transaction.PaymentMethod</td><td class="text-end">@transaction.TotalAmount.ToString("C2", inr)</td></tr>
+                <tr>
+                    <td>@transaction.TransactionNumber</td>
+                    <td>@transaction.OccurredAt.ToLocalTime().ToString("g")</td>
+                    <td>@transaction.Lines.Count product line(s)@(transaction.ShippingRateId is not null ? $" + {transaction.ShippingServiceLevel} shipping" : "")</td>
+                    <td>@transaction.PaymentMethod</td>
+                    <td>@transaction.Status @if (transaction.ResolvedAt is not null) { <small class="text-muted d-block">@transaction.ResolutionReason</small> }</td>
+                    <td class="text-end">@transaction.TotalAmount.ToString("C2", inr)</td>
+                    @if (User.IsInRole("BranchManager"))
+                    {
+                        <td>
+                            @if (transaction.Status == TransactionStatus.Completed)
+                            {
+                                <form asp-action="Reverse" method="post" class="d-flex gap-1 align-items-start">
+                                    <input type="hidden" name="TransactionId" value="@transaction.Id" />
+                                    <input class="form-control form-control-sm" name="Reason" maxlength="250" minlength="3" required placeholder="Reason" aria-label="Reason for @transaction.TransactionNumber reversal" />
+                                    <button class="btn btn-sm btn-outline-warning" name="IsRefund" value="false" type="submit">Void</button>
+                                    <button class="btn btn-sm btn-outline-danger" name="IsRefund" value="true" type="submit">Refund</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span class="text-muted">Resolved</span>
+                            }
+                        </td>
+                    }
+                </tr>
             }
             </tbody>
         </table></div>

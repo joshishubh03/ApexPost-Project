@@ -18,6 +18,10 @@ public sealed record CounterTransaction
     public decimal ShippingCharge { get; }
     public decimal TotalAmount { get; }
     public PaymentMethod PaymentMethod { get; }
+    public TransactionStatus Status { get; }
+    public DateTimeOffset? ResolvedAt { get; }
+    public Guid? ResolvedByStaffId { get; }
+    public string? ResolutionReason { get; }
 
     public CounterTransaction(
         Guid id,
@@ -31,7 +35,11 @@ public sealed record CounterTransaction
         ShippingServiceLevel? shippingServiceLevel,
         decimal? shippingWeightKilograms,
         decimal shippingCharge,
-        PaymentMethod paymentMethod)
+        PaymentMethod paymentMethod,
+        TransactionStatus status = TransactionStatus.Completed,
+        DateTimeOffset? resolvedAt = null,
+        Guid? resolvedByStaffId = null,
+        string? resolutionReason = null)
     {
         if (id == Guid.Empty || branchId == Guid.Empty || staffId == Guid.Empty)
         {
@@ -43,6 +51,23 @@ public sealed record CounterTransaction
         if (!Enum.IsDefined(paymentMethod))
         {
             throw new ArgumentOutOfRangeException(nameof(paymentMethod));
+        }
+
+        if (!Enum.IsDefined(status))
+        {
+            throw new ArgumentOutOfRangeException(nameof(status));
+        }
+
+        if (status == TransactionStatus.Completed &&
+            (resolvedAt is not null || resolvedByStaffId is not null || resolutionReason is not null))
+        {
+            throw new ArgumentException("Completed transactions cannot contain reversal details.", nameof(status));
+        }
+
+        if (status != TransactionStatus.Completed &&
+            (resolvedAt is null || resolvedByStaffId is null || resolvedByStaffId == Guid.Empty || string.IsNullOrWhiteSpace(resolutionReason)))
+        {
+            throw new ArgumentException("A void or refund requires an actor, time, and reason.", nameof(status));
         }
 
         if (lines.Count == 0 && shippingRateId is null)
@@ -81,5 +106,39 @@ public sealed record CounterTransaction
         ShippingCharge = shippingCharge;
         TotalAmount = decimal.Round(Subtotal + ShippingCharge, 2, MidpointRounding.AwayFromZero);
         PaymentMethod = paymentMethod;
+        Status = status;
+        ResolvedAt = resolvedAt;
+        ResolvedByStaffId = resolvedByStaffId;
+        ResolutionReason = resolutionReason?.Trim();
+    }
+
+    public CounterTransaction Void(Guid managerId, string reason, DateTimeOffset occurredAt) =>
+        Resolve(TransactionStatus.Voided, managerId, reason, occurredAt);
+
+    public CounterTransaction Refund(Guid managerId, string reason, DateTimeOffset occurredAt) =>
+        Resolve(TransactionStatus.Refunded, managerId, reason, occurredAt);
+
+    private CounterTransaction Resolve(TransactionStatus status, Guid managerId, string reason, DateTimeOffset occurredAt)
+    {
+        if (Status != TransactionStatus.Completed)
+        {
+            throw new InvalidOperationException("Only a completed transaction can be voided or refunded.");
+        }
+
+        if (managerId == Guid.Empty)
+        {
+            throw new ArgumentException("The manager performing the reversal is required.", nameof(managerId));
+        }
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        if (reason.Trim().Length > 250)
+        {
+            throw new ArgumentException("The reason cannot exceed 250 characters.", nameof(reason));
+        }
+
+        return new CounterTransaction(
+            Id, TransactionNumber, BranchId, StaffId, OccurredAt, Lines, ShippingRateId,
+            ShippingZoneName, ShippingServiceLevel, ShippingWeightKilograms, ShippingCharge,
+            PaymentMethod, status, occurredAt, managerId, reason);
     }
 }

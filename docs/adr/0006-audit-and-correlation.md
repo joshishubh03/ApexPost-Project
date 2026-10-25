@@ -13,6 +13,8 @@ Model audit records explicitly and write them through an Infrastructure adapter.
 
 Counter transaction completion is published as an application event after the stock and transaction JSON writes succeed. Its handler appends a structured audit record containing actor, branch, timestamp, action, amount, transaction ID, and correlation ID. Do not store payment credentials or identity document values in audit records.
 
+Money order issuance follows the same event-to-audit path. Identity verification attempts are stored separately with their result, actor, branch, timestamp, correlation ID, document type, and masked identifier; a failed attempt is recorded but does not issue an order.
+
 ## Consequences
 
 Audit persistence is best-effort after the business write: a failed audit append is logged with the correlation ID and does not make the completed sale appear to fail (which could cause a duplicate retry). This is an acknowledged consistency gap in the JSON implementation; a database-backed transactional outbox is the intended production direction. JSON persistence cannot atomically commit inventory, a transaction, and an audit event together. Never log raw identity numbers or secrets.

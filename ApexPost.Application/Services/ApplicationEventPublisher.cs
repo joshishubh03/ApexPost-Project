@@ -5,21 +5,21 @@ namespace ApexPost.Application.Services;
 /// <summary>
 /// Dispatches an application event to its registered handlers.
 /// </summary>
-public sealed class ApplicationEventPublisher<TEvent>(
-    IEnumerable<IApplicationEventHandler<TEvent>> handlers) : IApplicationEventPublisher
+public sealed class ApplicationEventPublisher(
+    IEnumerable<IApplicationEventHandler> handlers) : IApplicationEventPublisher
 {
     public async Task PublishAsync<TPublishedEvent>(
         TPublishedEvent applicationEvent,
         CancellationToken cancellationToken = default)
     {
-        if (applicationEvent is not TEvent typedEvent)
+        if (applicationEvent is null)
         {
-            return;
+            throw new ArgumentNullException(nameof(applicationEvent));
         }
 
-        foreach (var handler in handlers)
+        foreach (var handler in handlers.Where(handler => handler.EventType.IsInstanceOfType(applicationEvent)))
         {
-            await handler.HandleAsync(typedEvent, cancellationToken);
+            await handler.HandleAsync(applicationEvent, cancellationToken);
         }
     }
 }

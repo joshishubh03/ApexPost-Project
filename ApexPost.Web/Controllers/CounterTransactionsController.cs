@@ -107,6 +107,56 @@ public sealed class CounterTransactionsController(
         return RedirectToAction(nameof(Index), new { branchId });
     }
 
+    [HttpPost]
+    [Authorize(Roles = "BranchManager")]
+    public async Task<IActionResult> Reverse(
+        ReverseCounterTransactionInputModel input,
+        CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(User.FindFirstValue("branch_id"), out var branchId) ||
+            !Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var managerId))
+        {
+            return Forbid();
+        }
+
+        if (!ModelState.IsValid)
+        {
+            TempData["ErrorMessage"] = "Enter a reason between 3 and 250 characters.";
+            return RedirectToAction(nameof(Index), new { branchId });
+        }
+
+        try
+        {
+            var transaction = await transactionService.ReverseAsync(
+                branchId,
+                input.TransactionId,
+                managerId,
+                input.IsRefund,
+                input.Reason,
+                CorrelationIdMiddleware.GetCorrelationId(HttpContext),
+                cancellationToken);
+            TempData["StatusMessage"] = $"Transaction {transaction.TransactionNumber} {transaction.Status.ToString().ToLowerInvariant()}. Stock was returned and the action was recorded.";
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (InvalidOperationException exception)
+        {
+            TempData["ErrorMessage"] = exception.Message;
+        }
+        catch (ArgumentException exception)
+        {
+            TempData["ErrorMessage"] = exception.Message;
+        }
+        catch (KeyNotFoundException exception)
+        {
+            TempData["ErrorMessage"] = exception.Message;
+        }
+
+        return RedirectToAction(nameof(Index), new { branchId });
+    }
+
     private bool CanCreateTransactions() =>
         User.IsInRole(nameof(StaffRole.Administrator)) ||
         User.IsInRole(nameof(StaffRole.BranchManager)) ||

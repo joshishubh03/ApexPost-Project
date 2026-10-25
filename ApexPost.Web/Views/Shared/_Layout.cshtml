@@ -21,6 +21,11 @@
                         <a asp-controller="Inventory" asp-action="Index" class="btn btn-outline-primary btn-sm">Inventory</a>
                         <a asp-controller="Shipping" asp-action="Index" class="btn btn-outline-primary btn-sm">Shipping</a>
                         <a asp-controller="CounterTransactions" asp-action="Index" class="btn btn-outline-primary btn-sm">Counter</a>
+                        <a asp-controller="MoneyOrders" asp-action="Index" class="btn btn-outline-primary btn-sm">Money orders</a>
+                        @if (User.IsInRole("Administrator") || User.IsInRole("BranchManager") || User.IsInRole("Auditor"))
+                        {
+                            <a asp-controller="Reports" asp-action="Index" class="btn btn-outline-primary btn-sm">Reports</a>
+                        }
                         @if (User.IsInRole("Administrator"))
                         {
                             <a asp-controller="Administration" asp-action="Branches" class="btn btn-outline-primary btn-sm">Branches</a>

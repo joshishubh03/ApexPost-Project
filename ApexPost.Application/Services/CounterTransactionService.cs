@@ -11,6 +11,7 @@ public sealed class CounterTransactionService(
     IProductRepository productRepository,
     IInventoryRepository inventoryRepository,
     ICounterTransactionRepository transactionRepository,
+    IStaffRepository staffRepository,
     IApplicationEventPublisher eventPublisher,
     InventoryManagementService inventoryManagementService,
     ShippingRateService shippingRateService)
@@ -148,5 +149,104 @@ public sealed class CounterTransactionService(
             correlationId), CancellationToken.None);
 
         return transaction;
+    }
+
+    public async Task<CounterTransaction> ReverseAsync(
+        Guid branchId,
+        Guid transactionId,
+        Guid managerId,
+        bool refund,
+        string reason,
+        string correlationId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        if (reason.Trim().Length > 250)
+        {
+            throw new ArgumentException("The reason cannot exceed 250 characters.", nameof(reason));
+        }
+
+        var branch = await branchRepository.GetByIdAsync(branchId, cancellationToken)
+            ?? throw new KeyNotFoundException("The branch could not be found.");
+        if (!branch.IsOpen)
+        {
+            throw new InvalidOperationException("A transaction cannot be reversed at a closed branch.");
+        }
+
+        var manager = (await staffRepository.GetAllAsync(cancellationToken))
+            .FirstOrDefault(staff => staff.Id == managerId);
+        if (manager is null || !manager.IsActive || manager.Role != StaffRole.BranchManager || manager.BranchId != branchId)
+        {
+            throw new UnauthorizedAccessException("Only an active Branch Manager assigned to this branch can reverse a transaction.");
+        }
+
+        var transactions = (await transactionRepository.GetAllAsync(cancellationToken)).ToList();
+        var transactionIndex = transactions.FindIndex(item => item.Id == transactionId && item.BranchId == branchId);
+        if (transactionIndex < 0)
+        {
+            throw new KeyNotFoundException("The transaction could not be found for this branch.");
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var original = transactions[transactionIndex];
+        var reversed = refund
+            ? original.Refund(managerId, reason, now)
+            : original.Void(managerId, reason, now);
+
+        var inventory = (await inventoryRepository.GetAllAsync(cancellationToken)).ToList();
+        foreach (var line in original.Lines)
+        {
+            var index = inventory.FindIndex(item => item.BranchId == branchId && item.ProductId == line.ProductId);
+            if (index < 0)
+            {
+                throw new InvalidOperationException($"Inventory for {line.ProductName} is missing; the reversal was not saved.");
+            }
+
+            inventory[index] = inventory[index].ApplyChange(
+                line.Quantity,
+                inventory[index].ReorderLevel,
+                $"{(refund ? "Refund" : "Void")} {original.TransactionNumber}",
+                managerId,
+                now);
+        }
+
+        transactions[transactionIndex] = reversed;
+        // Mark the receipt resolved before returning stock so a retry cannot
+        // restock it twice. Compensate if the inventory collection write fails.
+        await transactionRepository.SaveAllAsync(transactions, CancellationToken.None);
+        try
+        {
+            await inventoryRepository.SaveAllAsync(inventory, CancellationToken.None);
+        }
+        catch (Exception inventoryException) when (inventoryException is not OperationCanceledException)
+        {
+            try
+            {
+                transactions[transactionIndex] = original;
+                await transactionRepository.SaveAllAsync(transactions, CancellationToken.None);
+            }
+            catch (Exception compensationException) when (compensationException is not OperationCanceledException)
+            {
+                throw new InvalidOperationException(
+                    "Inventory could not be restored and the transaction status could not be rolled back. Reconcile this receipt before processing it again.",
+                    new AggregateException(inventoryException, compensationException));
+            }
+
+            throw new InvalidOperationException(
+                "Inventory could not be restored. The transaction reversal was rolled back; retry after checking the inventory store.",
+                inventoryException);
+        }
+
+        await eventPublisher.PublishAsync(new CounterTransactionReversedEvent(
+            reversed.Id,
+            reversed.TransactionNumber,
+            reversed.BranchId,
+            managerId,
+            now,
+            reversed.TotalAmount,
+            reversed.Status.ToString(),
+            correlationId), CancellationToken.None);
+
+        return reversed;
     }
 }

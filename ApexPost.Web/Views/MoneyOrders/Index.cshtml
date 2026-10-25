@@ -1,0 +1,61 @@
+@model MoneyOrdersPageModel
+@using ApexPost.Domain.Enums
+@{
+    ViewData["Title"] = "Money orders";
+    var inr = System.Globalization.CultureInfo.GetCultureInfo("en-IN");
+}
+
+<h1>Money orders</h1>
+<p class="text-muted">Issue branch money orders with configurable fees and identity checks for higher amounts.</p>
+@if (TempData["StatusMessage"] is string status) { <div class="alert alert-success">@status</div> }
+@if (TempData["ErrorMessage"] is string error) { <div class="alert alert-danger">@error</div> }
+
+@if (User.IsInRole(nameof(StaffRole.Administrator)))
+{
+    <form asp-action="Index" method="get" class="row g-2 mb-4">
+        <div class="col-md-5"><label for="branchId" class="form-label">Branch</label><select id="branchId" name="branchId" class="form-select"><option value="">Select a branch</option>@foreach (var branch in Model.Branches) { <option value="@branch.Id" selected="@(branch.Id == Model.SelectedBranchId)">@branch.Code — @branch.Name</option> }</select></div>
+        <div class="col-auto align-self-end"><button class="btn btn-outline-primary" type="submit">Open money orders</button></div>
+    </form>
+}
+
+@if (Model.SelectedBranchId is null)
+{
+    <div class="alert alert-info">Select a branch to view its money orders.</div>
+}
+else
+{
+    @if (Model.CanIssue)
+    {
+        <form asp-action="Issue" method="post" class="card card-body mb-4">
+            <input type="hidden" name="BranchId" value="@Model.SelectedBranchId" />
+            <h2 class="h5">Issue a money order</h2>
+            <p class="text-muted">Fee: @Model.FeeAmount.ToString("C2", inr). Identity verification is required when the amount is greater than @Model.IdentityVerificationThreshold.ToString("C2", inr).</p>
+            <div class="row g-3">
+                <div class="col-md-4"><label for="SenderName" class="form-label">Sender</label><input id="SenderName" name="SenderName" class="form-control" maxlength="100" required /></div>
+                <div class="col-md-4"><label for="RecipientName" class="form-label">Recipient</label><input id="RecipientName" name="RecipientName" class="form-control" maxlength="100" required /></div>
+                <div class="col-md-4"><label for="Amount" class="form-label">Amount</label><input id="Amount" name="Amount" type="number" min="0.01" max="10000000" step="0.01" class="form-control" required /></div>
+                <div class="col-md-4"><label for="DocumentType" class="form-label">Identity document type</label><select id="DocumentType" name="DocumentType" class="form-select"><option value="">Not required / select if prompted</option><option value="NationalId">National ID</option><option value="Passport">Passport</option><option value="DrivingLicence">Driving licence</option></select></div>
+                <div class="col-md-4"><label for="DocumentIdentifier" class="form-label">Document identifier</label><input id="DocumentIdentifier" name="DocumentIdentifier" class="form-control" maxlength="40" autocomplete="off" /></div>
+                <div class="col-12"><button type="submit" class="btn btn-primary">Verify and issue</button><span class="ms-2 text-muted small">Raw document identifiers are used only for the simulated check and are never stored.</span></div>
+            </div>
+        </form>
+    }
+
+    <h2 class="h5">Recent money orders</h2>
+    @if (Model.Orders.Count == 0)
+    {
+        <p class="text-muted">No money orders have been issued for this branch.</p>
+    }
+    else
+    {
+        <div class="table-responsive"><table class="table table-striped">
+            <thead><tr><th>Number</th><th>Issued</th><th>Sender</th><th>Recipient</th><th>Verification</th><th class="text-end">Amount</th><th class="text-end">Fee</th><th class="text-end">Total</th></tr></thead>
+            <tbody>
+            @foreach (var order in Model.Orders)
+            {
+                <tr><td>@order.MoneyOrderNumber</td><td>@order.OccurredAt.ToLocalTime().ToString("g")</td><td>@order.SenderName</td><td>@order.RecipientName</td><td>@order.VerificationStatus@if (order.MaskedDocumentIdentifier is not null) { <span> (@order.DocumentType, @order.MaskedDocumentIdentifier)</span> }</td><td class="text-end">@order.Amount.ToString("C2", inr)</td><td class="text-end">@order.Fee.ToString("C2", inr)</td><td class="text-end">@order.TotalAmount.ToString("C2", inr)</td></tr>
+            }
+            </tbody>
+        </table></div>
+    }
+}

@@ -1,3 +1,4 @@
+using System.Threading.RateLimiting;
 using ApexPost.Application.Abstractions;
 using ApexPost.Application.Services;
 using ApexPost.Infrastructure;
@@ -8,12 +9,17 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.AspNetCore.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 var dataDirectory = Path.GetFullPath(
     builder.Configuration["ApexPost:DataDirectory"] ??
     Path.Combine(builder.Environment.ContentRootPath, "..", "data"));
 var demoPassword = builder.Configuration["DemoData:Password"] ?? "CounterDemo!2026";
+var moneyOrderPolicy = new ApexPost.Application.Models.MoneyOrderPolicy(
+    builder.Configuration.GetValue<decimal>("MoneyOrders:IdentityVerificationThreshold", 10_000m),
+    builder.Configuration.GetValue<decimal>("MoneyOrders:FeeAmount", 50m),
+    builder.Configuration["MoneyOrders:DemoVerificationSuccessPrefix"] ?? "DEMO-VALID-");
 
 if (builder.Environment.IsDevelopment())
 {
@@ -23,14 +29,56 @@ if (builder.Environment.IsDevelopment())
 builder.Services.AddControllersWithViews(options =>
 {
     options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
+    options.Filters.AddService<RequestTimingActionFilter>();
+    options.Filters.AddService<MvcAuditActionFilter>();
 });
+builder.Services.AddScoped<RequestTimingActionFilter>();
+builder.Services.AddScoped<MvcAuditActionFilter>();
 builder.Services.AddScoped<ApexPost.Application.Abstractions.IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<StaffManagementService>();
 builder.Services.AddScoped<ProductCatalogueService>();
 builder.Services.AddScoped<InventoryManagementService>();
 builder.Services.AddScoped<ShippingRateService>();
 builder.Services.AddScoped<CounterTransactionService>();
-builder.Services.AddApexPostInfrastructure(dataDirectory, demoPassword);
+builder.Services.AddScoped<MoneyOrderService>();
+builder.Services.AddScoped<ReportingService>();
+builder.Services.AddScoped<PartnerTrackingService>();
+builder.Services.AddSingleton(moneyOrderPolicy);
+builder.Services.AddCors(options =>
+{
+    var origins = builder.Configuration.GetSection("PartnerApi:AllowedCorsOrigins").Get<string[]>() ?? [];
+    options.AddPolicy("TrackingWidget", policy => policy
+        .WithOrigins(origins)
+        .WithMethods("GET")
+        .WithHeaders("X-API-Key", "Content-Type"));
+});
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("login", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
+    options.AddPolicy("partner", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 30,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
+});
+builder.Services.AddApexPostInfrastructure(
+    dataDirectory,
+    demoPassword,
+    moneyOrderPolicy,
+    builder.Environment.IsDevelopment());
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
@@ -67,11 +115,18 @@ else
 }
 
 app.UseMiddleware<RequestExceptionLoggingMiddleware>();
+app.UseMiddleware<SecurityHeadersMiddleware>();
+app.UseMiddleware<MaintenanceModeMiddleware>();
 
 app.UseHttpsRedirection();
 app.UseRouting();
+app.UseCors();
+app.UseRateLimiter();
+app.UseMiddleware<AdminIpRestrictionMiddleware>();
+app.UseMiddleware<PartnerApiKeyMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 app.MapStaticAssets();
 app.MapControllerRoute(
     name: "default",

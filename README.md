@@ -4,7 +4,7 @@ Assignment 2 implementation of a secure retail and postal counter platform using
 
 ## Current stage
 
-The staff-auth slice adds branch and staff domain records, JSON demo data, and cookie-based staff sign-in. The branch-staff-management slice adds Administrator-only branch and staff management. The product-catalogue slice adds product search and management, with 30 seeded demo products. The inventory slice tracks branch-specific quantities and a reasoned movement history. The shipping-rates slice defines destination zones, service levels, and weight-based quotes. The counter-transactions slice records product sales, optional shipping, payment method, and inventory deductions. Business capabilities continue in short-lived feature branches and merge into main through pull requests.
+The staff-auth slice adds branch and staff domain records, JSON demo data, and cookie-based staff sign-in. The branch-staff-management slice adds Administrator-only branch and staff management. The product-catalogue slice adds product search and management, with 30 seeded demo products. The inventory slice tracks branch-specific quantities and a reasoned movement history. The shipping-rates slice defines destination zones, service levels, and weight-based quotes. Counter transactions record product sales, optional shipping, payment method, and inventory deductions. Branch Managers can void or fully refund completed receipts with a reason. Branch reports summarize sales, stock, shipping, money orders, identity checks, and audit events. The money-order slice adds configurable fees, high-value identity verification, and masked document recording. Development seeding supplies 40 historical transactions.
 
 ## Solution projects
 
@@ -27,9 +27,9 @@ PowerShell commands:
     dotnet restore ApexPost.slnx
     dotnet build ApexPost.slnx
     dotnet test ApexPost.slnx
-    dotnet run --project ApexPost.Web
+    dotnet run --project ApexPost.Web --urls https://localhost:5001
 
-The demo data is seeded on first run in Development. All seeded accounts use the password CounterDemo!2026. Example accounts:
+The demo data is seeded on first run in Development. The seed creates five branches, at least 20 staff, 30 products, 10 shipping zones with Standard and Express rates, opening inventory, and 40 historical transactions when both the inventory and transaction files are empty. All seeded accounts use the password CounterDemo!2026. Example accounts:
 
 - admin@apexpost.local
 - manager1@apexpost.local
@@ -59,6 +59,32 @@ Signed-in staff can view the shipping schedule and calculate a quote. Administra
 ## Counter transactions
 
 Counter Clerks, Branch Managers, and Administrators can record sales for their assigned branch. A transaction can contain multiple catalogue products and an optional shipping service. Completing a sale checks available stock, stores price and product snapshots, records the payment method, and decreases inventory. Payment methods are recorded for the training workflow; no external payment is processed. Transactions are stored in `data/counter-transactions.json`.
+
+### Voids and refunds
+
+Branch Managers can void or fully refund a completed counter transaction for their assigned branch. Both actions require a reason, are recorded with the manager and timestamp, restore the transaction's product quantities to branch inventory, and produce an audit event with the request correlation ID. A transaction can be reversed only once. Partial refunds and money-order refunds are not implemented yet. Inventory and transaction status are stored in separate JSON files, so a process or file failure between writes can leave them out of sync; this training adapter does not provide cross-file atomicity.
+
+## Branch reports
+
+Administrators can select a branch; Branch Managers and Auditors are restricted to their assigned branch. The report summarizes completed sales, voids and refunds, low-stock active products, shipping volume by zone and service, money orders, failed identity checks, and the latest 50 audit events. Independent JSON reads are loaded concurrently with `Task.WhenAll`.
+
+## Security and partner tracking
+
+The web pipeline adds security headers, an optional maintenance response (`503`, with `/health` left available), loopback-only default access to administrative mutation routes, a five-attempt-per-minute login limit, and a 30-request-per-minute partner API limit. Set `PartnerApi__ApiKey` through the environment or a secret store before using `/api/partner/tracking/{transactionNumber}`. Set `PartnerApi__AllowedCorsOrigins__0` to the approved tracking-widget origin; CORS does not replace the API key. Configure `Security__AdminAllowedIpAddresses__0` for the deployment's admin IPs. When deploying behind a reverse proxy, configure trusted forwarded headers before relying on client IP restrictions.
+
+Example local configuration and request:
+
+    $env:PartnerApi__ApiKey = "replace-with-a-local-secret"
+    $env:PartnerApi__AllowedCorsOrigins__0 = "https://widget.example"
+    dotnet run --project ApexPost.Web
+    $trackingNumber = (Get-Content data/counter-transactions.json | ConvertFrom-Json | Where-Object { $_.shippingRateId } | Select-Object -First 1).transactionNumber
+    curl.exe -H "X-API-Key: $env:PartnerApi__ApiKey" "https://localhost:5001/api/partner/tracking/$trackingNumber"
+
+The tracking response contains receipt-level service, zone, weight, status, and accepted time only; it does not expose customer names or identity data. `AUDIT-SAMPLE.json` contains synthetic audit entries. MVC action filters audit successful branch, staff, product, stock, and shipping configuration changes; transaction services publish events for sales, reversals, and money orders. Slow MVC actions are logged at the configured `Diagnostics:SlowActionThresholdMilliseconds` threshold.
+
+## Money orders and identity verification
+
+Counter Clerks, Branch Managers, and Administrators can issue money orders for an open branch. The flat fee and identity verification threshold are configured in `ApexPost.Web/appsettings.json`; the included values (`50.00` and `10000.00`) are demo defaults that can be replaced with trainer-approved rules. Amounts above the threshold require a successful identity check before an order is saved. In Development, the local simulated verifier accepts synthetic identifiers beginning with `DEMO-VALID-`; for example, `DEMO-VALID-1234`. Other values fail verification. Outside Development, verification fails closed until a real provider is configured. Raw identifiers are never persisted. The verification JSON records store the document type, outcome, and masked identifier; issued orders link to successful verification records. Replace the simulated verifier before any real use.
 
 Never commit real secrets or production personal data.
 
