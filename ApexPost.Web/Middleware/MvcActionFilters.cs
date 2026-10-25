@@ -39,6 +39,9 @@ public sealed class MvcAuditActionFilter(
     private static readonly HashSet<(string Controller, string Action)> AuditedActions =
     [
         ("Administration", "CreateBranch"),
+        ("Administration", "SetBranchOpen"),
+        ("Administration", "CreateTerminal"),
+        ("Administration", "SetTerminalActive"),
         ("Administration", "CreateStaff"),
         ("Administration", "SetStaffActive"),
         ("Catalog", "Create"),

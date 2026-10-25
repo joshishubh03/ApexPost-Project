@@ -8,6 +8,7 @@ public sealed record CounterTransaction
     public string TransactionNumber { get; }
     public Guid BranchId { get; }
     public Guid StaffId { get; }
+    public Guid? TerminalId { get; }
     public DateTimeOffset OccurredAt { get; }
     public IReadOnlyList<TransactionLine> Lines { get; }
     public Guid? ShippingRateId { get; }
@@ -53,7 +54,8 @@ public sealed record CounterTransaction
         decimal? parcelLengthCentimeters = null,
         decimal? parcelWidthCentimeters = null,
         decimal? parcelHeightCentimeters = null,
-        decimal shippingTaxRatePercent = 0m)
+        decimal shippingTaxRatePercent = 0m,
+        Guid? terminalId = null)
     {
         if (id == Guid.Empty || branchId == Guid.Empty || staffId == Guid.Empty)
         {
@@ -138,6 +140,7 @@ public sealed record CounterTransaction
         TransactionNumber = transactionNumber.Trim();
         BranchId = branchId;
         StaffId = staffId;
+        TerminalId = terminalId;
         OccurredAt = occurredAt;
         Lines = lines.ToArray();
         ShippingRateId = shippingRateId;
@@ -192,6 +195,6 @@ public sealed record CounterTransaction
             ShippingZoneName, ShippingServiceLevel, ShippingWeightKilograms, ShippingCharge,
             PaymentMethod, status, occurredAt, managerId, reason, ShippingRecipientName,
             ShippingAddress, ParcelLengthCentimeters, ParcelWidthCentimeters, ParcelHeightCentimeters,
-            ShippingTaxRatePercent);
+            ShippingTaxRatePercent, TerminalId);
     }
 }

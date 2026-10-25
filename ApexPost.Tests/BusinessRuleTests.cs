@@ -9,6 +9,15 @@ namespace ApexPost.Tests;
 public sealed class BusinessRuleTests
 {
     [Fact]
+    public void Low_stock_rule_uses_an_injected_predicate()
+    {
+        var rule = new LowStockRule(static (quantity, reorderLevel) => quantity < reorderLevel);
+
+        Assert.True(rule.IsLowStock(4, 5));
+        Assert.False(rule.IsLowStock(5, 5));
+    }
+
+    [Fact]
     public void Inventory_change_cannot_make_stock_negative()
     {
         var inventory = new InventoryItem(Guid.NewGuid(), Guid.NewGuid(), 2, 1, []);

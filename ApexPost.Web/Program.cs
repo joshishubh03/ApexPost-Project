@@ -56,6 +56,7 @@ builder.Services.AddScoped<ShippingRateService>();
 builder.Services.AddScoped<CounterTransactionService>();
 builder.Services.AddScoped<MoneyOrderService>();
 builder.Services.AddScoped<ReportingService>();
+builder.Services.AddSingleton(ApexPost.Application.Models.LowStockRule.AtOrBelowReorderLevel);
 builder.Services.AddScoped<PartnerTrackingService>();
 builder.Services.AddSingleton(moneyOrderPolicy);
 builder.Services.AddSingleton(taxPolicy);

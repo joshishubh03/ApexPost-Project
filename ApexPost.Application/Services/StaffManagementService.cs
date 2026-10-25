@@ -7,7 +7,8 @@ namespace ApexPost.Application.Services;
 public sealed class StaffManagementService(
     IBranchRepository branchRepository,
     IStaffRepository staffRepository,
-    IStaffPasswordService passwordService)
+    IStaffPasswordService passwordService,
+    ICounterTerminalRepository terminalRepository)
 {
     public Task<IReadOnlyList<Branch>> GetBranchesAsync(CancellationToken cancellationToken = default) =>
         branchRepository.GetAllAsync(cancellationToken);
@@ -19,10 +20,13 @@ public sealed class StaffManagementService(
         string code,
         string name,
         string region,
+        TimeOnly openingTime,
+        TimeOnly closingTime,
         CancellationToken cancellationToken = default)
     {
         var branches = (await branchRepository.GetAllAsync(cancellationToken)).ToList();
-        var branch = new Branch(Guid.NewGuid(), code, name, region, isOpen: true);
+        var branch = new Branch(Guid.NewGuid(), code, name, region, isOpen: true,
+            openingTime: openingTime, closingTime: closingTime);
 
         if (branches.Any(existing => string.Equals(existing.Code, branch.Code, StringComparison.OrdinalIgnoreCase)))
         {
@@ -30,6 +34,44 @@ public sealed class StaffManagementService(
         }
 
         branches.Add(branch);
+        await branchRepository.SaveAllAsync(branches, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<CounterTerminal>> GetTerminalsAsync(CancellationToken cancellationToken = default) =>
+        await terminalRepository.GetAllAsync(cancellationToken);
+
+    public async Task CreateTerminalAsync(Guid branchId, string code, string name, CancellationToken cancellationToken = default)
+    {
+        if (await branchRepository.GetByIdAsync(branchId, cancellationToken) is null)
+            throw new InvalidOperationException("Select an existing branch for this terminal.");
+
+        var terminals = (await terminalRepository.GetAllAsync(cancellationToken)).ToList();
+        var terminal = new CounterTerminal(Guid.NewGuid(), branchId, code, name);
+        if (terminals.Any(existing => existing.BranchId == branchId &&
+            string.Equals(existing.Code, terminal.Code, StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException("A terminal with this code already exists at the selected branch.");
+
+        terminals.Add(terminal);
+        await terminalRepository.SaveAllAsync(terminals, cancellationToken);
+    }
+
+    public async Task SetTerminalActiveAsync(Guid id, bool isActive, CancellationToken cancellationToken = default)
+    {
+        var terminals = (await terminalRepository.GetAllAsync(cancellationToken)).ToList();
+        var index = terminals.FindIndex(terminal => terminal.Id == id);
+        if (index < 0)
+            throw new KeyNotFoundException("The counter terminal could not be found.");
+        terminals[index] = terminals[index].WithActiveStatus(isActive);
+        await terminalRepository.SaveAllAsync(terminals, cancellationToken);
+    }
+
+    public async Task SetBranchOpenStatusAsync(Guid id, bool isOpen, CancellationToken cancellationToken = default)
+    {
+        var branches = (await branchRepository.GetAllAsync(cancellationToken)).ToList();
+        var index = branches.FindIndex(branch => branch.Id == id);
+        if (index < 0)
+            throw new KeyNotFoundException("The branch could not be found.");
+        branches[index] = branches[index].WithOpenStatus(isOpen);
         await branchRepository.SaveAllAsync(branches, cancellationToken);
     }
 

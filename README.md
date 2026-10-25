@@ -29,7 +29,7 @@ PowerShell commands:
     dotnet test ApexPost.slnx
     dotnet run --project ApexPost.Web --urls https://localhost:5001
 
-The demo data is seeded on first run in Development. The seed creates five branches, at least 20 staff, 30 products, 10 shipping zones with Standard and Express rates, opening inventory, and 40 historical transactions when both the inventory and transaction files are empty. All seeded accounts use the password CounterDemo!2026. Example accounts:
+The demo data is seeded on first run in Development. The seed creates five branches, two active counter terminals per branch, at least 20 staff, 30 products, 10 shipping zones with Standard and Express rates, opening inventory, and 40 historical transactions when both the inventory and transaction files are empty. All seeded accounts use the password CounterDemo!2026. Example accounts:
 
 - admin@apexpost.local
 - manager1@apexpost.local
@@ -40,7 +40,7 @@ The demo password is public training data and must never be reused outside this 
 
 ## Branch and staff administration
 
-Sign in as the seeded Administrator to use the **Branches** and **Staff** links. Administrators can create branches, create staff accounts, and activate or deactivate accounts. New passwords are hashed before they are saved. Non-administrator staff must be assigned to an existing branch, and the last active Administrator cannot be deactivated.
+Sign in as the seeded Administrator to use the **Branches** and **Staff** links. Administrators can create branches with opening and closing times, change a branch's operational status, add or deactivate branch counter terminals, create staff accounts, and activate or deactivate accounts. New passwords are hashed before they are saved. Non-administrator staff must be assigned to an existing branch, and the last active Administrator cannot be deactivated.
 
 The MVC administration controller calls `StaffManagementService` in the Application layer. That service uses repository interfaces; Infrastructure implements those interfaces with the JSON files in `data/`. This keeps web form handling, business rules, and persistence in their respective layers.
 
@@ -58,7 +58,7 @@ Signed-in staff can view the shipping schedule and calculate a quote. Administra
 
 ## Counter transactions
 
-Counter Clerks, Branch Managers, and Administrators can record sales for their assigned branch. A transaction can contain multiple catalogue products and an optional shipping service. Completing a sale checks available stock, stores price and product snapshots, records the payment method, and decreases inventory. Line and shipping tax rates and amounts are snapshotted on the receipt. Configure category rates in `ApexPost.Web/appsettings.json` under `Taxation:Rates`; the demo defaults are 0% for Standard and Shipping because the assignment provides no approved tax values. Unknown categories fail closed. Payment methods are recorded for the training workflow; no external payment is processed. Transactions are stored in `data/counter-transactions.json`.
+Counter Clerks, Branch Managers, and Administrators can record sales for their assigned branch. A transaction can contain multiple catalogue products and an optional shipping service in one basket. Checkout requires an active terminal assigned to the branch and snapshots its ID on the receipt. Completing a sale checks available stock, stores price and product snapshots, records the payment method, and decreases inventory. Line and shipping tax rates and amounts are snapshotted on the receipt. Configure category rates in `ApexPost.Web/appsettings.json` under `Taxation:Rates`; the demo defaults are 0% for Standard and Shipping because the assignment provides no approved tax values. Unknown categories fail closed. Payment methods are recorded for the training workflow; no external payment is processed. Transactions are stored in `data/counter-transactions.json`.
 
 ### Voids and refunds
 

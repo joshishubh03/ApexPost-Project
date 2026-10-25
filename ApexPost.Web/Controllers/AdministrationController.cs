@@ -12,7 +12,7 @@ public sealed class AdministrationController(StaffManagementService staffManagem
     [HttpGet]
     public async Task<IActionResult> Branches(CancellationToken cancellationToken)
     {
-        ViewData["Branches"] = await staffManagementService.GetBranchesAsync(cancellationToken);
+        await PopulateBranchesPageAsync(cancellationToken);
         return View(new CreateBranchInputModel());
     }
 
@@ -21,28 +21,81 @@ public sealed class AdministrationController(StaffManagementService staffManagem
     {
         if (!ModelState.IsValid)
         {
-            ViewData["Branches"] = await staffManagementService.GetBranchesAsync(cancellationToken);
+            await PopulateBranchesPageAsync(cancellationToken);
             return View("Branches", input);
         }
 
         try
         {
-            await staffManagementService.CreateBranchAsync(input.Code, input.Name, input.Region, cancellationToken);
+            if (input.OpeningTime >= input.ClosingTime)
+                throw new ArgumentException("Closing time must be later than opening time.");
+            await staffManagementService.CreateBranchAsync(input.Code, input.Name, input.Region,
+                input.OpeningTime, input.ClosingTime, cancellationToken);
             TempData["StatusMessage"] = $"Branch {input.Code.Trim().ToUpperInvariant()} was created.";
             return RedirectToAction(nameof(Branches));
         }
         catch (InvalidOperationException exception)
         {
             ModelState.AddModelError(nameof(input.Code), exception.Message);
-            ViewData["Branches"] = await staffManagementService.GetBranchesAsync(cancellationToken);
+            await PopulateBranchesPageAsync(cancellationToken);
             return View("Branches", input);
         }
         catch (ArgumentException exception)
         {
             ModelState.AddModelError(string.Empty, exception.Message);
-            ViewData["Branches"] = await staffManagementService.GetBranchesAsync(cancellationToken);
+            await PopulateBranchesPageAsync(cancellationToken);
             return View("Branches", input);
         }
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> SetBranchOpen(Guid id, bool isOpen, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await staffManagementService.SetBranchOpenStatusAsync(id, isOpen, cancellationToken);
+            TempData["StatusMessage"] = isOpen ? "Branch opened for operations." : "Branch closed for operations.";
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        return RedirectToAction(nameof(Branches));
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> CreateTerminal(CreateTerminalInputModel input, CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+        {
+            TempData["ErrorMessage"] = "Enter a valid branch, terminal code, and name.";
+            return RedirectToAction(nameof(Branches));
+        }
+        try
+        {
+            await staffManagementService.CreateTerminalAsync(input.BranchId, input.Code, input.Name, cancellationToken);
+            TempData["StatusMessage"] = $"Terminal {input.Code.Trim().ToUpperInvariant()} was created.";
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
+        {
+            TempData["ErrorMessage"] = exception.Message;
+        }
+        return RedirectToAction(nameof(Branches));
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> SetTerminalActive(Guid id, bool isActive, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await staffManagementService.SetTerminalActiveAsync(id, isActive, cancellationToken);
+            TempData["StatusMessage"] = isActive ? "Terminal activated." : "Terminal deactivated.";
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        return RedirectToAction(nameof(Branches));
     }
 
     [HttpGet]
@@ -106,5 +159,11 @@ public sealed class AdministrationController(StaffManagementService staffManagem
     {
         ViewData["Staff"] = await staffManagementService.GetStaffAsync(cancellationToken);
         ViewData["Branches"] = await staffManagementService.GetBranchesAsync(cancellationToken);
+    }
+
+    private async Task PopulateBranchesPageAsync(CancellationToken cancellationToken)
+    {
+        ViewData["Branches"] = await staffManagementService.GetBranchesAsync(cancellationToken);
+        ViewData["Terminals"] = await staffManagementService.GetTerminalsAsync(cancellationToken);
     }
 }

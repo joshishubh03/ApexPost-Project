@@ -13,4 +13,10 @@ public sealed class CreateBranchInputModel
 
     [Required, StringLength(100)]
     public string Region { get; set; } = string.Empty;
+
+    [DataType(DataType.Time), Required]
+    public TimeOnly OpeningTime { get; set; } = new(9, 0);
+
+    [DataType(DataType.Time), Required]
+    public TimeOnly ClosingTime { get; set; } = new(18, 0);
 }

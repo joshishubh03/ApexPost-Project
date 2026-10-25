@@ -3,11 +3,13 @@
 @{
     ViewData["Title"] = "Branch management";
     var branches = ViewData["Branches"] as IReadOnlyList<Branch> ?? [];
+    var terminals = ViewData["Terminals"] as IReadOnlyList<CounterTerminal> ?? [];
 }
 
 <h1>Branch management</h1>
-<p class="text-muted">Add a branch to make it available for staff assignments.</p>
+<p class="text-muted">Manage branch hours, operational status, and counter terminals.</p>
 @if (TempData["StatusMessage"] is string status) { <div class="alert alert-success">@status</div> }
+@if (TempData["ErrorMessage"] is string error) { <div class="alert alert-danger">@error</div> }
 <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 <div class="row g-4">
     <section class="col-lg-5">
@@ -17,6 +19,7 @@
                 <div class="mb-3"><label asp-for="Code" class="form-label"></label><input asp-for="Code" class="form-control" /><span asp-validation-for="Code" class="text-danger"></span></div>
                 <div class="mb-3"><label asp-for="Name" class="form-label"></label><input asp-for="Name" class="form-control" /><span asp-validation-for="Name" class="text-danger"></span></div>
                 <div class="mb-3"><label asp-for="Region" class="form-label"></label><input asp-for="Region" class="form-control" /><span asp-validation-for="Region" class="text-danger"></span></div>
+                <div class="row"><div class="col"><label asp-for="OpeningTime" class="form-label">Opens</label><input asp-for="OpeningTime" type="time" class="form-control" /></div><div class="col"><label asp-for="ClosingTime" class="form-label">Closes</label><input asp-for="ClosingTime" type="time" class="form-control" /></div></div>
                 <button class="btn btn-primary" type="submit">Create branch</button>
             </form>
         </div>
@@ -24,14 +27,29 @@
     <section class="col-lg-7">
         <h2 class="h5">Existing branches</h2>
         <div class="table-responsive"><table class="table table-striped">
-            <thead><tr><th>Code</th><th>Name</th><th>Region</th><th>Status</th></tr></thead>
+            <thead><tr><th>Code</th><th>Name</th><th>Region</th><th>Hours</th><th>Status</th><th></th></tr></thead>
             <tbody>
             @foreach (var branch in branches)
             {
-                <tr><td>@branch.Code</td><td>@branch.Name</td><td>@branch.Region</td><td>@(branch.IsOpen ? "Open" : "Closed")</td></tr>
+                <tr><td>@branch.Code</td><td>@branch.Name</td><td>@branch.Region</td><td>@branch.OpeningTime.ToString("HH:mm")–@branch.ClosingTime.ToString("HH:mm")</td><td>@(branch.IsOpen ? "Open" : "Closed")</td><td><form asp-action="SetBranchOpen" method="post"><input type="hidden" name="id" value="@branch.Id" /><input type="hidden" name="isOpen" value="@(!branch.IsOpen)" /><button class="btn btn-sm btn-outline-secondary" type="submit">@(branch.IsOpen ? "Close" : "Open")</button></form></td></tr>
             }
             </tbody>
         </table></div>
     </section>
 </div>
+<section class="mt-5">
+    <h2 class="h5">Counter terminals</h2>
+    <form asp-action="CreateTerminal" method="post" class="row g-2 mb-3">
+        <div class="col-md-4"><label class="form-label" for="BranchId">Branch</label><select id="BranchId" name="BranchId" class="form-select" required><option value="">Select branch</option>@foreach (var branch in branches) { <option value="@branch.Id">@branch.Code — @branch.Name</option> }</select></div>
+        <div class="col-md-2"><label class="form-label" for="TerminalCode">Code</label><input id="TerminalCode" name="Code" class="form-control" minlength="2" maxlength="12" required /></div>
+        <div class="col-md-4"><label class="form-label" for="TerminalName">Name</label><input id="TerminalName" name="Name" class="form-control" maxlength="80" required /></div>
+        <div class="col-md-2 align-self-end"><button class="btn btn-primary" type="submit">Add terminal</button></div>
+    </form>
+    <div class="table-responsive"><table class="table table-striped"><thead><tr><th>Branch</th><th>Code</th><th>Name</th><th>Status</th><th></th></tr></thead><tbody>
+    @foreach (var terminal in terminals)
+    {
+        <tr><td>@branches.FirstOrDefault(branch => branch.Id == terminal.BranchId)?.Code</td><td>@terminal.Code</td><td>@terminal.Name</td><td>@(terminal.IsActive ? "Active" : "Inactive")</td><td><form asp-action="SetTerminalActive" method="post"><input type="hidden" name="id" value="@terminal.Id" /><input type="hidden" name="isActive" value="@(!terminal.IsActive)" /><button class="btn btn-sm btn-outline-secondary" type="submit">@(terminal.IsActive ? "Deactivate" : "Activate")</button></form></td></tr>
+    }
+    </tbody></table></div>
+</section>
 @section Scripts { <partial name="_ValidationScriptsPartial" /> }
