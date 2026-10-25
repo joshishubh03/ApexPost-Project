@@ -30,6 +30,7 @@ public static class DependencyInjection
         services.AddSingleton<IMoneyOrderRepository>(_ => new JsonMoneyOrderRepository(dataDirectory));
         services.AddSingleton<IIdentityVerificationRepository>(_ => new JsonIdentityVerificationRepository(dataDirectory));
         services.AddSingleton<IAuditLogRepository>(_ => new JsonAuditLogRepository(dataDirectory));
+        services.AddSingleton<INotificationRepository>(_ => new JsonNotificationRepository(dataDirectory));
         if (enableSimulatedIdentityVerification)
         {
             services.AddSingleton<IIdentityVerificationService>(
@@ -43,6 +44,7 @@ public static class DependencyInjection
         services.AddScoped<IApplicationEventHandler, CounterTransactionReversedAuditHandler>();
         services.AddScoped<IApplicationEventHandler, MoneyOrderAuditHandler>();
         services.AddScoped<IApplicationEventHandler, MoneyOrderRefundAuditHandler>();
+        services.AddScoped<IApplicationEventHandler, OperationalNotificationHandler>();
         services.AddScoped<IApplicationEventPublisher, ApplicationEventPublisher>();
         services.AddSingleton<IStaffPasswordService, AspNetStaffPasswordService>();
         services.AddSingleton(serviceProvider => new DemoDataSeeder(

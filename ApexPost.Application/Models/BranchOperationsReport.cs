@@ -16,4 +16,5 @@ public sealed record BranchOperationsReport(
     decimal MoneyOrderTotal,
     int RefundedMoneyOrderCount,
     int IdentityVerificationFailures,
+    IReadOnlyList<OperationalNotification> RecentNotifications,
     IReadOnlyList<AuditRecord> RecentAuditEvents);

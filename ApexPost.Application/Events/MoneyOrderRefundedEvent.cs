@@ -8,4 +8,5 @@ public sealed record MoneyOrderRefundedEvent(
     DateTimeOffset OccurredAt,
     decimal TotalAmount,
     string Reason,
-    string CorrelationId);
+    string CorrelationId,
+    bool PartOfCounterTransaction = false);

@@ -17,7 +17,7 @@ public sealed class ApplicationEventPublisher(
             throw new ArgumentNullException(nameof(applicationEvent));
         }
 
-        foreach (var handler in handlers.Where(handler => handler.EventType.IsInstanceOfType(applicationEvent)))
+        foreach (var handler in handlers.Where(handler => handler.EventTypes.Any(eventType => eventType.IsInstanceOfType(applicationEvent))))
         {
             await handler.HandleAsync(applicationEvent, cancellationToken);
         }
