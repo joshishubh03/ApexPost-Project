@@ -70,15 +70,17 @@ Administrators can select a branch; Branch Managers and Auditors are restricted 
 
 ## Security and partner tracking
 
-The web pipeline adds security headers, an optional maintenance response (`503`, with `/health` left available), loopback-only default access to administrative mutation routes, a five-attempt-per-minute login limit, and a 30-request-per-minute partner API limit. Set `PartnerApi__ApiKey` through the environment or a secret store before using `/api/partner/tracking/{transactionNumber}`. Set `PartnerApi__AllowedCorsOrigins__0` to the approved tracking-widget origin; CORS does not replace the API key. Configure `Security__AdminAllowedIpAddresses__0` for the deployment's admin IPs. When deploying behind a reverse proxy, configure trusted forwarded headers before relying on client IP restrictions.
+The web pipeline adds security headers, an optional maintenance response (`503`, with `/health` left available), loopback-only default access to administrative mutation routes, a five-attempt-per-minute login limit, and a 30-request-per-minute partner API limit partitioned by configured partner ID. Configure each partner key through user-secrets or the environment before using `/api/partner/tracking/{transactionNumber}`. The legacy single `PartnerApi__ApiKey` setting remains supported as the `default` partner. Set `PartnerApi__AllowedCorsOrigins__0` to the approved tracking-widget origin; CORS does not replace the API key. Configure `Security__AdminAllowedIpAddresses__0` for the deployment's admin IPs. When deploying behind a reverse proxy, configure trusted forwarded headers before relying on client IP restrictions. Missing or invalid partner keys receive 401; if no partner keys are configured, the API returns 500.
 
 Example local configuration and request:
 
-    $env:PartnerApi__ApiKey = "replace-with-a-local-secret"
+    dotnet user-secrets init --project ApexPost.Web
+    dotnet user-secrets set "PartnerApi:Partners:CourierNorth" "replace-with-a-local-secret" --project ApexPost.Web
+    dotnet user-secrets set "PartnerApi:Partners:CourierSouth" "replace-with-another-local-secret" --project ApexPost.Web
     $env:PartnerApi__AllowedCorsOrigins__0 = "https://widget.example"
     dotnet run --project ApexPost.Web
     $trackingNumber = (Get-Content data/counter-transactions.json | ConvertFrom-Json | Where-Object { $_.shippingRateId } | Select-Object -First 1).transactionNumber
-    curl.exe -H "X-API-Key: $env:PartnerApi__ApiKey" "https://localhost:5001/api/partner/tracking/$trackingNumber"
+    curl.exe -H "X-API-Key: replace-with-a-local-secret" "https://localhost:5001/api/partner/tracking/$trackingNumber"
 
 The tracking response contains receipt-level shipment type, service, zone, weight, status, and accepted time only; it does not expose customer names or identity data. `AUDIT-SAMPLE.json` contains synthetic event and MVC-filter audit entries. MVC action filters validate bound model state, audit configuration changes, sales, reversals, money-order issue/refund and identity-verification requests, and log slow actions at the configured `Diagnostics:SlowActionThresholdMilliseconds` threshold. Audit entries record actor, role, branch, safe route IDs, HTTP result status, duration, and correlation ID without serializing request bodies or sensitive form values. JSON requests with invalid models receive a validation problem response; HTML forms retain their controller-specific redisplay behavior. Transaction services publish events for committed sales, reversals, money orders, and identity verification outcomes.
 
