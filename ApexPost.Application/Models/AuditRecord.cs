@@ -13,4 +13,8 @@ public sealed record AuditRecord(
     Guid BranchId,
     string CorrelationId,
     decimal? Amount,
-    string? Details = null);
+    string? Details = null,
+    string? Role = null,
+    int? ResultStatusCode = null,
+    long? DurationMilliseconds = null,
+    IReadOnlyDictionary<string, string>? RouteValues = null);
