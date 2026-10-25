@@ -136,6 +136,8 @@ The HTTP pipeline is ordered as follows so cross-cutting checks happen before en
 
 ```text
 Correlation ID
+  -> Global exception handler (Problem Details)
+  -> HSTS (outside Development)
   -> Exception logging
   -> Security headers
   -> Maintenance gate (/health bypass)
@@ -150,11 +152,11 @@ Correlation ID
   -> MVC or partner endpoint
 ```
 
-Middleware handles concerns that apply to the HTTP request regardless of which MVC action runs: correlation, error logging, headers, maintenance, CORS, rate limits, IP checks, and partner keys. MVC action filters run around controller actions for model validation, slow-action timing, and auditing successful configuration changes. Domain and Application services remain responsible for business rules; filters do not decide whether a stock change, sale, or refund is valid.
+Middleware handles concerns that apply to the HTTP request regardless of which MVC action runs: correlation, safe error responses, error logging, headers, maintenance, CORS, rate limits, IP checks, and partner keys. The global exception handler emits an `application/problem+json` response with a safe message, trace ID, and correlation ID; it never serializes exception details. It surrounds the request logger so failures are logged before the response is written. MVC action filters run around controller actions for model validation, slow-action timing, and auditing. Domain and Application services remain responsible for business rules; filters do not decide whether a stock change, sale, or refund is valid.
 
 | Concern | Mechanism | Why |
 |---|---|---|
-| Correlation, request errors, security headers, maintenance, CORS, rate limits, IP allowlists, partner keys | Middleware | These checks apply at the HTTP request boundary before MVC action selection or model binding. The partner key middleware sets a configured partner identity before the endpoint rate limiter partitions requests. |
+| Correlation, Problem Details exception handling, error logging, security headers, maintenance, CORS, rate limits, IP allowlists, partner keys | Middleware | These checks apply at the HTTP request boundary before MVC action selection or model binding. The exception handler returns safe RFC-style problem responses with trace and correlation IDs; the partner key middleware sets a configured partner identity before the endpoint rate limiter partitions requests. |
 | Antiforgery tokens | Built-in MVC filter | The check uses MVC form and endpoint metadata and applies to unsafe MVC actions. |
 | Invalid model state | `ModelValidationActionFilter` | It runs after MVC model binding. JSON callers receive a consistent `400` validation problem; HTML forms retain the controller's correctly typed view and validation messages. |
 | Audit of configuration and business actions | `MvcAuditActionFilter` | It needs controller/action identity, the authenticated staff principal, safe route keys, the MVC result, and action duration. Application events separately record committed sales, reversals, money-order issuance/refunds, and identity verification outcomes. |
@@ -229,7 +231,7 @@ Assignment 2 requires JSON file persistence behind interfaces. The JSON implemen
 
 ## Security and audit
 
-Cookie authentication, server-side role and branch checks, antiforgery validation, correlation IDs, request exception logging, security headers, maintenance mode, IP restrictions, rate limiting, partner API keys, and a restricted tracking-widget CORS policy are in place. Middleware order is: correlation ID; exception logging; security headers; maintenance gate; HTTPS redirection; routing; endpoint CORS; admin IP restriction; partner API-key validation; rate limiter; authentication; authorization; endpoints. Partner keys are configured by partner ID, compared using fixed-time hashes, and never written to logs. `/health` is anonymous and remains available during maintenance. Missing or invalid keys return 401; an unconfigured partner API returns 500.
+Cookie authentication, server-side role and branch checks, antiforgery validation, correlation IDs, safe Problem Details exception responses, request exception logging, security headers, maintenance mode, IP restrictions, rate limiting, partner API keys, and a restricted tracking-widget CORS policy are in place. Middleware order is: correlation ID; global exception handler; HSTS outside Development; exception logging; security headers; maintenance gate; HTTPS redirection; routing; endpoint CORS; admin IP restriction; partner API-key validation; rate limiter; authentication; authorization; endpoints. Unexpected errors return `application/problem+json` with a safe detail, trace ID, and correlation ID; stack traces and exception messages stay in server logs. Partner keys are configured by partner ID, compared using fixed-time hashes, and never written to logs. `/health` is anonymous and remains available during maintenance. Missing or invalid keys return 401; an unconfigured partner API returns 500.
 
 MVC action filters log slow actions and append request audit records for branch status/hours, terminals, staff, catalogue, inventory, shipping rates, sales, reversals, money-order issue/refund, and identity verification requests. Each MVC audit entry records actor, role, branch, action, whitelisted IDs, result status, duration, and correlation ID. The filter never serializes action models or request bodies. Application events separately append committed sales, reversals, money-order issuance/refunds, and identity verification outcomes to `audit-records.json`; identity audit events contain document type/result but no document identifier. Audit failures are logged without making a committed operation appear unsuccessful; JSON audit storage therefore has an acknowledged consistency gap. Sensitive identity values are used transiently by the simulated verifier and masked before persistence. Partner API keys are supplied through secret configuration and compared in constant time. The default admin allowlist is loopback-only; deployments behind proxies must configure trusted forwarded headers before IP restrictions can identify the original client.
 
