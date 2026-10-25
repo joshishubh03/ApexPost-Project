@@ -51,6 +51,7 @@ public sealed class CounterTransactionService(
         IReadOnlyDictionary<Guid, int> quantities,
         PaymentMethod paymentMethod,
         Guid? shippingRateId,
+        ShipmentType? shipmentType,
         decimal? shippingWeightKilograms,
         string? shippingRecipientName,
         string? shippingAddress,
@@ -127,16 +128,22 @@ public sealed class CounterTransactionService(
                 throw new InvalidOperationException("Enter the parcel weight for the selected shipping rate.");
             }
 
-            if (string.IsNullOrWhiteSpace(shippingRecipientName) || string.IsNullOrWhiteSpace(shippingAddress) ||
-                parcelLengthCentimeters is null || parcelWidthCentimeters is null || parcelHeightCentimeters is null)
+            if (shipmentType is null || string.IsNullOrWhiteSpace(shippingRecipientName) || string.IsNullOrWhiteSpace(shippingAddress))
             {
-                throw new InvalidOperationException("Enter the shipment recipient, destination address, and parcel dimensions.");
+                throw new InvalidOperationException("Select a shipment type and enter the recipient and destination address.");
             }
+
+            if (shipmentType == ShipmentType.Parcel &&
+                (parcelLengthCentimeters is null || parcelWidthCentimeters is null || parcelHeightCentimeters is null))
+                throw new InvalidOperationException("Enter all parcel dimensions.");
+            if (shipmentType == ShipmentType.Letter &&
+                (parcelLengthCentimeters is not null || parcelWidthCentimeters is not null || parcelHeightCentimeters is not null))
+                throw new InvalidOperationException("Clear parcel dimensions for a letter shipment.");
 
             shippingQuote = await shippingRateService.QuoteAsync(rateId, shippingWeightKilograms.Value, cancellationToken);
         }
         else if (shippingWeightKilograms is not null || !string.IsNullOrWhiteSpace(shippingRecipientName) ||
-                 !string.IsNullOrWhiteSpace(shippingAddress) || parcelLengthCentimeters is not null ||
+                 shipmentType is not null || !string.IsNullOrWhiteSpace(shippingAddress) || parcelLengthCentimeters is not null ||
                  parcelWidthCentimeters is not null || parcelHeightCentimeters is not null)
         {
             throw new InvalidOperationException("Select a shipping service or clear the shipment details.");
@@ -186,7 +193,8 @@ public sealed class CounterTransactionService(
             terminalId: terminal.Id,
             moneyOrderId: moneyOrderId,
             moneyOrderAmount: moneyOrderAmount ?? 0m,
-            moneyOrderFee: moneyOrderFee);
+            moneyOrderFee: moneyOrderFee,
+            shipmentType: shipmentType);
 
         var adjustmentReason = $"Counter sale {transactionNumber}";
         foreach (var requested in requestedQuantities)

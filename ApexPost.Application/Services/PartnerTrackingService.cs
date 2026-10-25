@@ -21,6 +21,7 @@ public sealed class PartnerTrackingService(ICounterTransactionRepository transac
                 transaction.TransactionNumber,
                 transaction.ShippingZoneName!,
                 transaction.ShippingServiceLevel!.Value,
+                transaction.ShipmentType,
                 transaction.ShippingWeightKilograms!.Value,
                 transaction.Status.ToString(),
                 transaction.OccurredAt);

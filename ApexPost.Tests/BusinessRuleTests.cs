@@ -51,6 +51,31 @@ public sealed class BusinessRuleTests
     }
 
     [Fact]
+    public void Letter_shipment_requires_destination_but_not_parcel_dimensions()
+    {
+        var transaction = new CounterTransaction(
+            Guid.NewGuid(), "APT-20261025-LETTER01", Guid.NewGuid(), Guid.NewGuid(), DateTimeOffset.UtcNow,
+            [], Guid.NewGuid(), "Local", ShippingServiceLevel.Standard, 0.1m, 10m, PaymentMethod.Cash,
+            shippingRecipientName: "Recipient", shippingAddress: "1 Main Street, Central",
+            shipmentType: ShipmentType.Letter);
+
+        Assert.Equal(ShipmentType.Letter, transaction.ShipmentType);
+        Assert.Null(transaction.ParcelLengthCentimeters);
+        Assert.Equal(10m, transaction.ShippingCharge);
+    }
+
+    [Fact]
+    public void Letter_shipment_rejects_parcel_dimensions()
+    {
+        Assert.Throws<ArgumentException>(() => new CounterTransaction(
+            Guid.NewGuid(), "APT-20261025-LETTER02", Guid.NewGuid(), Guid.NewGuid(), DateTimeOffset.UtcNow,
+            [], Guid.NewGuid(), "Local", ShippingServiceLevel.Standard, 0.1m, 10m, PaymentMethod.Cash,
+            shippingRecipientName: "Recipient", shippingAddress: "1 Main Street, Central",
+            parcelLengthCentimeters: 10m, parcelWidthCentimeters: 5m, parcelHeightCentimeters: 1m,
+            shipmentType: ShipmentType.Letter));
+    }
+
+    [Fact]
     public void Transaction_line_snapshots_tax_rate_and_rounded_tax_amount()
     {
         var line = new TransactionLine(Guid.NewGuid(), "SKU-1", "Taxed item", 2, 100m, "Retail", 5m);
@@ -127,7 +152,7 @@ public sealed class BusinessRuleTests
 
         var receipt = await checkout.CompleteSaleAsync(
             branch.Id, clerk.Id, new Dictionary<Guid, int> { [product.Id] = 1 }, PaymentMethod.Cash,
-            null, null, null, null, null, null, null, terminal.Id,
+            null, null, null, null, null, null, null, null, terminal.Id,
             10_000m, "Sender", "Recipient", null, null, "mixed-checkout-test");
 
         Assert.Single(transactions.Transactions);
