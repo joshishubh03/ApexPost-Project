@@ -29,6 +29,10 @@ PowerShell commands:
     dotnet test ApexPost.slnx
     dotnet run --project ApexPost.Web --urls https://localhost:5001
 
+## Automated test coverage
+
+`ApexPost.Tests` contains xUnit unit tests and `WebApplicationFactory` integration tests for the current counter-platform rules. Coverage includes non-negative stock, money-order identity verification, shipping weight and pricing, mixed receipts, branch report totals, authentication and role denials, API-key and IP restrictions, rate limiting, security headers, correlation IDs, and maintenance mode. Infrastructure tests also verify missing and malformed JSON, I/O failure propagation and temporary-file cleanup, concurrent audit appends, and repeatable development seeding with the required demo-data counts.
+
 The demo data is seeded on first run in Development. The seed creates five branches, two active counter terminals per branch, at least 20 staff, 30 products, 10 shipping zones with Standard, Express, and Registered rates, opening inventory, and 40 historical transactions when both the inventory and transaction files are empty. All seeded accounts use the password CounterDemo!2026. Example accounts:
 
 - admin@apexpost.local
