@@ -128,6 +128,41 @@ public sealed class DemoDataSeeder(
                     isActive: true)
             });
             await shippingRateRepository.SaveAllAsync(seededRates, cancellationToken);
+            rates = seededRates.ToArray();
+        }
+
+        var seededZoneIndices = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["DOM-LOCAL"] = 0,
+            ["DOM-STATE"] = 1,
+            ["DOM-NORTH"] = 2,
+            ["DOM-SOUTH"] = 3,
+            ["DOM-EAST"] = 4,
+            ["DOM-WEST"] = 5,
+            ["DOM-CENTRAL"] = 6,
+            ["DOM-NE"] = 7,
+            ["DOM-REMOTE"] = 8,
+            ["INT-REG"] = 9
+        };
+        var missingRegisteredRates = zones
+            .Where(zone => seededZoneIndices.ContainsKey(zone.Code)
+                && !rates.Any(rate => rate.ZoneId == zone.Id && rate.ServiceLevel == ShippingServiceLevel.Registered))
+            .Select(zone =>
+            {
+                var index = seededZoneIndices[zone.Code];
+                return new ShippingRate(
+                    Guid.Parse($"60000000-0000-0000-0000-{index + 1:000000000000}"),
+                    zone.Id,
+                    ShippingServiceLevel.Registered,
+                    85m + index * 8m,
+                    30m + index * 4m,
+                    30m,
+                    isActive: true);
+            })
+            .ToArray();
+        if (missingRegisteredRates.Length > 0)
+        {
+            await shippingRateRepository.SaveAllAsync(rates.Concat(missingRegisteredRates), cancellationToken);
         }
 
         var staff = await staffRepository.GetAllAsync(cancellationToken);

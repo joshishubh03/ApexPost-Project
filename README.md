@@ -29,7 +29,7 @@ PowerShell commands:
     dotnet test ApexPost.slnx
     dotnet run --project ApexPost.Web --urls https://localhost:5001
 
-The demo data is seeded on first run in Development. The seed creates five branches, two active counter terminals per branch, at least 20 staff, 30 products, 10 shipping zones with Standard and Express rates, opening inventory, and 40 historical transactions when both the inventory and transaction files are empty. All seeded accounts use the password CounterDemo!2026. Example accounts:
+The demo data is seeded on first run in Development. The seed creates five branches, two active counter terminals per branch, at least 20 staff, 30 products, 10 shipping zones with Standard, Express, and Registered rates, opening inventory, and 40 historical transactions when both the inventory and transaction files are empty. All seeded accounts use the password CounterDemo!2026. Example accounts:
 
 - admin@apexpost.local
 - manager1@apexpost.local
@@ -54,7 +54,7 @@ Staff can view active-product stock for their assigned branch. Administrators ca
 
 ## Shipping zones and rates
 
-Signed-in staff can view the shipping schedule and calculate a quote. Administrators can add zones and rates. Each rate has a service level, base charge, per-kilogram charge, and maximum weight. Counter staff can ship parcels with recipient, destination address, weight, and dimensions, or letters with recipient, destination address, and weight without parcel dimensions. Both use the configured rate and weight limit, appear in tracking, and have a branch-scoped printable label preview. Development seeding provides 10 zones and Standard/Express rates in `data/shipping-zones.json` and `data/shipping-rates.json`.
+Signed-in staff can view the shipping schedule and calculate a quote. Administrators can add zones and rates. Each rate has a service level (Standard, Express, or Registered), base charge, per-kilogram charge, and maximum weight. Counter staff can ship parcels with recipient, destination address, weight, and dimensions, or letters with recipient, destination address, and weight without parcel dimensions. Both use the configured rate and weight limit, appear in tracking, and have a branch-scoped printable label preview. Development seeding provides 10 zones and all three service levels in `data/shipping-zones.json` and `data/shipping-rates.json`.
 
 ## Counter transactions
 
