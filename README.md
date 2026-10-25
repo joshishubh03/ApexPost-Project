@@ -4,7 +4,7 @@ Assignment 2 implementation of a secure retail and postal counter platform using
 
 ## Current stage
 
-The staff-auth slice adds branch and staff domain records, JSON demo data, and cookie-based staff sign-in. The branch-staff-management slice adds Administrator-only branch and staff management. The product-catalogue slice adds product search and management, with 30 seeded demo products. The inventory slice tracks branch-specific quantities and a reasoned movement history. The shipping-rates slice defines destination zones, service levels, and weight-based quotes for parcel and letter shipments. Unified counter baskets support products, shipment services, and money orders. Branch Managers can void or fully refund completed receipts with a reason. Branch reports summarize sales, stock, shipping, money orders, identity checks, and audit events. The money-order slice adds configurable fees, high-value identity verification, and masked document recording. Development seeding supplies 40 historical transactions.
+The staff-auth slice adds branch and staff domain records, JSON demo data, and cookie-based staff sign-in. The branch-staff-management slice adds Administrator-only branch and staff management. The product-catalogue slice adds product search and management, with 30 seeded demo products. The inventory slice tracks branch-specific quantities and a reasoned movement history. The shipping-rates slice defines destination zones, service levels, and weight-based quotes for parcel and letter shipments. Unified counter baskets support products, shipment services, and money orders. Branch Managers can void or fully refund completed receipts with a reason. Branch reports summarize sales, stock, shipping, money orders, identity checks, audit events, and recent operational notifications. Simulated notifications are emitted for low-stock threshold crossings, high-value money orders, and every void or refund. The money-order slice adds configurable fees, high-value identity verification, and masked document recording. Development seeding supplies 40 historical transactions.
 
 ## Solution projects
 
@@ -66,7 +66,7 @@ Branch Managers can void or fully refund a completed counter transaction for the
 
 ## Branch reports
 
-Administrators can select a branch; Branch Managers and Auditors are restricted to their assigned branch. The report summarizes completed sales, voids and refunds, low-stock active products, shipping volume by zone and service, money orders, failed identity checks, and the latest 50 audit events. Independent JSON reads are loaded concurrently with `Task.WhenAll`.
+Administrators can select a branch; Branch Managers and Auditors are restricted to their assigned branch. The report summarizes completed sales, voids and refunds, low-stock active products, shipping volume by zone and service, money orders, failed identity checks, the latest 20 operational notifications, and the latest 50 audit events. Independent JSON reads are loaded concurrently with `Task.WhenAll`. Notifications are simulated operational records in `data/notifications.json`; they do not send email, SMS, or external messages.
 
 ## Security and partner tracking
 

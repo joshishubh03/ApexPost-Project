@@ -135,6 +135,13 @@ public sealed class MoneyOrderService(
             order.TotalAmount,
             correlationId), CancellationToken.None);
 
+        if (amount > policy.IdentityVerificationThreshold)
+        {
+            await eventPublisher.PublishAsync(new HighValueMoneyOrderEvent(
+                order.Id, order.MoneyOrderNumber, order.BranchId, order.StaffId,
+                order.OccurredAt, order.TotalAmount, correlationId), CancellationToken.None);
+        }
+
         return order;
     }
 
@@ -179,7 +186,7 @@ public sealed class MoneyOrderService(
         await moneyOrderRepository.SaveAllAsync(orders, cancellationToken);
         await eventPublisher.PublishAsync(new MoneyOrderRefundedEvent(
             refunded.Id, refunded.MoneyOrderNumber, branchId, managerId, now, refunded.TotalAmount,
-            refunded.RefundReason!, correlationId), CancellationToken.None);
+            refunded.RefundReason!, correlationId, fromCounterTransaction), CancellationToken.None);
         return refunded;
     }
 

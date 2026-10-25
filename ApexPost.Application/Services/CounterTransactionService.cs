@@ -259,6 +259,15 @@ public sealed class CounterTransactionService(
             transaction.PaymentMethod,
             correlationId), CancellationToken.None);
 
+        foreach (var change in inventoryChanges.Where(change =>
+            !originalInventory[change.Index].IsBelowReorderLevel && change.Updated.IsBelowReorderLevel))
+        {
+            var product = products.First(candidate => candidate.Id == change.Updated.ProductId);
+            await eventPublisher.PublishAsync(new StockLowEvent(
+                branchId, product.Id, product.Name, change.Updated.QuantityOnHand,
+                change.Updated.ReorderLevel, staffId, occurredAt, correlationId), CancellationToken.None);
+        }
+
         return transaction;
     }
 

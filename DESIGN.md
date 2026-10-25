@@ -100,7 +100,11 @@ Branch Managers can void or fully refund a completed counter transaction at thei
 
 ## Branch reports and demo history
 
-`ReportingService` concurrently reads branch, sales, inventory, catalogue, money-order, identity-verification, and audit collections using `Task.WhenAll`. It filters every measure by branch and calculates completed sales, low-stock active products, completed shipping volume by zone and service, money-order totals, failed identity checks, reversals, and the 50 newest audit events. Administrators can select a branch; Branch Managers and Auditors are constrained to their assigned branch in the controller. Development seeding creates 40 deterministic historical transactions and matching opening stock movements when transaction and inventory collections are both empty.
+`ReportingService` concurrently reads branch, sales, inventory, catalogue, money-order, identity-verification, audit, and notification data using `Task.WhenAll`. It filters every measure by branch and calculates completed sales, low-stock active products, completed shipping volume by zone and service, money-order totals, failed identity checks, reversals, the 20 newest operational notifications, and the 50 newest audit events. Administrators can select a branch; Branch Managers and Auditors are constrained to their assigned branch in the controller. Development seeding creates 40 deterministic historical transactions and matching opening stock movements when transaction and inventory collections are both empty.
+
+## Simulated operational notifications
+
+Application events signal a stock transition from above the reorder threshold to below it, a money order whose principal exceeds the configured identity-verification threshold, and every counter-transaction void or refund. Standalone money-order refunds also emit a notification; a money order refunded as part of a counter receipt is represented by the receipt reversal notification to avoid duplicate alerts. `OperationalNotificationHandler` observes these events and appends branch-scoped records to `notifications.json`. Persistence failures are logged and do not turn an already committed sale or refund into a failed response. The branch report shows the 20 most recent records with time, type, message, and correlation ID. This is a simulated in-app record; no external notification provider is called.
 
 ## Money orders and identity verification
 

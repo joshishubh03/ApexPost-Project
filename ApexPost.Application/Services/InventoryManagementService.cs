@@ -1,4 +1,5 @@
 using ApexPost.Application.Abstractions;
+using ApexPost.Application.Events;
 using ApexPost.Application.Models;
 using ApexPost.Domain.Entities;
 
@@ -7,7 +8,8 @@ namespace ApexPost.Application.Services;
 public sealed class InventoryManagementService(
     IInventoryRepository inventoryRepository,
     IProductRepository productRepository,
-    IBranchRepository branchRepository)
+    IBranchRepository branchRepository,
+    IApplicationEventPublisher eventPublisher)
 {
     public async Task<IReadOnlyList<ProductInventorySummary>> GetBranchInventoryAsync(
         Guid branchId,
@@ -52,6 +54,7 @@ public sealed class InventoryManagementService(
         int reorderLevel,
         string reason,
         Guid staffId,
+        string correlationId,
         CancellationToken cancellationToken = default)
     {
         var branch = await branchRepository.GetByIdAsync(branchId, cancellationToken)
@@ -74,12 +77,14 @@ public sealed class InventoryManagementService(
             ? InventoryItem.Empty(branchId, productId, reorderLevel)
             : allItems[index];
 
+        var wasBelowReorderLevel = index >= 0 && item.IsBelowReorderLevel;
+        var occurredAt = DateTimeOffset.UtcNow;
         var changed = item.ApplyChange(
             quantityChange,
             reorderLevel,
             reason,
             staffId,
-            DateTimeOffset.UtcNow);
+            occurredAt);
 
         if (index < 0)
         {
@@ -91,5 +96,12 @@ public sealed class InventoryManagementService(
         }
 
         await inventoryRepository.SaveAllAsync(allItems, cancellationToken);
+
+        if (changed.IsBelowReorderLevel && !wasBelowReorderLevel)
+        {
+            await eventPublisher.PublishAsync(new StockLowEvent(
+                branchId, product.Id, product.Name, changed.QuantityOnHand, changed.ReorderLevel,
+                staffId, occurredAt, correlationId), CancellationToken.None);
+        }
     }
 }

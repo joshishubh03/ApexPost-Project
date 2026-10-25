@@ -75,6 +75,23 @@ else
     </div>
 
     <section class="mt-4">
+        <h3 class="h5">Recent operational notifications</h3>
+        @if (Model.Report.RecentNotifications.Count == 0)
+        {
+            <p class="text-muted">No operational notifications are recorded for this branch.</p>
+        }
+        else
+        {
+            <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Time</th><th>Type</th><th>Message</th><th>Correlation</th></tr></thead><tbody>
+            @foreach (var notification in Model.Report.RecentNotifications)
+            {
+                <tr><td>@notification.OccurredAt.ToLocalTime().ToString("g")</td><td>@notification.Type</td><td>@notification.Message</td><td><code>@notification.CorrelationId</code></td></tr>
+            }
+            </tbody></table></div>
+        }
+    </section>
+
+    <section class="mt-4">
         <h3 class="h5">Recent audit activity</h3>
         @if (Model.Report.RecentAuditEvents.Count == 0)
         {

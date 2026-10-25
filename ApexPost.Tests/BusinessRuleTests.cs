@@ -143,7 +143,7 @@ public sealed class BusinessRuleTests
         var moneyOrderPolicy = new MoneyOrderPolicy(10_000m, 50m, "DEMO-VALID-");
         var moneyOrderService = new MoneyOrderService(branches, staff, orders, transactions, verification,
             new FakeIdentityVerificationService(true), publisher, moneyOrderPolicy);
-        var inventoryService = new InventoryManagementService(inventory, products, branches);
+        var inventoryService = new InventoryManagementService(inventory, products, branches, publisher);
         var shippingService = new ShippingRateService(new FakeShippingZoneRepository(), new FakeShippingRateRepository());
         var checkout = new CounterTransactionService(branches, products, inventory, transactions, staff, publisher,
             inventoryService, shippingService,

@@ -4,6 +4,7 @@ using ApexPost.Application.Models;
 using ApexPost.Application.Services;
 using ApexPost.Domain.Enums;
 using ApexPost.Web.Models;
+using ApexPost.Web.Middleware;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -80,6 +81,7 @@ public sealed class InventoryController(
                 input.ReorderLevel,
                 input.Reason,
                 currentStaffId,
+                CorrelationIdMiddleware.GetCorrelationId(HttpContext),
                 cancellationToken);
             TempData["StatusMessage"] = "Inventory updated.";
         }

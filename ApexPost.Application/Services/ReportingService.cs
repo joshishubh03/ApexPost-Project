@@ -12,6 +12,7 @@ public sealed class ReportingService(
     IMoneyOrderRepository moneyOrderRepository,
     IIdentityVerificationRepository verificationRepository,
     IAuditLogRepository auditLogRepository,
+    INotificationRepository notificationRepository,
     LowStockRule lowStockRule)
 {
     public async Task<BranchOperationsReport> GetBranchReportAsync(
@@ -25,7 +26,8 @@ public sealed class ReportingService(
         var moneyOrdersTask = moneyOrderRepository.GetAllAsync(cancellationToken);
         var verificationsTask = verificationRepository.GetAllAsync(cancellationToken);
         var auditTask = auditLogRepository.GetAllAsync(cancellationToken);
-        await Task.WhenAll(branchTask, transactionsTask, inventoryTask, productsTask, moneyOrdersTask, verificationsTask, auditTask);
+        var notificationsTask = notificationRepository.GetForBranchAsync(branchId, 20, cancellationToken);
+        await Task.WhenAll(branchTask, transactionsTask, inventoryTask, productsTask, moneyOrdersTask, verificationsTask, auditTask, notificationsTask);
 
         var branch = await branchTask ?? throw new KeyNotFoundException("The branch could not be found.");
         var transactions = (await transactionsTask).Where(item => item.BranchId == branchId).ToArray();
@@ -71,6 +73,7 @@ public sealed class ReportingService(
             issuedMoneyOrders.Sum(item => item.TotalAmount),
             moneyOrders.Count(item => item.Status == ApexPost.Domain.Enums.MoneyOrderStatus.Refunded),
             failures,
+            await notificationsTask,
             recentAudit);
     }
 }
