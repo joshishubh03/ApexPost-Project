@@ -14,6 +14,7 @@ namespace ApexPost.Web.Controllers;
 public sealed class MoneyOrdersController(
     MoneyOrderService moneyOrderService,
     IBranchRepository branchRepository,
+    ICounterTransactionRepository transactionRepository,
     MoneyOrderPolicy policy) : Controller
 {
     [HttpGet]
@@ -42,6 +43,13 @@ public sealed class MoneyOrdersController(
             return NotFound();
         }
 
+        var linkedMoneyOrderIds = selectedBranchId is { } branch
+            ? (await transactionRepository.GetAllAsync(cancellationToken))
+                .Where(transaction => transaction.BranchId == branch && transaction.MoneyOrderId is not null)
+                .Select(transaction => transaction.MoneyOrderId!.Value)
+                .ToHashSet()
+            : new HashSet<Guid>();
+
         return View(new MoneyOrdersPageModel
         {
             Branches = branches,
@@ -52,7 +60,8 @@ public sealed class MoneyOrdersController(
             IdentityVerificationThreshold = policy.IdentityVerificationThreshold,
             FeeAmount = policy.FeeAmount,
             CanIssue = CanIssueOrders(),
-            CanRefund = User.IsInRole(nameof(StaffRole.BranchManager))
+            CanRefund = User.IsInRole(nameof(StaffRole.BranchManager)),
+            MoneyOrdersInCounterTransactions = linkedMoneyOrderIds
         });
     }
 

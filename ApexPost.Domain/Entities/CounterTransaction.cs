@@ -9,6 +9,9 @@ public sealed record CounterTransaction
     public Guid BranchId { get; }
     public Guid StaffId { get; }
     public Guid? TerminalId { get; }
+    public Guid? MoneyOrderId { get; }
+    public decimal MoneyOrderAmount { get; }
+    public decimal MoneyOrderFee { get; }
     public DateTimeOffset OccurredAt { get; }
     public IReadOnlyList<TransactionLine> Lines { get; }
     public Guid? ShippingRateId { get; }
@@ -55,7 +58,10 @@ public sealed record CounterTransaction
         decimal? parcelWidthCentimeters = null,
         decimal? parcelHeightCentimeters = null,
         decimal shippingTaxRatePercent = 0m,
-        Guid? terminalId = null)
+        Guid? terminalId = null,
+        Guid? moneyOrderId = null,
+        decimal moneyOrderAmount = 0m,
+        decimal moneyOrderFee = 0m)
     {
         if (id == Guid.Empty || branchId == Guid.Empty || staffId == Guid.Empty)
         {
@@ -86,10 +92,16 @@ public sealed record CounterTransaction
             throw new ArgumentException("A void or refund requires an actor, time, and reason.", nameof(status));
         }
 
-        if (lines.Count == 0 && shippingRateId is null)
+        if (lines.Count == 0 && shippingRateId is null && moneyOrderId is null)
         {
-            throw new ArgumentException("A transaction must contain a product or a shipping service.", nameof(lines));
+            throw new ArgumentException("A transaction must contain a product, shipping service, or money order.", nameof(lines));
         }
+
+        if (moneyOrderId is null && (moneyOrderAmount != 0 || moneyOrderFee != 0))
+            throw new ArgumentException("Money order amounts require a linked money order.", nameof(moneyOrderId));
+        if (moneyOrderId is not null && (moneyOrderAmount <= 0 || moneyOrderFee < 0 ||
+            decimal.Round(moneyOrderAmount, 2) != moneyOrderAmount || decimal.Round(moneyOrderFee, 2) != moneyOrderFee))
+            throw new ArgumentOutOfRangeException(nameof(moneyOrderAmount), "Money order amount and fee must be valid currency amounts.");
 
         if (shippingRateId is null &&
             (shippingZoneName is not null || shippingServiceLevel is not null || shippingWeightKilograms is not null || shippingCharge != 0))
@@ -141,6 +153,9 @@ public sealed record CounterTransaction
         BranchId = branchId;
         StaffId = staffId;
         TerminalId = terminalId;
+        MoneyOrderId = moneyOrderId;
+        MoneyOrderAmount = moneyOrderAmount;
+        MoneyOrderFee = moneyOrderFee;
         OccurredAt = occurredAt;
         Lines = lines.ToArray();
         ShippingRateId = shippingRateId;
@@ -153,7 +168,7 @@ public sealed record CounterTransaction
         ShippingTaxRatePercent = shippingTaxRatePercent;
         ShippingTaxAmount = decimal.Round(ShippingCharge * shippingTaxRatePercent / 100m, 2, MidpointRounding.AwayFromZero);
         TaxTotal = decimal.Round(TaxTotal + ShippingTaxAmount, 2, MidpointRounding.AwayFromZero);
-        TotalAmount = decimal.Round(Subtotal + TaxTotal + ShippingCharge, 2, MidpointRounding.AwayFromZero);
+        TotalAmount = decimal.Round(Subtotal + TaxTotal + ShippingCharge + MoneyOrderAmount + MoneyOrderFee, 2, MidpointRounding.AwayFromZero);
         PaymentMethod = paymentMethod;
         Status = status;
         ResolvedAt = resolvedAt;
@@ -195,6 +210,6 @@ public sealed record CounterTransaction
             ShippingZoneName, ShippingServiceLevel, ShippingWeightKilograms, ShippingCharge,
             PaymentMethod, status, occurredAt, managerId, reason, ShippingRecipientName,
             ShippingAddress, ParcelLengthCentimeters, ParcelWidthCentimeters, ParcelHeightCentimeters,
-            ShippingTaxRatePercent, TerminalId);
+            ShippingTaxRatePercent, TerminalId, MoneyOrderId, MoneyOrderAmount, MoneyOrderFee);
     }
 }

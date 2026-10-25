@@ -11,6 +11,21 @@ public sealed class CreateCounterTransactionInputModel : IValidatableObject
     [Required]
     public Guid? TerminalId { get; set; }
 
+    [Range(typeof(decimal), "0.01", "10000000")]
+    public decimal? MoneyOrderAmount { get; set; }
+
+    [StringLength(100)]
+    public string? MoneyOrderSenderName { get; set; }
+
+    [StringLength(100)]
+    public string? MoneyOrderRecipientName { get; set; }
+
+    [EnumDataType(typeof(IdentityDocumentType))]
+    public IdentityDocumentType? MoneyOrderDocumentType { get; set; }
+
+    [StringLength(40)]
+    public string? MoneyOrderDocumentIdentifier { get; set; }
+
     public Dictionary<Guid, int> Quantities { get; set; } = [];
 
     [EnumDataType(typeof(PaymentMethod))]
@@ -38,6 +53,23 @@ public sealed class CreateCounterTransactionInputModel : IValidatableObject
         {
             yield return new ValidationResult("Product quantities cannot be negative.", [nameof(Quantities)]);
         }
+
+        if (MoneyOrderAmount is { } moneyOrderAmount && decimal.Round(moneyOrderAmount, 2) != moneyOrderAmount)
+            yield return new ValidationResult("Money order amounts must use no more than two decimal places.", [nameof(MoneyOrderAmount)]);
+
+        if (MoneyOrderAmount is not null &&
+            (string.IsNullOrWhiteSpace(MoneyOrderSenderName) || string.IsNullOrWhiteSpace(MoneyOrderRecipientName)))
+            yield return new ValidationResult("Enter both the money order sender and recipient.",
+                [nameof(MoneyOrderSenderName), nameof(MoneyOrderRecipientName)]);
+
+        if (MoneyOrderAmount is null &&
+            (!string.IsNullOrWhiteSpace(MoneyOrderSenderName) || !string.IsNullOrWhiteSpace(MoneyOrderRecipientName) ||
+             MoneyOrderDocumentType is not null || !string.IsNullOrWhiteSpace(MoneyOrderDocumentIdentifier)))
+            yield return new ValidationResult("Enter a money order amount or clear the money order details.", [nameof(MoneyOrderAmount)]);
+
+        if (MoneyOrderDocumentType is null && !string.IsNullOrWhiteSpace(MoneyOrderDocumentIdentifier))
+            yield return new ValidationResult("Select an identity document type for its identifier.",
+                [nameof(MoneyOrderDocumentType), nameof(MoneyOrderDocumentIdentifier)]);
 
         if (ShippingRateId is not null && ShippingWeightKilograms is null)
         {

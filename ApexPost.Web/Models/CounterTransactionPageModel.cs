@@ -9,4 +9,6 @@ public sealed class CounterTransactionPageModel
     public Guid? SelectedBranchId { get; init; }
     public CounterRegisterContext? Register { get; init; }
     public bool CanCreate { get; init; }
+    public decimal MoneyOrderFee { get; init; }
+    public decimal MoneyOrderIdentityVerificationThreshold { get; init; }
 }

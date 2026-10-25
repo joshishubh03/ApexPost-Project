@@ -74,6 +74,12 @@ else
                 <div class="col-md-2"><label for="ParcelLengthCentimeters" class="form-label">Length (cm)</label><input id="ParcelLengthCentimeters" name="ParcelLengthCentimeters" type="number" min="0.01" step="0.01" class="form-control" /></div>
                 <div class="col-md-2"><label for="ParcelWidthCentimeters" class="form-label">Width (cm)</label><input id="ParcelWidthCentimeters" name="ParcelWidthCentimeters" type="number" min="0.01" step="0.01" class="form-control" /></div>
                 <div class="col-md-2"><label for="ParcelHeightCentimeters" class="form-label">Height (cm)</label><input id="ParcelHeightCentimeters" name="ParcelHeightCentimeters" type="number" min="0.01" step="0.01" class="form-control" /></div>
+                <div class="col-12"><h4 class="h6 mb-0">Optional money order</h4><small class="text-muted">The order principal and configured @Model.MoneyOrderFee.ToString("C2", inr) fee are included in this receipt total. Identity verification is required above @Model.MoneyOrderIdentityVerificationThreshold.ToString("C2", inr).</small></div>
+                <div class="col-md-3"><label for="MoneyOrderAmount" class="form-label">Money order amount</label><input id="MoneyOrderAmount" name="MoneyOrderAmount" type="number" min="0.01" max="10000000" step="0.01" class="form-control" /></div>
+                <div class="col-md-3"><label for="MoneyOrderSenderName" class="form-label">Money order sender</label><input id="MoneyOrderSenderName" name="MoneyOrderSenderName" maxlength="100" class="form-control" /></div>
+                <div class="col-md-3"><label for="MoneyOrderRecipientName" class="form-label">Money order recipient</label><input id="MoneyOrderRecipientName" name="MoneyOrderRecipientName" maxlength="100" class="form-control" /></div>
+                <div class="col-md-3"><label for="MoneyOrderDocumentType" class="form-label">Identity document (if required)</label><select id="MoneyOrderDocumentType" name="MoneyOrderDocumentType" class="form-select"><option value="">Select if prompted</option><option value="NationalId">National ID</option><option value="Passport">Passport</option><option value="DrivingLicence">Driving licence</option></select></div>
+                <div class="col-md-4"><label for="MoneyOrderDocumentIdentifier" class="form-label">Document identifier</label><input id="MoneyOrderDocumentIdentifier" name="MoneyOrderDocumentIdentifier" maxlength="40" autocomplete="off" class="form-control" /></div>
                 <div class="col-md-3"><label for="PaymentMethod" class="form-label">Payment method</label><select id="PaymentMethod" name="PaymentMethod" class="form-select"><option value="Cash">Cash</option><option value="Card">Card</option><option value="DigitalWallet">Digital wallet</option></select></div>
                 <div class="col-12"><button type="submit" class="btn btn-primary">Complete transaction</button><span class="ms-2 text-muted small">Payment is recorded for this training workflow; no external payment is processed.</span></div>
             </div>
@@ -100,7 +106,7 @@ else
                     <td>@transaction.TransactionNumber</td>
                     <td>@(Model.Register.Terminals.FirstOrDefault(terminal => terminal.Id == transaction.TerminalId)?.Code ?? "Legacy")</td>
                     <td>@transaction.OccurredAt.ToLocalTime().ToString("g")</td>
-                    <td>@transaction.Lines.Count product line(s)@(transaction.ShippingRateId is not null ? $" + {transaction.ShippingServiceLevel} shipping" : "")
+                    <td>@transaction.Lines.Count product line(s)@(transaction.ShippingRateId is not null ? $" + {transaction.ShippingServiceLevel} shipping" : "")@(transaction.MoneyOrderId is not null ? $" + money order {transaction.MoneyOrderAmount.ToString("C2", inr)}" : "")
                         @if (transaction.ShippingRecipientName is not null)
                         {
                             <a class="d-block small" asp-action="Label" asp-route-id="@transaction.Id" asp-route-branchId="@Model.SelectedBranchId">Preview label</a>
@@ -118,7 +124,7 @@ else
                                 <form asp-action="Reverse" method="post" class="d-flex gap-1 align-items-start">
                                     <input type="hidden" name="TransactionId" value="@transaction.Id" />
                                     <input class="form-control form-control-sm" name="Reason" maxlength="250" minlength="3" required placeholder="Reason" aria-label="Reason for @transaction.TransactionNumber reversal" />
-                                    <button class="btn btn-sm btn-outline-warning" name="IsRefund" value="false" type="submit">Void</button>
+                                    @if (transaction.MoneyOrderId is null) { <button class="btn btn-sm btn-outline-warning" name="IsRefund" value="false" type="submit">Void</button> }
                                     <button class="btn btn-sm btn-outline-danger" name="IsRefund" value="true" type="submit">Refund</button>
                                 </form>
                             }

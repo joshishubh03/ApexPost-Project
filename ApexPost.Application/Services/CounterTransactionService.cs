@@ -16,7 +16,9 @@ public sealed class CounterTransactionService(
     InventoryManagementService inventoryManagementService,
     ShippingRateService shippingRateService,
     TaxPolicy taxPolicy,
-    ICounterTerminalRepository terminalRepository)
+    ICounterTerminalRepository terminalRepository,
+    MoneyOrderService moneyOrderService,
+    MoneyOrderPolicy moneyOrderPolicy)
 {
     public async Task<CounterRegisterContext> GetRegisterContextAsync(
         Guid branchId,
@@ -56,6 +58,11 @@ public sealed class CounterTransactionService(
         decimal? parcelWidthCentimeters,
         decimal? parcelHeightCentimeters,
         Guid terminalId,
+        decimal? moneyOrderAmount,
+        string? moneyOrderSenderName,
+        string? moneyOrderRecipientName,
+        IdentityDocumentType? moneyOrderDocumentType,
+        string? moneyOrderDocumentIdentifier,
         string correlationId,
         CancellationToken cancellationToken = default)
     {
@@ -65,6 +72,15 @@ public sealed class CounterTransactionService(
         if (!branch.IsOpen)
         {
             throw new InvalidOperationException("A sale cannot be completed at a closed branch.");
+        }
+
+        var staff = (await staffRepository.GetAllAsync(cancellationToken))
+            .FirstOrDefault(candidate => candidate.Id == staffId);
+        if (staff is null || !staff.IsActive ||
+            staff.Role is not (StaffRole.Administrator or StaffRole.BranchManager or StaffRole.CounterClerk) ||
+            (staff.Role != StaffRole.Administrator && staff.BranchId != branchId))
+        {
+            throw new UnauthorizedAccessException("Only active authorized staff assigned to this branch can complete a sale.");
         }
 
         var terminal = (await terminalRepository.GetAllAsync(cancellationToken))
@@ -78,7 +94,8 @@ public sealed class CounterTransactionService(
         }
 
         var products = await productRepository.GetAllAsync(cancellationToken);
-        var inventory = (await inventoryRepository.GetAllAsync(cancellationToken)).ToList();
+        var originalInventory = (await inventoryRepository.GetAllAsync(cancellationToken)).ToList();
+        var inventory = originalInventory.ToList();
         var lines = new List<TransactionLine>();
         var inventoryChanges = new List<(int Index, InventoryItem Updated)>();
 
@@ -125,6 +142,25 @@ public sealed class CounterTransactionService(
             throw new InvalidOperationException("Select a shipping service or clear the shipment details.");
         }
 
+        Guid? moneyOrderId = null;
+        decimal moneyOrderFee = 0m;
+        if (moneyOrderAmount is { } requestedMoneyOrderAmount)
+        {
+            if (string.IsNullOrWhiteSpace(moneyOrderSenderName) || string.IsNullOrWhiteSpace(moneyOrderRecipientName))
+                throw new InvalidOperationException("Enter the money order sender and recipient.");
+            if (moneyOrderPolicy.FeeAmount < 0 || decimal.Round(moneyOrderPolicy.FeeAmount, 2) != moneyOrderPolicy.FeeAmount)
+                throw new InvalidOperationException("The configured money order fee is invalid.");
+            if (requestedMoneyOrderAmount <= 0 || decimal.Round(requestedMoneyOrderAmount, 2) != requestedMoneyOrderAmount)
+                throw new ArgumentOutOfRangeException(nameof(moneyOrderAmount), "Enter a positive money order amount with no more than two decimal places.");
+            moneyOrderId = Guid.NewGuid();
+            moneyOrderFee = moneyOrderPolicy.FeeAmount;
+        }
+        else if (!string.IsNullOrWhiteSpace(moneyOrderSenderName) || !string.IsNullOrWhiteSpace(moneyOrderRecipientName) ||
+                 moneyOrderDocumentType is not null || !string.IsNullOrWhiteSpace(moneyOrderDocumentIdentifier))
+        {
+            throw new InvalidOperationException("Enter a money order amount or clear the money order details.");
+        }
+
         var transactionId = Guid.NewGuid();
         var occurredAt = DateTimeOffset.UtcNow;
         var transactionNumber = $"APT-{occurredAt:yyyyMMdd}-{transactionId.ToString("N")[..8].ToUpperInvariant()}";
@@ -147,7 +183,10 @@ public sealed class CounterTransactionService(
             parcelWidthCentimeters: parcelWidthCentimeters,
             parcelHeightCentimeters: parcelHeightCentimeters,
             shippingTaxRatePercent: shippingRateId is null ? 0m : taxPolicy.GetRatePercent(TaxPolicy.ShippingCategory),
-            terminalId: terminal.Id);
+            terminalId: terminal.Id,
+            moneyOrderId: moneyOrderId,
+            moneyOrderAmount: moneyOrderAmount ?? 0m,
+            moneyOrderFee: moneyOrderFee);
 
         var adjustmentReason = $"Counter sale {transactionNumber}";
         foreach (var requested in requestedQuantities)
@@ -168,14 +207,39 @@ public sealed class CounterTransactionService(
             inventory[change.Index] = change.Updated;
         }
 
-        if (inventoryChanges.Count > 0)
-        {
-            await inventoryRepository.SaveAllAsync(inventory, cancellationToken);
-        }
-
         var transactions = (await transactionRepository.GetAllAsync(cancellationToken)).ToList();
+        var originalTransactions = transactions.ToList();
         transactions.Add(transaction);
-        await transactionRepository.SaveAllAsync(transactions, cancellationToken);
+        if (inventoryChanges.Count > 0)
+            await inventoryRepository.SaveAllAsync(inventory, cancellationToken);
+        try
+        {
+            await transactionRepository.SaveAllAsync(transactions, CancellationToken.None);
+            if (moneyOrderId is not null)
+            {
+                await moneyOrderService.IssueAsync(branchId, staffId,
+                    moneyOrderSenderName!, moneyOrderRecipientName!, moneyOrderAmount!.Value,
+                    moneyOrderDocumentType, moneyOrderDocumentIdentifier, correlationId,
+                    CancellationToken.None, moneyOrderId);
+            }
+        }
+        catch (Exception checkoutException) when (checkoutException is not OperationCanceledException)
+        {
+            try
+            {
+                await transactionRepository.SaveAllAsync(originalTransactions, CancellationToken.None);
+                if (inventoryChanges.Count > 0)
+                    await inventoryRepository.SaveAllAsync(originalInventory, CancellationToken.None);
+            }
+            catch (Exception compensationException) when (compensationException is not OperationCanceledException)
+            {
+                throw new InvalidOperationException(
+                    "The mixed checkout failed and its receipt or inventory could not be fully rolled back. Reconcile this basket before retrying.",
+                    new AggregateException(checkoutException, compensationException));
+            }
+
+            throw new InvalidOperationException($"The mixed checkout was rolled back: {checkoutException.Message}", checkoutException);
+        }
 
         await eventPublisher.PublishAsync(new CounterTransactionCompletedEvent(
             transaction.Id,
@@ -237,6 +301,8 @@ public sealed class CounterTransactionService(
 
         var now = DateTimeOffset.UtcNow;
         var original = transactions[transactionIndex];
+        if (original.MoneyOrderId is not null && !refund)
+            throw new InvalidOperationException("A transaction containing a money order must be refunded so the instrument is canceled.");
         var reversed = refund
             ? original.Refund(managerId, reason, now)
             : original.Void(managerId, reason, now);
@@ -258,6 +324,13 @@ public sealed class CounterTransactionService(
                 now);
         }
 
+        if (original.MoneyOrderId is { } moneyOrderId)
+        {
+            await moneyOrderService.RefundAsync(branchId, moneyOrderId, managerId,
+                $"Counter transaction {original.TransactionNumber}: {reason}", correlationId,
+                CancellationToken.None, fromCounterTransaction: true);
+        }
+
         transactions[transactionIndex] = reversed;
         // Mark the receipt resolved before returning stock so a retry cannot
         // restock it twice. Compensate if the inventory collection write fails.
@@ -266,6 +339,7 @@ public sealed class CounterTransactionService(
         {
             await inventoryRepository.SaveAllAsync(inventory, CancellationToken.None);
         }
+
         catch (Exception inventoryException) when (inventoryException is not OperationCanceledException)
         {
             try

@@ -12,4 +12,5 @@ public sealed class MoneyOrdersPageModel
     public decimal FeeAmount { get; init; }
     public bool CanIssue { get; init; }
     public bool CanRefund { get; init; }
+    public IReadOnlySet<Guid> MoneyOrdersInCounterTransactions { get; init; } = new HashSet<Guid>();
 }
