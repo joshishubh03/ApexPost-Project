@@ -11,6 +11,62 @@ The solution uses a layered design with dependencies pointing toward the domain:
 
 MVC controllers translate HTTP input into application use cases and responses. Business rules belong in Domain and Application code. Infrastructure implements repository and integration interfaces.
 
+```mermaid
+flowchart LR
+    Browser[Staff browser] --> Web[ApexPost.Web MVC]
+    Partner[Tracking widget] -->|API key and CORS| Web
+    Web --> App[ApexPost.Application]
+    App --> Domain[ApexPost.Domain]
+    App --> Ports[Repository and service interfaces]
+    Ports --> Infra[ApexPost.Infrastructure]
+    Infra --> Json[(JSON files)]
+    Infra --> Audit[(Audit JSON)]
+    Tests[ApexPost.Tests] --> Web
+    Tests --> App
+    Tests --> Domain
+```
+
+## Middleware and MVC filters
+
+The HTTP pipeline is ordered as follows so cross-cutting checks happen before endpoint execution:
+
+```text
+Correlation ID
+  -> Exception logging
+  -> Security headers
+  -> Maintenance gate (/health bypass)
+  -> HTTPS redirection
+  -> Routing
+  -> Endpoint CORS
+  -> Rate limiter
+  -> Admin IP restriction / partner API key
+  -> Authentication
+  -> Authorization
+  -> MVC or partner endpoint
+```
+
+Middleware handles concerns that apply to the HTTP request regardless of which MVC action runs: correlation, error logging, headers, maintenance, CORS, rate limits, IP checks, and partner keys. MVC action filters run around controller actions and are used for slow-action timing and auditing successful configuration changes. Domain and Application services remain responsible for business rules; filters do not decide whether a stock change, sale, or refund is valid.
+
+## Domain flow
+
+```mermaid
+sequenceDiagram
+    actor Staff
+    participant MVC as MVC Controller
+    participant App as Application Service
+    participant Domain as Domain Rules
+    participant Repo as JSON Repository
+    participant Audit as Audit Event Handler
+    Staff->>MVC: Submit counter operation
+    MVC->>App: Pass branch, actor, values, correlation ID
+    App->>Repo: Load branch, staff, stock, and rates
+    App->>Domain: Validate and calculate
+    Domain-->>App: Valid receipt or rejection
+    App->>Repo: Save receipt and stock movement
+    App->>Audit: Publish completed-operation event
+    MVC-->>Staff: Confirmation or safe error
+```
+
 ## Staff authentication slice
 
 - Staff and branch records are modeled in Domain.
@@ -40,6 +96,12 @@ The Administrator-only MVC area lists branches and staff, creates branches and s
 
 `CounterTransaction` stores a completed receipt with line-item price snapshots, optional shipping quote details, payment method, branch, staff member, and timestamp. `CounterTransactionService` checks branch/product availability, calculates shipping using the existing service, deducts stock with a linked inventory movement, and persists the receipt. `CounterTransactionsController` enforces branch scope from the authenticated claims and allows Clerks, Managers, and Administrators to create transactions; Auditors can review. The training JSON implementation writes inventory and receipt collections separately, so it does not provide a cross-file database transaction or external payment settlement.
 
+Branch Managers can void or fully refund a completed counter transaction at their assigned open branch. The domain transition requires a non-empty reason, records the manager and timestamp, and prevents a second reversal. The application service checks the live staff record and branch assignment, restores the product quantities, changes the stored transaction status, and publishes an audit event. Partial refunds and money-order refunds are not supported. Since the JSON adapter has no cross-file transaction, the service compensates a failed inventory write by restoring the original receipt status; a failure of both the write and its compensation still needs manual reconciliation.
+
+## Branch reports and demo history
+
+`ReportingService` concurrently reads branch, sales, inventory, catalogue, money-order, identity-verification, and audit collections using `Task.WhenAll`. It filters every measure by branch and calculates completed sales, low-stock active products, completed shipping volume by zone and service, money-order totals, failed identity checks, reversals, and the 50 newest audit events. Administrators can select a branch; Branch Managers and Auditors are constrained to their assigned branch in the controller. Development seeding creates 40 deterministic historical transactions and matching opening stock movements when transaction and inventory collections are both empty.
+
 ## Money orders and identity verification
 
 `MoneyOrderService` verifies that the branch is open and the current staff record is active, authorized, and assigned to the selected branch before issuing an order. The configured flat fee is added to the order amount. When the amount exceeds the configured threshold, the service calls `IIdentityVerificationService`, stores a verification attempt with a masked identifier and result, and issues the money order only for a successful result. The order stores a reference to that verification record. Development uses a simulated adapter that accepts only synthetic identifiers with the configured `DEMO-VALID-` prefix; other environments fail closed until a real provider is configured. Money orders and verification attempts use separate JSON repositories, so they do not have cross-file transaction guarantees.
@@ -50,8 +112,29 @@ Assignment 2 requires JSON file persistence behind interfaces. The JSON implemen
 
 ## Security and audit
 
-Authentication, role and branch authorization, correlation middleware, request exception logging, and audit events are in place. Counter sales and money order issuance publish application events that Infrastructure handlers append to `audit-records.json`. Audit failure is logged without making a committed sale or order appear unsuccessful; the JSON implementation therefore has an acknowledged audit consistency gap. Sensitive identity values are used transiently by the simulated verifier and masked before persistence. API-key/IP restrictions, rate limiting, security headers, maintenance mode, CORS policy, and action filters remain future slices.
+Cookie authentication, server-side role and branch checks, antiforgery validation, correlation IDs, request exception logging, security headers, maintenance mode, IP restrictions, rate limiting, partner API keys, and a restricted tracking-widget CORS policy are in place. Middleware order is: correlation ID; exception logging; security headers; maintenance gate; HTTPS redirection; routing; endpoint CORS; rate limiter; admin IP and partner API-key checks; authentication; authorization; endpoints. `/health` is anonymous and remains available during maintenance.
+
+MVC action filters log slow actions and audit successful branch/staff, catalogue, inventory, and shipping configuration changes. Sales, money-order issuance, and reversals publish application events that Infrastructure handlers append to `audit-records.json`. Audit failure is logged without making a committed operation appear unsuccessful; JSON audit storage therefore has an acknowledged consistency gap. Sensitive identity values are used transiently by the simulated verifier and masked before persistence. Partner API keys are supplied through secret configuration and compared in constant time. The default admin allowlist is loopback-only; deployments behind proxies must configure trusted forwarded headers before IP restrictions can identify the original client.
+
+## SOLID mapping and advanced C# usage
+
+| Principle or feature | ApexPost example | Reason |
+|---|---|---|
+| Single Responsibility | Controllers bind HTTP input; Application services coordinate use cases; Infrastructure owns JSON storage | Each layer has one reason to change. |
+| Open/Closed | `IInventoryRepository`, `ICounterTransactionRepository`, and `IIdentityVerificationService` | A database or provider adapter can be substituted without rewriting business rules. |
+| Liskov Substitution | JSON adapters and test doubles implement the same repository contracts | Callers depend on behavior expressed by the interface, not concrete storage. |
+| Interface Segregation | Separate branch, staff, inventory, shipping, and transaction repository interfaces | Consumers receive only the operations they use. |
+| Dependency Inversion | Application services accept repository and publisher abstractions | High-level business workflows do not depend on JSON implementation details. |
+| Records | Domain entities, request events, report models, and audit records | Immutable snapshots make business state and event data explicit. |
+| Pattern matching | Enum `switch` expressions and `is`/`is not` checks in workflow validation | Branching rules stay readable and exhaustive. |
+| Generics | `JsonCollectionStore<T>` and `IApplicationEventHandler<T>` | Shared persistence and event dispatch avoid duplicated type-specific plumbing. |
+| Events and observers | Counter completion, money-order issuance, and reversal events | Audit observers are decoupled from the business operation. |
+| Async and cancellation | Repository contracts accept `CancellationToken` and use asynchronous file I/O | Request cancellation can flow through the storage boundary. |
+| `Task.WhenAll` | `ReportingService` loads independent branch report collections concurrently | The report waits on the slowest read rather than serializing unrelated reads. |
+| `SemaphoreSlim` | JSON collection writes and audit appends | A single process serializes writes to each shared JSON collection. |
+
+`ValueTask`, cache layers, custom-attribute reflection, extension members, and a `Money`/`Weight` value-object hierarchy are not used in this slice because the current workload does not justify their complexity. They can be added when a measured need or later assignment criterion calls for them.
 
 ## Decisions
 
-See docs/adr/ for accepted architecture decision records. This document will expand with domain diagrams, middleware ordering, filter-versus-middleware guidance, security and audit design, and updated SOLID mapping as those features land.
+See docs/adr/ for accepted architecture decision records. The domain, middleware, filter, security, audit, performance, and SOLID notes above describe the current implementation and its known limitations.

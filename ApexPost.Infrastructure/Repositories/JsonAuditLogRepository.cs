@@ -9,6 +9,9 @@ public sealed class JsonAuditLogRepository(string dataDirectory) : IAuditLogRepo
     private readonly JsonCollectionStore<AuditRecord> _store =
         new(Path.Combine(dataDirectory, "audit-records.json"));
 
+    public Task<IReadOnlyList<AuditRecord>> GetAllAsync(CancellationToken cancellationToken = default) =>
+        _store.ReadAllAsync(cancellationToken);
+
     public async Task AppendAsync(AuditRecord record, CancellationToken cancellationToken = default)
     {
         await AppendGate.WaitAsync(cancellationToken);

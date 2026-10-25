@@ -39,6 +39,7 @@ public static class DependencyInjection
             services.AddSingleton<IIdentityVerificationService, UnconfiguredIdentityVerificationService>();
         }
         services.AddScoped<IApplicationEventHandler, CounterTransactionAuditHandler>();
+        services.AddScoped<IApplicationEventHandler, CounterTransactionReversedAuditHandler>();
         services.AddScoped<IApplicationEventHandler, MoneyOrderAuditHandler>();
         services.AddScoped<IApplicationEventPublisher, ApplicationEventPublisher>();
         services.AddSingleton<IStaffPasswordService, AspNetStaffPasswordService>();
@@ -46,6 +47,8 @@ public static class DependencyInjection
             serviceProvider.GetRequiredService<IBranchRepository>(),
             serviceProvider.GetRequiredService<IStaffRepository>(),
             serviceProvider.GetRequiredService<IProductRepository>(),
+            serviceProvider.GetRequiredService<IInventoryRepository>(),
+            serviceProvider.GetRequiredService<ICounterTransactionRepository>(),
             serviceProvider.GetRequiredService<IShippingZoneRepository>(),
             serviceProvider.GetRequiredService<IShippingRateRepository>(),
             serviceProvider.GetRequiredService<IStaffPasswordService>(),

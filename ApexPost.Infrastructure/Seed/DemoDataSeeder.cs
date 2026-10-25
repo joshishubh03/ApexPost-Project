@@ -8,6 +8,8 @@ public sealed class DemoDataSeeder(
     IBranchRepository branchRepository,
     IStaffRepository staffRepository,
     IProductRepository productRepository,
+    IInventoryRepository inventoryRepository,
+    ICounterTransactionRepository transactionRepository,
     IShippingZoneRepository shippingZoneRepository,
     IShippingRateRepository shippingRateRepository,
     IStaffPasswordService passwordService,
@@ -67,8 +69,9 @@ public sealed class DemoDataSeeder(
             };
             var seededProducts = productSeeds.Select((seed, index) => new Product(
                 Guid.Parse($"20000000-0000-0000-0000-{index + 1:000000000000}"),
-                seed.Sku, seed.Name, seed.Description, seed.Category, seed.Price, isActive: true));
+                seed.Sku, seed.Name, seed.Description, seed.Category, seed.Price, isActive: true)).ToArray();
             await productRepository.SaveAllAsync(seededProducts, cancellationToken);
+            products = seededProducts;
         }
 
         var zones = await shippingZoneRepository.GetAllAsync(cancellationToken);
@@ -119,13 +122,10 @@ public sealed class DemoDataSeeder(
         }
 
         var staff = await staffRepository.GetAllAsync(cancellationToken);
-        if (staff.Count != 0)
+        if (staff.Count == 0)
         {
-            return;
-        }
-
-        var seededStaff = new List<StaffMember>();
-        var branchIds = branches.Select(branch => branch.Id).ToArray();
+            var seededStaff = new List<StaffMember>();
+            var branchIds = branches.Select(branch => branch.Id).ToArray();
 
         for (var branchIndex = 0; branchIndex < branchIds.Length; branchIndex++)
         {
@@ -186,7 +186,123 @@ public sealed class DemoDataSeeder(
             passwordService,
             demoPassword));
 
-        await staffRepository.SaveAllAsync(seededStaff, cancellationToken);
+            await staffRepository.SaveAllAsync(seededStaff, cancellationToken);
+            staff = seededStaff;
+        }
+
+        await SeedHistoricalTransactionsAsync(branches, staff, products, cancellationToken);
+    }
+
+    private async Task SeedHistoricalTransactionsAsync(
+        IReadOnlyList<Branch> branches,
+        IReadOnlyList<StaffMember> staff,
+        IReadOnlyList<Product> products,
+        CancellationToken cancellationToken)
+    {
+        var transactions = await transactionRepository.GetAllAsync(cancellationToken);
+        var inventory = (await inventoryRepository.GetAllAsync(cancellationToken)).ToList();
+        if (transactions.Count != 0 || inventory.Count != 0 || branches.Count == 0 || products.Count == 0)
+        {
+            return;
+        }
+
+        var rates = await shippingRateRepository.GetAllAsync(cancellationToken);
+        var zones = await shippingZoneRepository.GetAllAsync(cancellationToken);
+        var activeProducts = products.Where(product => product.IsActive).OrderBy(product => product.Sku).ToArray();
+        if (activeProducts.Length == 0)
+        {
+            return;
+        }
+
+        foreach (var branch in branches)
+        {
+            var manager = staff.FirstOrDefault(person => person.Role == StaffRole.BranchManager && person.BranchId == branch.Id);
+            var clerk = staff.FirstOrDefault(person => person.Role == StaffRole.CounterClerk && person.BranchId == branch.Id);
+            if (manager is null || clerk is null)
+            {
+                return;
+            }
+
+            foreach (var product in activeProducts)
+            {
+                inventory.Add(new InventoryItem(
+                    branch.Id,
+                    product.Id,
+                    100,
+                    5,
+                    [new InventoryMovement(manager.Id, 100, "Opening demo stock", DateTimeOffset.UtcNow.AddDays(-45))]));
+            }
+        }
+
+        var seededTransactions = new List<CounterTransaction>(40);
+        var stableBranches = branches.OrderBy(branch => branch.Code).ToArray();
+        var now = DateTimeOffset.UtcNow;
+        for (var index = 0; index < 40; index++)
+        {
+            var branch = stableBranches[index % stableBranches.Length];
+            var clerk = staff.First(person => person.Role == StaffRole.CounterClerk && person.BranchId == branch.Id);
+            var product = activeProducts[index % activeProducts.Length];
+            var quantity = 1 + index % 3;
+            var itemIndex = inventory.FindIndex(item => item.BranchId == branch.Id && item.ProductId == product.Id);
+            var occurredAt = now.AddDays(-40 + index).AddHours(index % 9);
+            var id = StableGuid($"historical-transaction-{index + 1:000}");
+            var number = $"APT-{occurredAt:yyyyMMdd}-DEMO{index + 1:0000}";
+            var line = new TransactionLine(product.Id, product.Sku, product.Name, quantity, product.Price);
+            Guid? shippingRateId = null;
+            string? zoneName = null;
+            ShippingServiceLevel? serviceLevel = null;
+            decimal? weight = null;
+            decimal shippingCharge = 0;
+
+            if (index % 2 == 0 && rates.Count > 0)
+            {
+                var rate = rates[index % rates.Count];
+                var zone = zones.FirstOrDefault(candidate => candidate.Id == rate.ZoneId);
+                if (zone is not null)
+                {
+                    weight = 0.5m + (index % 5) * 0.25m;
+                    shippingRateId = rate.Id;
+                    zoneName = zone.Name;
+                    serviceLevel = rate.ServiceLevel;
+                    shippingCharge = rate.CalculatePrice(weight.Value);
+                }
+            }
+
+            seededTransactions.Add(new CounterTransaction(
+                id,
+                number,
+                branch.Id,
+                clerk.Id,
+                occurredAt,
+                [line],
+                shippingRateId,
+                zoneName,
+                serviceLevel,
+                weight,
+                shippingCharge,
+                (index % 3) switch
+                {
+                    0 => PaymentMethod.Cash,
+                    1 => PaymentMethod.Card,
+                    _ => PaymentMethod.DigitalWallet
+                }));
+
+            inventory[itemIndex] = inventory[itemIndex].ApplyChange(
+                -quantity,
+                inventory[itemIndex].ReorderLevel,
+                $"Seeded historical sale {number}",
+                clerk.Id,
+                occurredAt);
+        }
+
+        await inventoryRepository.SaveAllAsync(inventory, cancellationToken);
+        await transactionRepository.SaveAllAsync(seededTransactions, cancellationToken);
+    }
+
+    private static Guid StableGuid(string value)
+    {
+        var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(value));
+        return new Guid(hash.AsSpan(0, 16));
     }
 
     private static StaffMember CreateStaff(

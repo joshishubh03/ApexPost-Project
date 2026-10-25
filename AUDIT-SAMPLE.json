@@ -1,0 +1,35 @@
+[
+  {
+    "id": "a1000000-0000-0000-0000-000000000001",
+    "occurredAt": "2026-10-20T09:30:00+00:00",
+    "action": "CounterTransactionCompleted",
+    "entityType": "CounterTransaction",
+    "entityId": "b1000000-0000-0000-0000-000000000001",
+    "actorId": "c1000000-0000-0000-0000-000000000001",
+    "branchId": "d1000000-0000-0000-0000-000000000001",
+    "correlationId": "demo-correlation-transaction-001",
+    "amount": 245.00
+  },
+  {
+    "id": "a1000000-0000-0000-0000-000000000002",
+    "occurredAt": "2026-10-20T10:15:00+00:00",
+    "action": "CounterTransactionVoided",
+    "entityType": "CounterTransaction",
+    "entityId": "b1000000-0000-0000-0000-000000000002",
+    "actorId": "e1000000-0000-0000-0000-000000000001",
+    "branchId": "d1000000-0000-0000-0000-000000000001",
+    "correlationId": "demo-correlation-void-001",
+    "amount": 120.00
+  },
+  {
+    "id": "a1000000-0000-0000-0000-000000000003",
+    "occurredAt": "2026-10-20T11:05:00+00:00",
+    "action": "MoneyOrderIssued",
+    "entityType": "MoneyOrder",
+    "entityId": "f1000000-0000-0000-0000-000000000001",
+    "actorId": "c1000000-0000-0000-0000-000000000001",
+    "branchId": "d1000000-0000-0000-0000-000000000001",
+    "correlationId": "demo-correlation-money-order-001",
+    "amount": 5050.00
+  }
+]

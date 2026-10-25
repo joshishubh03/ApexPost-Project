@@ -1,0 +1,93 @@
+@model BranchReportPageModel
+@{
+    ViewData["Title"] = "Branch report";
+    var inr = System.Globalization.CultureInfo.GetCultureInfo("en-IN");
+}
+
+<h1>Branch report</h1>
+<p class="text-muted">Sales, stock, shipping, money order, and verification activity for one branch.</p>
+
+@if (User.IsInRole("Administrator"))
+{
+    <form asp-action="Index" method="get" class="row g-2 mb-4">
+        <div class="col-md-5">
+            <label for="branchId" class="form-label">Branch</label>
+            <select id="branchId" name="branchId" class="form-select">
+                <option value="">Select a branch</option>
+                @foreach (var branch in Model.Branches)
+                {
+                    <option value="@branch.Id" selected="@(branch.Id == Model.SelectedBranchId)">@branch.Code — @branch.Name</option>
+                }
+            </select>
+        </div>
+        <div class="col-auto align-self-end"><button class="btn btn-outline-primary" type="submit">Open report</button></div>
+    </form>
+}
+
+@if (Model.Report is null)
+{
+    <div class="alert alert-info">Select a branch to view its report.</div>
+}
+else
+{
+    <h2 class="h4">@Model.Report.Branch.Code — @Model.Report.Branch.Name</h2>
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-lg-3"><div class="card card-body h-100"><div class="text-muted">Completed sales</div><strong class="fs-4">@Model.Report.CompletedSalesCount</strong><span>@Model.Report.CompletedSalesTotal.ToString("C2", inr)</span></div></div>
+        <div class="col-sm-6 col-lg-3"><div class="card card-body h-100"><div class="text-muted">Money orders</div><strong class="fs-4">@Model.Report.MoneyOrderCount</strong><span>@Model.Report.MoneyOrderTotal.ToString("C2", inr)</span></div></div>
+        <div class="col-sm-6 col-lg-2"><div class="card card-body h-100"><div class="text-muted">Low stock</div><strong class="fs-4">@Model.Report.LowStockItems.Count</strong></div></div>
+        <div class="col-sm-6 col-lg-2"><div class="card card-body h-100"><div class="text-muted">Voids / refunds</div><strong class="fs-4">@Model.Report.VoidedTransactionsCount / @Model.Report.RefundedTransactionsCount</strong></div></div>
+        <div class="col-sm-6 col-lg-2"><div class="card card-body h-100"><div class="text-muted">Failed ID checks</div><strong class="fs-4">@Model.Report.IdentityVerificationFailures</strong></div></div>
+    </div>
+
+    <div class="row g-4">
+        <section class="col-lg-6">
+            <h3 class="h5">Low stock items</h3>
+            @if (Model.Report.LowStockItems.Count == 0)
+            {
+                <p class="text-muted">No active products are below their reorder level.</p>
+            }
+            else
+            {
+                <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Product</th><th>On hand</th><th>Reorder at</th></tr></thead><tbody>
+                @foreach (var item in Model.Report.LowStockItems)
+                {
+                    <tr><td>@item.Name <small class="text-muted">@item.Sku</small></td><td>@item.QuantityOnHand</td><td>@item.ReorderLevel</td></tr>
+                }
+                </tbody></table></div>
+            }
+        </section>
+        <section class="col-lg-6">
+            <h3 class="h5">Shipping volume by zone and service</h3>
+            @if (Model.Report.ShippingVolumes.Count == 0)
+            {
+                <p class="text-muted">No completed shipping transactions are recorded.</p>
+            }
+            else
+            {
+                <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Zone</th><th>Service</th><th>Shipments</th></tr></thead><tbody>
+                @foreach (var volume in Model.Report.ShippingVolumes)
+                {
+                    <tr><td>@volume.ZoneName</td><td>@volume.ServiceLevel</td><td>@volume.Shipments</td></tr>
+                }
+                </tbody></table></div>
+            }
+        </section>
+    </div>
+
+    <section class="mt-4">
+        <h3 class="h5">Recent audit activity</h3>
+        @if (Model.Report.RecentAuditEvents.Count == 0)
+        {
+            <p class="text-muted">No audit events are recorded for this branch.</p>
+        }
+        else
+        {
+            <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Time</th><th>Action</th><th>Record</th><th>Actor</th><th>Correlation</th><th class="text-end">Amount</th></tr></thead><tbody>
+            @foreach (var audit in Model.Report.RecentAuditEvents)
+            {
+                <tr><td>@audit.OccurredAt.ToLocalTime().ToString("g")</td><td>@audit.Action</td><td>@audit.EntityType</td><td>@audit.ActorId</td><td><code>@audit.CorrelationId</code></td><td class="text-end">@(audit.Amount?.ToString("C2", inr) ?? "—")</td></tr>
+            }
+            </tbody></table></div>
+        }
+    </section>
+}
