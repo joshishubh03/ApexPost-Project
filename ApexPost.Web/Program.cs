@@ -45,9 +45,11 @@ builder.Services.AddControllersWithViews(options =>
     options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
     options.Filters.AddService<RequestTimingActionFilter>();
     options.Filters.AddService<MvcAuditActionFilter>();
+    options.Filters.AddService<ModelValidationActionFilter>();
 });
 builder.Services.AddScoped<RequestTimingActionFilter>();
 builder.Services.AddScoped<MvcAuditActionFilter>();
+builder.Services.AddScoped<ModelValidationActionFilter>();
 builder.Services.AddScoped<ApexPost.Application.Abstractions.IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<StaffManagementService>();
 builder.Services.AddScoped<ProductCatalogueService>();

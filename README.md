@@ -80,7 +80,7 @@ Example local configuration and request:
     $trackingNumber = (Get-Content data/counter-transactions.json | ConvertFrom-Json | Where-Object { $_.shippingRateId } | Select-Object -First 1).transactionNumber
     curl.exe -H "X-API-Key: $env:PartnerApi__ApiKey" "https://localhost:5001/api/partner/tracking/$trackingNumber"
 
-The tracking response contains receipt-level shipment type, service, zone, weight, status, and accepted time only; it does not expose customer names or identity data. `AUDIT-SAMPLE.json` contains synthetic audit entries. MVC action filters audit successful branch, staff, product, stock, and shipping configuration changes; transaction services publish events for sales, reversals, and money orders. Slow MVC actions are logged at the configured `Diagnostics:SlowActionThresholdMilliseconds` threshold.
+The tracking response contains receipt-level shipment type, service, zone, weight, status, and accepted time only; it does not expose customer names or identity data. `AUDIT-SAMPLE.json` contains synthetic audit entries. MVC action filters validate bound model state, audit successful branch, staff, product, stock, and shipping configuration changes, and log slow actions at the configured `Diagnostics:SlowActionThresholdMilliseconds` threshold. JSON requests with invalid models receive a validation problem response; HTML forms retain their controller-specific redisplay behavior. Transaction services publish events for sales, reversals, and money orders.
 
 ## Money orders and identity verification
 
