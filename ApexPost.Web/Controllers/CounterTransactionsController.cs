@@ -12,7 +12,8 @@ namespace ApexPost.Web.Controllers;
 [Authorize]
 public sealed class CounterTransactionsController(
     CounterTransactionService transactionService,
-    IBranchRepository branchRepository) : Controller
+    IBranchRepository branchRepository,
+    ApexPost.Application.Models.MoneyOrderPolicy moneyOrderPolicy) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Index(Guid? branchId, CancellationToken cancellationToken)
@@ -49,7 +50,9 @@ public sealed class CounterTransactionsController(
             Branches = branches,
             SelectedBranchId = selectedBranchId,
             Register = register,
-            CanCreate = CanCreateTransactions()
+            CanCreate = CanCreateTransactions(),
+            MoneyOrderFee = moneyOrderPolicy.FeeAmount,
+            MoneyOrderIdentityVerificationThreshold = moneyOrderPolicy.IdentityVerificationThreshold
         });
     }
 
@@ -93,6 +96,11 @@ public sealed class CounterTransactionsController(
                 input.ParcelWidthCentimeters,
                 input.ParcelHeightCentimeters,
                 input.TerminalId!.Value,
+                input.MoneyOrderAmount,
+                input.MoneyOrderSenderName,
+                input.MoneyOrderRecipientName,
+                input.MoneyOrderDocumentType,
+                input.MoneyOrderDocumentIdentifier,
                 CorrelationIdMiddleware.GetCorrelationId(HttpContext),
                 cancellationToken);
             TempData["StatusMessage"] = $"Transaction {transaction.TransactionNumber} completed. Total: {transaction.TotalAmount:C2}.";
@@ -100,6 +108,10 @@ public sealed class CounterTransactionsController(
         catch (InvalidOperationException exception)
         {
             TempData["ErrorMessage"] = exception.Message;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
         }
         catch (ArgumentException exception)
         {

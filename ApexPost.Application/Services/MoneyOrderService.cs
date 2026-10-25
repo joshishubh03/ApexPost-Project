@@ -10,6 +10,7 @@ public sealed class MoneyOrderService(
     IBranchRepository branchRepository,
     IStaffRepository staffRepository,
     IMoneyOrderRepository moneyOrderRepository,
+    ICounterTransactionRepository transactionRepository,
     IIdentityVerificationRepository verificationRepository,
     IIdentityVerificationService identityVerificationService,
     IApplicationEventPublisher eventPublisher,
@@ -35,7 +36,8 @@ public sealed class MoneyOrderService(
         IdentityDocumentType? documentType,
         string? documentIdentifier,
         string correlationId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Guid? orderId = null)
     {
         ValidatePolicy();
         var branch = await branchRepository.GetByIdAsync(branchId, cancellationToken)
@@ -102,7 +104,7 @@ public sealed class MoneyOrderService(
             }
         }
 
-        var id = Guid.NewGuid();
+        var id = orderId ?? Guid.NewGuid();
         var occurredAt = DateTimeOffset.UtcNow;
         var number = $"APM-{occurredAt:yyyyMMdd}-{id.ToString("N")[..8].ToUpperInvariant()}";
         var order = new MoneyOrder(
@@ -142,7 +144,8 @@ public sealed class MoneyOrderService(
         Guid managerId,
         string reason,
         string correlationId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool fromCounterTransaction = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reason);
         if (reason.Trim().Length > 250)
@@ -162,6 +165,13 @@ public sealed class MoneyOrderService(
         var index = orders.FindIndex(order => order.Id == moneyOrderId && order.BranchId == branchId);
         if (index < 0)
             throw new KeyNotFoundException("The money order could not be found for this branch.");
+
+        if (!fromCounterTransaction && (await transactionRepository.GetAllAsync(cancellationToken))
+            .Any(transaction => transaction.MoneyOrderId == moneyOrderId))
+            throw new InvalidOperationException("Refund this money order through its originating counter receipt.");
+
+        if (orders[index].Status == MoneyOrderStatus.Refunded && fromCounterTransaction)
+            return orders[index];
 
         var now = DateTimeOffset.UtcNow;
         var refunded = orders[index].Refund(managerId, reason, now);
