@@ -144,7 +144,7 @@ app.UseMiddleware<MaintenanceModeMiddleware>();
 app.UseHttpsRedirection();
 app.UseRouting();
 app.UseCors();
-app.UseMiddleware<AdminIpRestrictionMiddleware>();
+app.UseMiddleware<EndpointIpRestrictionMiddleware>();
 app.UseMiddleware<PartnerApiKeyMiddleware>();
 app.UseRateLimiter();
 app.UseAuthentication();
