@@ -70,14 +70,15 @@ Administrators can select a branch; Branch Managers and Auditors are restricted 
 
 ## Security and partner tracking
 
-The web pipeline adds security headers, an optional maintenance response (`503`, with `/health` left available), loopback-only default access to `/Administration`, a five-attempt-per-minute login limit, and a 30-request-per-minute partner API limit. Set `PartnerApi__ApiKey` through the environment or a secret store before using `/api/partner/tracking/{transactionNumber}`. Set `PartnerApi__AllowedCorsOrigins__0` to the approved tracking-widget origin; CORS does not replace the API key. Configure `Security__AdminAllowedIpAddresses__0` for the deployment's admin IPs. When deploying behind a reverse proxy, configure trusted forwarded headers before relying on client IP restrictions.
+The web pipeline adds security headers, an optional maintenance response (`503`, with `/health` left available), loopback-only default access to administrative mutation routes, a five-attempt-per-minute login limit, and a 30-request-per-minute partner API limit. Set `PartnerApi__ApiKey` through the environment or a secret store before using `/api/partner/tracking/{transactionNumber}`. Set `PartnerApi__AllowedCorsOrigins__0` to the approved tracking-widget origin; CORS does not replace the API key. Configure `Security__AdminAllowedIpAddresses__0` for the deployment's admin IPs. When deploying behind a reverse proxy, configure trusted forwarded headers before relying on client IP restrictions.
 
 Example local configuration and request:
 
     $env:PartnerApi__ApiKey = "replace-with-a-local-secret"
     $env:PartnerApi__AllowedCorsOrigins__0 = "https://widget.example"
     dotnet run --project ApexPost.Web
-    curl.exe -H "X-API-Key: replace-with-a-local-secret" https://localhost:5001/api/partner/tracking/APT-20261020-DEMO0001
+    $trackingNumber = (Get-Content data/counter-transactions.json | ConvertFrom-Json | Where-Object { $_.shippingRateId } | Select-Object -First 1).transactionNumber
+    curl.exe -H "X-API-Key: $env:PartnerApi__ApiKey" "https://localhost:5001/api/partner/tracking/$trackingNumber"
 
 The tracking response contains receipt-level service, zone, weight, status, and accepted time only; it does not expose customer names or identity data. `AUDIT-SAMPLE.json` contains synthetic audit entries. MVC action filters audit successful branch, staff, product, stock, and shipping configuration changes; transaction services publish events for sales, reversals, and money orders. Slow MVC actions are logged at the configured `Diagnostics:SlowActionThresholdMilliseconds` threshold.
 

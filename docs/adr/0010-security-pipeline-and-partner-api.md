@@ -9,7 +9,7 @@ The assessment requires request-wide security middleware, protected partner inte
 
 ## Decision
 
-Use built-in ASP.NET Core rate limiting and CORS policies. Apply security headers and maintenance handling globally. Restrict `/Administration` by an exact IP allowlist, and protect `/api/partner` with an environment-provided API key checked in constant time. Keep the partner tracking origin list configurable. Leave `/health` available during maintenance. Use action filters only for MVC action concerns: slow-action timing and successful configuration-operation auditing. Keep transaction audit events in the Application/Infrastructure event flow.
+Use built-in ASP.NET Core rate limiting and CORS policies. Apply security headers and maintenance handling globally. Restrict administrative mutation routes by an exact IP allowlist, and protect `/api/partner` with an environment-provided API key checked in constant time. Keep the partner tracking origin list configurable. Leave `/health` available during maintenance. Use action filters only for MVC action concerns: slow-action timing and successful configuration-operation auditing. Keep transaction audit events in the Application/Infrastructure event flow.
 
 ## Consequences
 

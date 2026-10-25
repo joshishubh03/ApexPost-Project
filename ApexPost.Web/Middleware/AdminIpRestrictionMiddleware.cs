@@ -6,7 +6,16 @@ public sealed class AdminIpRestrictionMiddleware(RequestDelegate next, IConfigur
 {
     public async Task InvokeAsync(HttpContext context)
     {
-        if (context.Request.Path.StartsWithSegments("/Administration"))
+        var path = context.Request.Path;
+        var administrativePath = path.StartsWithSegments("/Administration") ||
+            (HttpMethods.IsPost(context.Request.Method) &&
+                (path.StartsWithSegments("/Catalog/Create") ||
+                 path.StartsWithSegments("/Catalog/SetActive") ||
+                 path.StartsWithSegments("/Inventory/Adjust") ||
+                 path.StartsWithSegments("/Shipping/CreateZone") ||
+                 path.StartsWithSegments("/Shipping/CreateRate")));
+
+        if (administrativePath)
         {
             var allowed = configuration.GetSection("Security:AdminAllowedIpAddresses").Get<string[]>() ?? [];
             var remoteAddress = context.Connection.RemoteIpAddress;

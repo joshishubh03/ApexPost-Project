@@ -70,8 +70,10 @@ public sealed class WebIntegrationTests
         using var client = CreateSecureClient(factory);
 
         using var response = await client.GetAsync("/Administration/Branches");
+        using var productMutation = await client.PostAsync("/Catalog/Create", new StringContent(string.Empty));
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, productMutation.StatusCode);
     }
 
     [Fact]
