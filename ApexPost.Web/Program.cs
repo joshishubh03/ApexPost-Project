@@ -83,7 +83,10 @@ builder.Services.AddRateLimiter(options =>
             AutoReplenishment = true
         }));
     options.AddPolicy("partner", context => RateLimitPartition.GetFixedWindowLimiter(
-        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        context.Items.TryGetValue(PartnerApiKeyMiddleware.PartnerIdItemKey, out var partnerId) &&
+            partnerId is string configuredPartnerId
+                ? configuredPartnerId
+                : context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions
         {
             PermitLimit = 30,
@@ -139,9 +142,9 @@ app.UseMiddleware<MaintenanceModeMiddleware>();
 app.UseHttpsRedirection();
 app.UseRouting();
 app.UseCors();
-app.UseRateLimiter();
 app.UseMiddleware<AdminIpRestrictionMiddleware>();
 app.UseMiddleware<PartnerApiKeyMiddleware>();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
