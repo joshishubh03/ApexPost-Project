@@ -7,6 +7,7 @@ using ApexPost.Application.Models;
 using ApexPost.Domain.Entities;
 using ApexPost.Domain.Enums;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -229,6 +230,7 @@ public sealed class WebIntegrationTests
             });
             builder.ConfigureTestServices(services =>
             {
+                services.AddSingleton<IStartupFilter, LoopbackAddressStartupFilter>();
                 services.RemoveAll<ApexPost.Application.Abstractions.IAuthenticationService>();
                 services.AddSingleton<ApexPost.Application.Abstractions.IAuthenticationService, TestAuthenticationService>();
                 services.AddDataProtection().UseEphemeralDataProtectionProvider();
@@ -248,6 +250,19 @@ public sealed class WebIntegrationTests
                 Directory.Delete(dataDirectory, recursive: true);
             }
         }
+    }
+
+    private sealed class LoopbackAddressStartupFilter : IStartupFilter
+    {
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+        {
+            app.Use(async (context, nextMiddleware) =>
+            {
+                context.Connection.RemoteIpAddress = IPAddress.Loopback;
+                await nextMiddleware();
+            });
+            next(app);
+        };
     }
 
     private sealed class TestAuthenticationService : ApexPost.Application.Abstractions.IAuthenticationService

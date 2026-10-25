@@ -11,6 +11,8 @@ The solution uses a layered design with dependencies pointing toward the domain:
 
 MVC controllers translate HTTP input into application use cases and responses. Business rules belong in Domain and Application code. Infrastructure implements repository and integration interfaces.
 
+Dependency injection uses singleton lifetimes for path-bound JSON repositories, immutable policy/configuration objects, password hashing, and the development seeder. Application use cases, event publishers/handlers, and MVC filters are scoped to the request. Conventional middleware constructors depend only on the request delegate, singleton configuration, and loggers; per-request services are resolved through `InvokeAsync` or are not captured by middleware. The exception handler is stateless. No scoped service is held by a singleton middleware instance.
+
 ```mermaid
 flowchart LR
     Browser[Staff browser] --> Web[ApexPost.Web MVC]
@@ -228,7 +230,7 @@ Application events signal a stock transition from above the reorder threshold to
 
 ## Persistence
 
-Assignment 2 requires JSON file persistence behind interfaces. The JSON implementation remains in Infrastructure so a later database adapter can replace it without changing business rules. JSON writes use a semaphore and a temporary file replacement; this protects a single process from overlapping writes but does not provide multi-process transactions.
+Assignment 2 requires JSON file persistence behind interfaces. The JSON implementation remains in Infrastructure so a later database adapter can replace it without changing business rules. JSON writes use a semaphore and a temporary file replacement; this protects a single process from overlapping writes but does not provide multi-process transactions. `JsonCollectionStore<T>` treats missing or blank collection files as empty. Malformed JSON raises `JsonException`, and filesystem failures propagate instead of silently replacing data. The global exception handler returns a safe Problem Details response while request exception logging retains diagnostic details. Development seeding fills empty collections and creates historical receipts only when both transaction and inventory collections are empty, so a completed seed can be run again without duplicating those records.
 
 ## Security and audit
 

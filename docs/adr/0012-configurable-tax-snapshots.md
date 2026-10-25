@@ -13,6 +13,12 @@ Configure rates under `Taxation:Rates` in application settings. Products identif
 
 The demo configuration uses 0% for `Standard` and `Shipping` until approved rates are provided. These are explicit demo values, not a claim about legally applicable rates.
 
+## Alternatives considered
+
+- Hard-coding rates in checkout logic would require code changes for each configuration and could diverge between branches.
+- Recomputing tax from current configuration when reading a receipt would change historical totals after a rate update.
+- Configuration-driven rates with per-line and shipping snapshots keep policy adjustable while preserving the amount used at checkout.
+
 ## Consequences
 
 - Historical receipt totals retain the rate and tax amount applied at checkout.
