@@ -19,6 +19,7 @@ public static class DependencyInjection
         MoneyOrderPolicy moneyOrderPolicy,
         bool enableSimulatedIdentityVerification)
     {
+        services.AddSingleton<IApplicationMutationCoordinator>(_ => new JsonMutationCoordinator(dataDirectory));
         services.AddSingleton<IBranchRepository>(_ => new JsonBranchRepository(dataDirectory));
         services.AddSingleton<IStaffRepository>(_ => new JsonStaffRepository(dataDirectory));
         services.AddSingleton<IProductRepository>(_ => new JsonProductRepository(dataDirectory));
@@ -61,7 +62,8 @@ public static class DependencyInjection
             serviceProvider.GetRequiredService<ICounterTerminalRepository>(),
             serviceProvider.GetRequiredService<IStaffPasswordService>(),
             moneyOrderPolicy,
-            demoPassword));
+            demoPassword,
+            serviceProvider.GetRequiredService<IApplicationMutationCoordinator>()));
 
         return services;
     }

@@ -1,36 +1,36 @@
 [
   {
-    "id": "818a191d-61c9-4599-9cc5-94c398d41717",
-    "occurredAt": "2026-10-30T10:34:20.87135+00:00",
+    "id": "5150ad8e-fdfe-4253-822c-78964ae9693f",
+    "occurredAt": "2026-10-30T16:43:50.9423254+05:30",
     "action": "MvcCatalogCreate",
     "entityType": "Catalog",
-    "entityId": "0HNPME5DO2TDB",
-    "actorId": "10000000-0000-0000-0000-000000000001",
-    "branchId": "20000000-0000-0000-0000-000000000001",
-    "correlationId": "f598647d-cda6-498f-b389-d0fe4a7e1b41",
+    "entityId": "0HNPMERFVPTFK:00000005",
+    "actorId": "60de6608-bc63-1595-b124-373ca6f24564",
+    "branchId": "10000000-0000-0000-0000-000000000001",
+    "correlationId": "94f8c197-a8d6-4c76-8da8-5bfa7d43d662",
     "amount": null,
     "details": "MVC action request",
-    "role": "Administrator",
+    "role": "BranchManager",
     "resultStatusCode": 302,
-    "durationMilliseconds": 31,
+    "durationMilliseconds": 15,
     "routeValues": {}
   },
   {
-    "id": "2e58b045-0a76-4b86-97ee-22214b289133",
-    "occurredAt": "2026-10-30T10:34:20.9874846+00:00",
+    "id": "1d391b3f-7124-4d90-bc7d-ea2c4c16033d",
+    "occurredAt": "2026-10-30T16:43:51.0703106+05:30",
     "action": "MvcCatalogSetActive",
     "entityType": "Catalog",
-    "entityId": "dc21a687-8de3-400c-b8ed-3496ba735145",
-    "actorId": "10000000-0000-0000-0000-000000000001",
-    "branchId": "20000000-0000-0000-0000-000000000001",
-    "correlationId": "20afccd7-fd95-4385-8f58-48dcd1300baf",
+    "entityId": "587c5e87-8751-44f8-ba85-4b01ae90ec04",
+    "actorId": "60de6608-bc63-1595-b124-373ca6f24564",
+    "branchId": "10000000-0000-0000-0000-000000000001",
+    "correlationId": "e45927ee-448d-431f-8a79-49abef8e1342",
     "amount": null,
     "details": "MVC action request",
-    "role": "Administrator",
+    "role": "BranchManager",
     "resultStatusCode": 302,
-    "durationMilliseconds": 6,
+    "durationMilliseconds": 13,
     "routeValues": {
-      "id": "dc21a687-8de3-400c-b8ed-3496ba735145"
+      "id": "587c5e87-8751-44f8-ba85-4b01ae90ec04"
     }
   }
 ]

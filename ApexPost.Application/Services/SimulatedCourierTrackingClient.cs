@@ -1,9 +1,11 @@
 using ApexPost.Application.Abstractions;
+using ApexPost.Application.Models;
 using ApexPost.Domain.Entities;
+using ApexPost.Domain.Enums;
 
 namespace ApexPost.Application.Services;
 
-public sealed class SimulatedCourierTrackingClient
+public sealed class SimulatedCourierTrackingClient : ICourierTrackingClient
 {
     private readonly ICounterTransactionRepository transactionRepository;
     private readonly SemaphoreSlim concurrencyGate;
@@ -30,7 +32,7 @@ public sealed class SimulatedCourierTrackingClient
             throw new ArgumentOutOfRangeException(nameof(simulatedLatency));
     }
 
-    public async Task<CounterTransaction?> FindShipmentAsync(
+    public async Task<ShipmentTrackingSummary?> FindShipmentAsync(
         string trackingNumber,
         CancellationToken cancellationToken = default)
     {
@@ -47,9 +49,19 @@ public sealed class SimulatedCourierTrackingClient
                 await Task.Delay(simulatedLatency, timeoutSource.Token);
 
             var transactions = await transactionRepository.GetAllAsync(timeoutSource.Token);
-            return transactions.FirstOrDefault(transaction =>
+            var transaction = transactions.FirstOrDefault(transaction =>
                 transaction.ShippingRateId is not null &&
                 string.Equals(transaction.TransactionNumber, trackingNumber.Trim(), StringComparison.OrdinalIgnoreCase));
+            return transaction is null
+                ? null
+                : new ShipmentTrackingSummary(
+                    transaction.TransactionNumber,
+                    transaction.ShippingZoneName!,
+                    transaction.ShippingServiceLevel!.Value,
+                    transaction.ShipmentType,
+                    transaction.ShippingWeightKilograms!.Value,
+                    transaction.Status.ToString(),
+                    transaction.OccurredAt);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {

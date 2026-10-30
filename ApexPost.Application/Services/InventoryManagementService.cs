@@ -9,7 +9,8 @@ public sealed class InventoryManagementService(
     IInventoryRepository inventoryRepository,
     IProductRepository productRepository,
     IBranchRepository branchRepository,
-    IApplicationEventPublisher eventPublisher)
+    IApplicationEventPublisher eventPublisher,
+    IApplicationMutationCoordinator mutationCoordinator)
 {
     public async Task<IReadOnlyList<ProductInventorySummary>> GetBranchInventoryAsync(
         Guid branchId,
@@ -56,8 +57,7 @@ public sealed class InventoryManagementService(
         Guid staffId,
         string correlationId,
         CancellationToken cancellationToken = default) =>
-        InProcessMutationGate.RunAsync(
-            InProcessMutationGate.CounterAndInventory,
+        mutationCoordinator.RunAsync(
             () => ChangeStockCoreAsync(
                 branchId, productId, quantityChange, reorderLevel, reason, staffId, correlationId, cancellationToken),
             cancellationToken);

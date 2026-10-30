@@ -1,38 +1,42 @@
 # Week 2 assessment evidence
 
-This index points reviewers from each assignment area to the implementation and verification evidence. It records the current design and its limits; it does not claim benchmark results that were not collected.
+This index points reviewers to the current implementation and checks. The stated limitations are part of the design evidence; benchmark figures are local samples, not capacity guarantees.
 
 | Assessment area | Implementation evidence | Verification evidence |
 | --- | --- | --- |
 | Domain rules and mixed checkout | `ApexPost.Domain/Entities`, `ApexPost.Application/Services/CounterTransactionService.cs`, `MoneyOrderService.cs`, and `ReportingService.cs` | `ApexPost.Tests/BusinessRuleTests.cs`, `CounterTransactionReversalTests.cs`, and `Reporting/ReportingServiceTests.cs` |
-| Advanced C# techniques | `DESIGN.md`, “SOLID mapping and advanced C# usage”; examples include `Money`, `Weight`, and `Sku` value objects, C# 14 extension members, pattern matching, generic JSON storage/event handlers, delegates, events, async cancellation, `Task.WhenAll`, `SemaphoreSlim`, `ValueTask`, and the catalogue cache | `ValueObjectTests.cs`, `ProductCatalogueCacheTests.cs`, `CourierTrackingClientTests.cs`, and the relevant domain/service tests |
-| MVC workflows | `ApexPost.Web/Controllers` and `ApexPost.Web/Views`; Auditors have a cross-branch overview, while the standard report remains branch-scoped | `ApexPost.Tests/WebIntegrationTests.cs` covers login redirects, role restrictions, auditor overview, safe MVC audit records, and branch-scoped label access |
-| Middleware and security | `ApexPost.Web/Program.cs` and `ApexPost.Web/Middleware`; forwarded headers run before request processing and trust only configured proxy IPs | `WebIntegrationTests.cs` covers security headers, API-key and IP behavior, trusted/untrusted forwarded addresses, login limiting, correlation IDs, and maintenance mode |
-| Action filters and audit | `ApexPost.Web/Middleware/MvcActionFilters.cs`, Application events, and generated `AUDIT-SAMPLE.json` entries | `Mvc_audit_filter_records_safe_product_changes` sends real MVC POST requests through `WebApplicationFactory`, verifies audit metadata, and can refresh the sample file; entries omit request bodies and raw identity values |
-| Persistence and seed data | `ApexPost.Infrastructure/Repositories` and `ApexPost.Infrastructure/Seed/DemoDataSeeder.cs` | `ApexPost.Tests/Infrastructure/JsonPersistenceReliabilityTests.cs` covers missing/malformed files, write failure, concurrent audit appends, and repeatable seeding |
-| Architecture decisions | `docs/adr/` and the architecture, domain, middleware, and filter sections of `DESIGN.md` | ADRs record context, decision, alternatives, and consequences; the forwarded-header decision is ADR 0028 |
+| Advanced C# techniques | `DESIGN.md`, “SOLID mapping and advanced C# usage”; records/value objects, C# 14 extension members, pattern matching, generics, delegates, events, cached reflection validation, async cancellation, `Task.WhenAll`, `SemaphoreSlim`, and `ValueTask` cache | `ValueObjectTests.cs`, `CachedAttributeValidatorTests.cs`, `ProductCatalogueCacheTests.cs`, courier tests, and application service tests |
+| MVC workflows | `ApexPost.Web/Controllers` and `ApexPost.Web/Views`; Auditors have a cross-branch overview while the standard report remains branch-scoped | `ApexPost.Tests/WebIntegrationTests.cs` covers login redirects, role restrictions, auditor overview, safe MVC audit records, and branch-scoped label access |
+| Middleware and security | `ApexPost.Web/Program.cs` and `ApexPost.Web/Middleware`; forwarded headers trust only configured proxy IPs | `WebIntegrationTests.cs` covers security headers, API-key/IP behavior, trusted/untrusted forwarding, login limiting, correlation IDs, and maintenance mode |
+| Action filters and audit | `ApexPost.Web/Middleware/MvcActionFilters.cs`, Application events, `AUDIT-SAMPLE.json`, and `scripts/GenerateAuditSample.ps1` | Web integration tests verify filter metadata. The script runs a local Development host, signs in, creates and deactivates a product, then exports only the safe audit records. |
+| Persistence and seed data | `ApexPost.Infrastructure/Repositories/JsonMutationCoordinator.cs`, `JsonCollectionStore.cs`, and `DemoDataSeeder.cs` | `JsonPersistenceReliabilityTests.cs` covers missing/malformed files, write failure, concurrent appends, and repeatable seed data. `JsonMutationCoordinatorTests.cs` covers multiple coordinator instances, multi-file commit/rollback, reader blocking, and recovery from a prepared journal. |
+| Architecture decisions | `docs/adr/` plus `DESIGN.md` | ADRs include context, decision, alternatives, and consequences. ADR-0030 covers recoverable JSON mutations; ADR-0031 the configurable courier contract; ADR-0032 cached attribute validation and measurement. |
 
 ## Seed data counts
 
-Development seeding creates five branches, 20 staff accounts across all four roles, 30 products, ten shipping zones, Standard/Express/Registered rates for the seeded zones, and 40 historical counter transactions (36 Paid, two Voided, two Refunded). It also seeds ten money orders and five successful identity verification records for the auditor view. The seed is conditional and deterministic; repeated seeding is covered by `Development_seed_can_run_twice_without_duplicates`.
+Development seeding creates five branches, 20 staff accounts across all four roles, 30 products, ten shipping zones, Standard/Express/Registered rates for the seeded zones, and 40 historical counter transactions (36 Paid, two Voided, two Refunded). It also seeds ten money orders and five successful identity verification records for the auditor view. The seed is conditional and deterministic; `Development_seed_can_run_twice_without_duplicates` verifies repeated seeding.
 
-## Performance decisions and limits
+## Persistence behavior
 
-`ReportingService` loads eight independent repository collections concurrently with `Task.WhenAll`. `JsonCollectionStore<T>`, the audit repository, and the notification repository use `SemaphoreSlim` to serialize writes within one process. Application mutation gates span the full read/modify/write path for sales, reversals, stock adjustments, and money orders; `Concurrent_counter_sales_preserve_every_receipt_and_stock_change` checks that 20 overlapping checkouts retain all receipts and stock changes. Login and partner requests use separate rate-limit policies. `SimulatedCourierTrackingClient` bounds concurrent lookups, distinguishes caller cancellation from its timeout, and is covered by dedicated tests. These are bounded behaviors, not a throughput benchmark: no benchmark numbers are claimed.
+The JSON coordinator uses a shared OS file lock for repository reads and an exclusive lock for mutations. Business read-modify-write paths stage collection changes, retain backups, write a prepared journal, replace affected files, and mark the transaction committed. Startup recovery restores files for a prepared transaction or clears a completed journal. Tests use separate coordinator instances and verify that readers cannot observe a staged multi-file change before commit. Local filesystem lock behavior and same-volume rename are required; this does not provide distributed locking or database durability. Reports do not take one cross-collection point-in-time snapshot if a commit happens between their individual reads.
 
-The demo has only a few dozen branches/products and a small local JSON dataset. The singleton catalogue service caches an immutable product snapshot and refreshes it after create/activation changes; `Catalogue_reads_are_cached_and_mutations_refresh_the_snapshot` covers cache invalidation. This demonstrates the requested `ValueTask` pattern, not a measured throughput gain. Courier tracking is simulated and does not measure a real provider.
+## Performance sample
 
-JSON write gates protect one process only. Separate files do not provide a cross-file database transaction, and the audit event write remains best-effort after a business write. These limits are described in `DESIGN.md` and the relevant ADRs.
+`ApexPost.Benchmarks` is a dependency-free local timing harness. On 2026-10-30, .NET 10.0.13 on Windows 11 with four logical processors, 500 reads across five rounds of a 1,000-product collection gave a median of 2,814.280 ms for JSON read/deserialization and 140.684 ms for warm cached catalogue reads (20.00x ratio). Twelve synthetic 40 ms courier calls took 568.009 ms at concurrency one and 184.323 ms at concurrency three. The OS file cache was warm after warm-up; these timings are illustrative and do not represent a production deployment or real courier.
+
+The singleton catalogue cache checks a small version marker so another local process can invalidate a stale snapshot. `Catalogue_reads_are_cached_and_mutations_refresh_the_snapshot` verifies cache invalidation. Login and partner requests use separate rate-limit policies. `HttpCourierTrackingClient` tests cover the configurable REST response, missing records, timeout versus caller cancellation, and bounded concurrency; the simulator remains the default without provider configuration.
 
 ## Reproducible checks
 
-Verified on 2026-10-30: `Directory.Build.props` sets .NET 10, C# 14, and nullable reference types; `dotnet build ApexPost.slnx --no-restore` succeeded with zero warnings, and `dotnet test ApexPost.slnx --no-build --no-restore` passed all 70 tests.
+Verified on 2026-10-30: `Directory.Build.props` sets .NET 10, C# 14, and nullable reference types. `dotnet build ApexPost.slnx` succeeded with zero warnings; `dotnet test ApexPost.slnx` passed all 85 tests.
 
-From the repository root, run:
+From the repository root:
 
 ```powershell
 dotnet build ApexPost.slnx
 dotnet test ApexPost.slnx
+dotnet run --project ApexPost.Benchmarks --no-build
+.\scripts\GenerateAuditSample.ps1
 ```
 
-The README contains local run instructions, demo accounts, user-secrets setup, and a partner tracking request. The tests use temporary data directories and do not require production credentials.
+The audit sample script uses an isolated temporary JSON directory and temporary Development password, and removes both after its local MVC session. It does not change the project's user-secrets store. Regular automated tests use their own temporary directories and do not require provider credentials.

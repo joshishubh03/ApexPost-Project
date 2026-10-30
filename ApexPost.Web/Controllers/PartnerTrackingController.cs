@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using System.Net.Http;
+using System.Text.Json;
 
 namespace ApexPost.Web.Controllers;
 
@@ -27,6 +29,21 @@ public sealed class PartnerTrackingController(PartnerTrackingService trackingSer
         {
             return StatusCode(StatusCodes.Status503ServiceUnavailable,
                 new { error = "Courier tracking is temporarily unavailable." });
+        }
+        catch (HttpRequestException)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable,
+                new { error = "Courier tracking is temporarily unavailable." });
+        }
+        catch (InvalidDataException)
+        {
+            return StatusCode(StatusCodes.Status502BadGateway,
+                new { error = "The courier returned an invalid tracking response." });
+        }
+        catch (JsonException)
+        {
+            return StatusCode(StatusCodes.Status502BadGateway,
+                new { error = "The courier returned an invalid tracking response." });
         }
     }
 }

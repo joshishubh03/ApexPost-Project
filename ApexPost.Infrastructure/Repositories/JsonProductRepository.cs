@@ -11,6 +11,12 @@ public sealed class JsonProductRepository(string dataDirectory) : IProductReposi
     public Task<IReadOnlyList<Product>> GetAllAsync(CancellationToken cancellationToken = default) =>
         _store.ReadAllAsync(cancellationToken);
 
-    public Task SaveAllAsync(IEnumerable<Product> products, CancellationToken cancellationToken = default) =>
-        _store.WriteAllAsync(products, cancellationToken);
+    public async Task SaveAllAsync(IEnumerable<Product> products, CancellationToken cancellationToken = default)
+    {
+        await _store.WriteAllAsync(products, cancellationToken);
+        await _store.WriteVersionAsync(cancellationToken);
+    }
+
+    public ValueTask<string> GetVersionAsync(CancellationToken cancellationToken = default) =>
+        _store.ReadVersionAsync(cancellationToken);
 }

@@ -18,9 +18,13 @@ public sealed class DemoDataSeeder(
     ICounterTerminalRepository terminalRepository,
     IStaffPasswordService passwordService,
     MoneyOrderPolicy moneyOrderPolicy,
-    string demoPassword)
+    string demoPassword,
+    IApplicationMutationCoordinator mutationCoordinator)
 {
-    public async Task SeedAsync(CancellationToken cancellationToken = default)
+    public Task SeedAsync(CancellationToken cancellationToken = default) =>
+        mutationCoordinator.RunAsync(() => SeedCoreAsync(cancellationToken), cancellationToken);
+
+    private async Task SeedCoreAsync(CancellationToken cancellationToken)
     {
         var branches = await branchRepository.GetAllAsync(cancellationToken);
         if (branches.Count == 0)

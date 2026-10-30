@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.RateLimiting;
 using ApexPost.Web.Authorization;
+using ApexPost.Application.Validation;
 
 var builder = WebApplication.CreateBuilder(args);
 var forwardedHeadersConfiguration = builder.Configuration.GetSection("Security:ForwardedHeaders");
@@ -83,6 +84,7 @@ builder.Services.AddControllersWithViews(options =>
 builder.Services.AddScoped<RequestTimingActionFilter>();
 builder.Services.AddScoped<MvcAuditActionFilter>();
 builder.Services.AddScoped<ModelValidationActionFilter>();
+builder.Services.AddSingleton<CachedAttributeValidator>();
 builder.Services.AddExceptionHandler<SafeProblemDetailsExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddScoped<ApexPost.Application.Abstractions.IAuthenticationService, AuthenticationService>();
@@ -99,6 +101,29 @@ builder.Services.AddSingleton(provider => new SimulatedCourierTrackingClient(
     builder.Configuration.GetValue<int>("CourierTracking:MaximumConcurrency", 3),
     TimeSpan.FromSeconds(builder.Configuration.GetValue<int>("CourierTracking:TimeoutSeconds", 2)),
     TimeSpan.FromMilliseconds(builder.Configuration.GetValue<int>("CourierTracking:SimulatedLatencyMilliseconds", 40))));
+builder.Services.AddHttpClient("CourierTracking");
+builder.Services.AddSingleton<ICourierTrackingClient>(provider =>
+{
+    var baseAddress = builder.Configuration["CourierTracking:ProviderBaseUrl"];
+    if (string.IsNullOrWhiteSpace(baseAddress))
+    {
+        return provider.GetRequiredService<SimulatedCourierTrackingClient>();
+    }
+
+    var apiKey = builder.Configuration["CourierTracking:ApiKey"];
+    if (string.IsNullOrWhiteSpace(apiKey))
+    {
+        throw new InvalidOperationException("Configure CourierTracking:ApiKey in user-secrets or the deployment secret store.");
+    }
+
+    return new HttpCourierTrackingClient(
+        provider.GetRequiredService<IHttpClientFactory>().CreateClient("CourierTracking"),
+        baseAddress,
+        builder.Configuration["CourierTracking:TrackingPath"] ?? "api/tracking",
+        apiKey,
+        builder.Configuration.GetValue<int>("CourierTracking:MaximumConcurrency", 3),
+        TimeSpan.FromSeconds(builder.Configuration.GetValue<int>("CourierTracking:TimeoutSeconds", 2)));
+});
 builder.Services.AddScoped<PartnerTrackingService>();
 builder.Services.AddSingleton(moneyOrderPolicy);
 builder.Services.AddSingleton(taxPolicy);
@@ -170,6 +195,7 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddSingleton<IAuthorizationHandler, SameBranchAuthorizationHandler>();
 
 var app = builder.Build();
+await app.Services.GetRequiredService<IApplicationMutationCoordinator>().InitializeAsync();
 
 app.UseForwardedHeaders();
 app.UseMiddleware<CorrelationIdMiddleware>();

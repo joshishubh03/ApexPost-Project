@@ -114,7 +114,8 @@ public sealed class JsonPersistenceReliabilityTests
                 terminals,
                 new TestStaffPasswordService(),
                 new MoneyOrderPolicy(10_000m, 50m, "DEMO-VALID-"),
-                "CounterDemo!2026");
+                "CounterDemo!2026",
+                new JsonMutationCoordinator(directory));
 
             await seeder.SeedAsync();
             var firstRunCounts = await ReadCountsAsync(
@@ -160,7 +161,8 @@ public sealed class JsonPersistenceReliabilityTests
                 terminals,
                 new TestStaffPasswordService(),
                 new MoneyOrderPolicy(0m, 50m, "DEMO-VALID-"),
-                "CounterDemo!2026");
+                "CounterDemo!2026",
+                new JsonMutationCoordinator(directory));
 
             await seeder.SeedAsync();
 

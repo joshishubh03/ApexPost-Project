@@ -50,7 +50,7 @@ The MVC administration controller calls `StaffManagementService` in the Applicat
 
 ## Product catalogue
 
-All signed-in staff can search active products by SKU, name, category, or description. Administrators and Branch Managers can create products and activate or deactivate them. Product SKUs are normalized to uppercase and must be unique; prices are non-negative and support up to two decimal places. Products carry a tax category (Standard by default). Development seeding creates 30 sample catalogue products in `data/products.json` when the file is empty or missing.
+All signed-in staff can search active products by SKU, name, category, or description. Administrators and Branch Managers can create products and activate or deactivate them. Product SKUs are normalized to uppercase and must be unique; prices are non-negative and support up to two decimal places. Products carry a tax category (Standard by default). Development seeding creates 30 sample catalogue products in `data/products.json` when the file is empty or missing. Warm catalogue reads use a cached snapshot and a small version marker so changes made by another local application process refresh the cache.
 
 ## Inventory
 
@@ -66,7 +66,7 @@ Counter Clerks, Branch Managers, and Administrators can record sales for their a
 
 ### Voids and refunds
 
-Branch Managers can void or fully refund a completed counter transaction for their assigned branch. Both actions require a reason, are recorded with the manager and timestamp, restore the transaction's product quantities to branch inventory, and produce an audit event with the request correlation ID. Managers can also refund a standalone issued money order once, with a reason and correlated audit event. Money orders in a counter basket must be refunded through that receipt so the receipt and instrument are resolved together. Partial counter-transaction refunds are not supported. Inventory, transaction, and money order status are stored in separate JSON files, so a process or file failure between writes can require a retry or reconciliation; this training adapter does not provide cross-file atomicity.
+Branch Managers can void or fully refund a completed counter transaction for their assigned branch. Both actions require a reason, are recorded with the manager and timestamp, restore the transaction's product quantities to branch inventory, and produce an audit event with the request correlation ID. Managers can also refund a standalone issued money order once, with a reason and correlated audit event. Money orders in a counter basket must be refunded through that receipt so the receipt and instrument are resolved together. Partial counter-transaction refunds are not supported. Multi-file business mutations use a JSON journal and recoverable commit coordinator; this protects local files across process interruption, but does not provide database-level durability or guarantees on network file shares.
 
 ## Branch reports
 
@@ -86,11 +86,32 @@ Example local configuration and request:
     $trackingNumber = (Get-Content data/counter-transactions.json | ConvertFrom-Json | Where-Object { $_.shippingRateId } | Select-Object -First 1).transactionNumber
     curl.exe -H "X-API-Key: replace-with-a-local-secret" "https://localhost:5001/api/partner/tracking/$trackingNumber"
 
-The tracking response contains receipt-level shipment type, service, zone, weight, status, and accepted time only; it does not expose customer names or identity data. The tracking lookup is simulated, limited to three concurrent requests by default, and returns 503 when its configured timeout expires; caller cancellation remains cancellation. `AUDIT-SAMPLE.json` contains sanitized entries produced by the MVC audit filter during the product-create and product-deactivate integration-test session. Refresh it from the repository root with:
+The tracking response contains receipt-level shipment type, service, zone, weight, status, and accepted time only; it does not expose customer names or identity data. Tracking uses a simulated adapter by default, with a three-request concurrency limit. To connect a provider, configure the generic REST adapter:
 
-    $env:APEXPOST_AUDIT_SAMPLE_OUTPUT = (Join-Path (Get-Location) "AUDIT-SAMPLE.json")
-    dotnet test ApexPost.Tests/ApexPost.Tests.csproj --filter "FullyQualifiedName~Mvc_audit_filter_records_safe_product_changes"
-    Remove-Item Env:APEXPOST_AUDIT_SAMPLE_OUTPUT
+    dotnet user-secrets set "CourierTracking:ProviderBaseUrl" "https://courier.example/" --project ApexPost.Web
+    dotnet user-secrets set "CourierTracking:ApiKey" "replace-with-a-local-secret" --project ApexPost.Web
+    dotnet user-secrets set "CourierTracking:TrackingPath" "api/tracking" --project ApexPost.Web
+
+The adapter sends `GET {ProviderBaseUrl}/{TrackingPath}/{URL-encoded tracking number}` with an `X-API-Key` header. A 404 response means no tracking record. A successful response must contain this JSON shape:
+
+```json
+{
+  "trackingNumber": "APT-2026-001",
+  "zoneName": "North Zone",
+  "serviceLevel": "Express",
+  "shipmentType": "Parcel",
+  "weightKilograms": 1.25,
+  "status": "InTransit",
+  "acceptedAt": "2026-10-29T08:30:00+00:00"
+}
+```
+
+The adapter requires HTTPS, checks the returned tracking number, applies the configured timeout, and limits concurrent provider calls. Caller cancellation remains cancellation; provider timeout returns 503. Leave `CourierTracking:ProviderBaseUrl` empty to use the simulator. `AUDIT-SAMPLE.json` contains sanitized records from a live local MVC session that signed in, created a product, and deactivated it. Refresh it from the repository root with:
+
+    dotnet build ApexPost.slnx
+    .\scripts\GenerateAuditSample.ps1
+
+The script starts a hidden local host with a temporary password and isolated JSON directory, sends the MVC requests, writes only the sanitized audit records, and removes its temporary data when it exits.
 
 MVC action filters validate bound model state, audit configuration changes, sales, reversals, money-order issue/refund and identity-verification requests, and log slow actions at the configured `Diagnostics:SlowActionThresholdMilliseconds` threshold. Audit entries record actor, role, branch, safe route IDs, HTTP result status, duration, and correlation ID without serializing request bodies or sensitive form values. JSON requests with invalid models receive a validation problem response; HTML forms retain their controller-specific redisplay behavior. Transaction services publish events for committed sales, reversals, money orders, and identity verification outcomes.
 
@@ -118,3 +139,7 @@ Replace the documentation-only address with the actual proxy IP. The app accepts
 ## Assessment evidence index
 
 See [docs/ASSESSMENT-EVIDENCE.md](docs/ASSESSMENT-EVIDENCE.md) for a requirement-to-file map, seed counts, test locations, and the documented performance and persistence limits.
+
+## Local performance sample
+
+Run `dotnet run --project ApexPost.Benchmarks --no-build` after building the solution to repeat the simple local benchmark. On 2026-10-30, .NET 10.0.13 on Windows 11 with four logical processors measured a 20.00x median ratio between 500 JSON read-and-deserialize calls and 500 warm cached reads of 1,000 synthetic products (2,814.280 ms versus 140.684 ms). Twelve simulated 40 ms courier calls took 568.009 ms at concurrency one and 184.323 ms at concurrency three. These are local illustrative measurements with warm OS file cache and synthetic delay, not production throughput claims.

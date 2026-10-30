@@ -18,7 +18,8 @@ public sealed class CounterTransactionService(
     TaxPolicy taxPolicy,
     ICounterTerminalRepository terminalRepository,
     MoneyOrderService moneyOrderService,
-    MoneyOrderPolicy moneyOrderPolicy)
+    MoneyOrderPolicy moneyOrderPolicy,
+    IApplicationMutationCoordinator mutationCoordinator)
 {
     public async Task<CounterRegisterContext> GetRegisterContextAsync(
         Guid branchId,
@@ -66,8 +67,7 @@ public sealed class CounterTransactionService(
         string? moneyOrderDocumentIdentifier,
         string correlationId,
         CancellationToken cancellationToken = default) =>
-        InProcessMutationGate.RunAsync(
-            InProcessMutationGate.CounterAndInventory,
+        mutationCoordinator.RunAsync(
             () => CompleteSaleCoreAsync(
                 branchId, staffId, quantities, paymentMethod, shippingRateId, shipmentType,
                 shippingWeightKilograms, shippingRecipientName, shippingAddress,
@@ -319,8 +319,7 @@ public sealed class CounterTransactionService(
         string reason,
         string correlationId,
         CancellationToken cancellationToken = default) =>
-        InProcessMutationGate.RunAsync(
-            InProcessMutationGate.CounterAndInventory,
+        mutationCoordinator.RunAsync(
             () => ReverseCoreAsync(branchId, transactionId, managerId, refund, reason, correlationId, cancellationToken),
             cancellationToken);
 
