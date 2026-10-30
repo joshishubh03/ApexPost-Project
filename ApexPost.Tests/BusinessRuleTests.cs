@@ -168,6 +168,21 @@ public sealed class BusinessRuleTests
     }
 
     [Fact]
+    public async Task Concurrent_counter_sales_preserve_every_receipt_and_stock_change()
+    {
+        var fixture = new CounterCheckoutFixture(
+            stockOnHand: 25,
+            ioDelay: TimeSpan.FromMilliseconds(2));
+
+        var sales = await Task.WhenAll(Enumerable.Range(0, 20)
+            .Select(_ => fixture.CompleteSaleAsync()));
+
+        Assert.Equal(20, sales.Length);
+        Assert.Equal(20, fixture.TransactionRepository.Transactions.Count);
+        Assert.Equal(5, fixture.InventoryRepository.Items.Single().QuantityOnHand);
+    }
+
+    [Fact]
     public async Task Counter_checkout_links_money_order_and_retail_to_one_receipt()
     {
         var branch = new Branch(Guid.NewGuid(), "AP-020", "Mixed Basket Branch", "Central", true);
@@ -354,15 +369,17 @@ public sealed class BusinessRuleTests
             bool branchIsOpen = true,
             bool staffIsActive = true,
             Guid? staffBranchId = null,
-            int stockOnHand = 10)
+            int stockOnHand = 10,
+            TimeSpan ioDelay = default)
         {
             Branch = new Branch(Guid.NewGuid(), "AP-021", "Checkout Branch", "Central", branchIsOpen);
             Staff = new StaffMember(Guid.NewGuid(), "clerk@apexpost.local", "Checkout Clerk", StaffRole.CounterClerk,
                 staffBranchId ?? Branch.Id, staffIsActive, "hash");
             Product = new Product(Guid.NewGuid(), "CHECKOUT-1", "Test item", "Test description", "Retail", 25m, true, "Standard");
             Terminal = new CounterTerminal(Guid.NewGuid(), Branch.Id, "T-01", "Front counter");
-            InventoryRepository = new FakeInventoryRepository([new InventoryItem(Branch.Id, Product.Id, stockOnHand, 2, [])]);
-            TransactionRepository = new FakeCounterRepository();
+            InventoryRepository = new FakeInventoryRepository(
+                [new InventoryItem(Branch.Id, Product.Id, stockOnHand, 2, [])], ioDelay);
+            TransactionRepository = new FakeCounterRepository(ioDelay);
 
             var branches = new FakeBranchRepository(Branch);
             var staff = new FakeStaffRepository(Staff);
@@ -477,25 +494,41 @@ public sealed class BusinessRuleTests
         public Task SaveAllAsync(IEnumerable<Product> items, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
-    private sealed class FakeInventoryRepository(IEnumerable<InventoryItem> items) : IInventoryRepository
+    private sealed class FakeInventoryRepository(IEnumerable<InventoryItem> items, TimeSpan ioDelay = default) : IInventoryRepository
     {
         public List<InventoryItem> Items { get; private set; } = items.ToList();
-        public Task<IReadOnlyList<InventoryItem>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<InventoryItem>>(Items);
-        public Task SaveAllAsync(IEnumerable<InventoryItem> items, CancellationToken cancellationToken = default)
+
+        public async Task<IReadOnlyList<InventoryItem>> GetAllAsync(CancellationToken cancellationToken = default)
         {
+            if (ioDelay > TimeSpan.Zero)
+                await Task.Delay(ioDelay, cancellationToken);
+            return Items;
+        }
+
+        public async Task SaveAllAsync(IEnumerable<InventoryItem> items, CancellationToken cancellationToken = default)
+        {
+            if (ioDelay > TimeSpan.Zero)
+                await Task.Delay(ioDelay, cancellationToken);
             Items = items.ToList();
-            return Task.CompletedTask;
         }
     }
 
-    private sealed class FakeCounterRepository : ICounterTransactionRepository
+    private sealed class FakeCounterRepository(TimeSpan ioDelay = default) : ICounterTransactionRepository
     {
         public List<CounterTransaction> Transactions { get; private set; } = [];
-        public Task<IReadOnlyList<CounterTransaction>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<CounterTransaction>>(Transactions);
-        public Task SaveAllAsync(IEnumerable<CounterTransaction> transactions, CancellationToken cancellationToken = default)
+
+        public async Task<IReadOnlyList<CounterTransaction>> GetAllAsync(CancellationToken cancellationToken = default)
         {
+            if (ioDelay > TimeSpan.Zero)
+                await Task.Delay(ioDelay, cancellationToken);
+            return Transactions;
+        }
+
+        public async Task SaveAllAsync(IEnumerable<CounterTransaction> transactions, CancellationToken cancellationToken = default)
+        {
+            if (ioDelay > TimeSpan.Zero)
+                await Task.Delay(ioDelay, cancellationToken);
             Transactions = transactions.ToList();
-            return Task.CompletedTask;
         }
     }
 

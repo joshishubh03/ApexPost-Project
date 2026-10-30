@@ -18,3 +18,9 @@ The training adapter persists inventory, counter receipts, money orders, and aud
 - Retail products, shipping, and a money order can be paid for in one counter basket.
 - The linked money order remains independently reportable and identity-verifiable.
 - A unified receipt and money-order status can temporarily diverge if one JSON write fails after another succeeds.
+
+## Alternatives considered
+
+- Require a separate payment and receipt for each basket component: rejected because it would not model the assignment's mixed counter transaction.
+- Treat the money order only as a generic product line: rejected because identity verification, principal, fee, and instrument status have separate business rules.
+- Save only one unified JSON object: rejected because repositories remain replaceable, while the current file adapter's cross-file atomicity limitation is documented explicitly.

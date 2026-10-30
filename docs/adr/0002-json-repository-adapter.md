@@ -13,7 +13,7 @@ Define repository abstractions in Application and implement them in Infrastructu
 
 ## Consequences
 
-JSON DTOs and mapping may differ from domain types. The infrastructure must handle malformed or missing files safely. JSON storage is a teaching-stage adapter and does not provide database-grade multi-process transactions.
+JSON DTOs and mapping may differ from domain types. The infrastructure must handle malformed or missing files safely. Collection replacement uses a per-file semaphore and temporary-file replacement. Application mutation gates hold across the full read/modify/write workflows for counter sales, reversals, inventory adjustments, and money orders so concurrent requests in one process do not overwrite each other's snapshots. JSON storage remains a teaching-stage adapter: gates do not coordinate multiple processes, writes across separate collections are not atomic, and administrative collections need their own coordination if concurrent updates are introduced.
 
 ## Alternatives considered
 

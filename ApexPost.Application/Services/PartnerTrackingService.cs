@@ -1,20 +1,15 @@
-using ApexPost.Application.Abstractions;
 using ApexPost.Application.Models;
 
 namespace ApexPost.Application.Services;
 
-public sealed class PartnerTrackingService(ICounterTransactionRepository transactionRepository)
+public sealed class PartnerTrackingService(SimulatedCourierTrackingClient courierTrackingClient)
 {
     public async Task<ShipmentTrackingSummary?> FindAsync(
         string trackingNumber,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(trackingNumber);
-        var normalizedNumber = trackingNumber.Trim();
-        var transaction = (await transactionRepository.GetAllAsync(cancellationToken))
-            .FirstOrDefault(item => string.Equals(
-                item.TransactionNumber, normalizedNumber, StringComparison.OrdinalIgnoreCase) &&
-                item.ShippingRateId is not null);
+        var transaction = await courierTrackingClient.FindShipmentAsync(trackingNumber, cancellationToken);
         return transaction is null
             ? null
             : new ShipmentTrackingSummary(

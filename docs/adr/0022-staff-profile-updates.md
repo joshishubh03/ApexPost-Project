@@ -16,3 +16,9 @@ Add an Administrator-only edit page for staff name, email, role, and home branch
 - Administrators can correct staff profile and branch assignment data without replacing credentials.
 - Profile edits keep the same staff ID so historical transactions, audit events, and verification records retain their actor reference.
 - Email addresses remain unique, and non-administrator roles require an existing home branch.
+
+## Alternatives considered
+
+- Deactivate and recreate a staff account for profile corrections: rejected because historical references use the staff ID.
+- Replace the entire staff record from form input: rejected because it could overwrite the stored password hash or active flag.
+- Update only the editable fields while preserving ID and credentials: selected to keep historical references and sign-in behavior stable.

@@ -45,7 +45,7 @@ public sealed class CounterTransactionService(
                 .ToArray());
     }
 
-    public async Task<CounterTransaction> CompleteSaleAsync(
+    public Task<CounterTransaction> CompleteSaleAsync(
         Guid branchId,
         Guid staffId,
         IReadOnlyDictionary<Guid, int> quantities,
@@ -65,7 +65,38 @@ public sealed class CounterTransactionService(
         IdentityDocumentType? moneyOrderDocumentType,
         string? moneyOrderDocumentIdentifier,
         string correlationId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        InProcessMutationGate.RunAsync(
+            InProcessMutationGate.CounterAndInventory,
+            () => CompleteSaleCoreAsync(
+                branchId, staffId, quantities, paymentMethod, shippingRateId, shipmentType,
+                shippingWeightKilograms, shippingRecipientName, shippingAddress,
+                parcelLengthCentimeters, parcelWidthCentimeters, parcelHeightCentimeters,
+                terminalId, moneyOrderAmount, moneyOrderSenderName, moneyOrderRecipientName,
+                moneyOrderDocumentType, moneyOrderDocumentIdentifier, correlationId, cancellationToken),
+            cancellationToken);
+
+    private async Task<CounterTransaction> CompleteSaleCoreAsync(
+        Guid branchId,
+        Guid staffId,
+        IReadOnlyDictionary<Guid, int> quantities,
+        PaymentMethod paymentMethod,
+        Guid? shippingRateId,
+        ShipmentType? shipmentType,
+        decimal? shippingWeightKilograms,
+        string? shippingRecipientName,
+        string? shippingAddress,
+        decimal? parcelLengthCentimeters,
+        decimal? parcelWidthCentimeters,
+        decimal? parcelHeightCentimeters,
+        Guid terminalId,
+        decimal? moneyOrderAmount,
+        string? moneyOrderSenderName,
+        string? moneyOrderRecipientName,
+        IdentityDocumentType? moneyOrderDocumentType,
+        string? moneyOrderDocumentIdentifier,
+        string correlationId,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(quantities);
         var branch = await branchRepository.GetByIdAsync(branchId, cancellationToken)
@@ -280,14 +311,27 @@ public sealed class CounterTransactionService(
         return transactions.FirstOrDefault(item => item.Id == transactionId && item.BranchId == branchId);
     }
 
-    public async Task<CounterTransaction> ReverseAsync(
+    public Task<CounterTransaction> ReverseAsync(
         Guid branchId,
         Guid transactionId,
         Guid managerId,
         bool refund,
         string reason,
         string correlationId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        InProcessMutationGate.RunAsync(
+            InProcessMutationGate.CounterAndInventory,
+            () => ReverseCoreAsync(branchId, transactionId, managerId, refund, reason, correlationId, cancellationToken),
+            cancellationToken);
+
+    private async Task<CounterTransaction> ReverseCoreAsync(
+        Guid branchId,
+        Guid transactionId,
+        Guid managerId,
+        bool refund,
+        string reason,
+        string correlationId,
+        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reason);
         if (reason.Trim().Length > 250)

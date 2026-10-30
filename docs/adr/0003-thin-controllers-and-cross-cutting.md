@@ -14,3 +14,9 @@ Controllers bind and validate transport input, call Application services, and se
 ## Consequences
 
 Use-case services can be tested without an HTTP server. Web-specific response models may be needed to keep transport concerns outside the domain.
+
+## Alternatives considered
+
+- Put pricing and transaction rules in controllers: rejected because rules would be tied to HTTP and duplicated across entry points.
+- Put every cross-cutting concern in middleware: rejected because auditing action results and bound model state require MVC action context.
+- Put all cross-cutting work in filters: rejected because request-wide concerns such as correlation and security headers must also cover non-MVC endpoints.

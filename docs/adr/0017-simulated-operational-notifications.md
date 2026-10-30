@@ -20,3 +20,9 @@ Notification storage failures are logged and do not fail an operation that has a
 - Branch reports provide recent operational alerts alongside audit history.
 - JSON persistence is suitable for the single-process training application and has the same concurrency and durability limits as the other JSON repositories.
 - Notification delivery is not guaranteed if local persistence fails; the failure is logged for operators.
+
+## Alternatives considered
+
+- Send email or SMS from the business service: rejected because the assignment requests simulated notifications and no provider is configured.
+- Write notification files directly from each use case: rejected because it would couple core workflows to one notification format.
+- Publish application events to an observer that appends JSON: selected because it keeps notification handling out of transaction rules and remains replaceable.

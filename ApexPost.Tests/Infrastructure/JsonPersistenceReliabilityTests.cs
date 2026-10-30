@@ -2,6 +2,7 @@ using System.Text.Json;
 using ApexPost.Application.Abstractions;
 using ApexPost.Application.Models;
 using ApexPost.Domain.Entities;
+using ApexPost.Domain.Enums;
 using ApexPost.Infrastructure.Repositories;
 using ApexPost.Infrastructure.Seed;
 
@@ -95,6 +96,8 @@ public sealed class JsonPersistenceReliabilityTests
             var products = new JsonProductRepository(directory);
             var inventory = new JsonInventoryRepository(directory);
             var transactions = new JsonCounterTransactionRepository(directory);
+            var moneyOrders = new JsonMoneyOrderRepository(directory);
+            var verifications = new JsonIdentityVerificationRepository(directory);
             var zones = new JsonShippingZoneRepository(directory);
             var rates = new JsonShippingRateRepository(directory);
             var terminals = new JsonCounterTerminalRepository(directory);
@@ -104,19 +107,66 @@ public sealed class JsonPersistenceReliabilityTests
                 products,
                 inventory,
                 transactions,
+                moneyOrders,
+                verifications,
                 zones,
                 rates,
                 terminals,
                 new TestStaffPasswordService(),
+                new MoneyOrderPolicy(10_000m, 50m, "DEMO-VALID-"),
                 "CounterDemo!2026");
 
             await seeder.SeedAsync();
-            var firstRunCounts = await ReadCountsAsync(branches, staff, products, inventory, transactions, zones, rates, terminals);
+            var firstRunCounts = await ReadCountsAsync(
+                branches, staff, products, inventory, transactions, moneyOrders, verifications, zones, rates, terminals);
             await seeder.SeedAsync();
-            var secondRunCounts = await ReadCountsAsync(branches, staff, products, inventory, transactions, zones, rates, terminals);
+            var secondRunCounts = await ReadCountsAsync(
+                branches, staff, products, inventory, transactions, moneyOrders, verifications, zones, rates, terminals);
 
-            Assert.Equal(new[] { 5, 20, 30, 150, 40, 10, 30, 10 }, firstRunCounts);
+            Assert.Equal(new[] { 5, 20, 30, 150, 40, 10, 5, 10, 30, 10 }, firstRunCounts);
             Assert.Equal(firstRunCounts, secondRunCounts);
+            Assert.Contains(TransactionStatus.Voided, (await transactions.GetAllAsync()).Select(item => item.Status));
+            Assert.Contains(TransactionStatus.Refunded, (await transactions.GetAllAsync()).Select(item => item.Status));
+            Assert.Equal(5, (await verifications.GetAllAsync()).Count);
+            Assert.Equal(1, (await moneyOrders.GetAllAsync()).Count(item => item.Status == MoneyOrderStatus.Refunded));
+        });
+    }
+
+    [Fact]
+    public async Task Seed_with_zero_money_order_threshold_does_not_create_unverified_orders()
+    {
+        await WithTemporaryDirectoryAsync(async directory =>
+        {
+            var branches = new JsonBranchRepository(directory);
+            var staff = new JsonStaffRepository(directory);
+            var products = new JsonProductRepository(directory);
+            var inventory = new JsonInventoryRepository(directory);
+            var transactions = new JsonCounterTransactionRepository(directory);
+            var moneyOrders = new JsonMoneyOrderRepository(directory);
+            var verifications = new JsonIdentityVerificationRepository(directory);
+            var zones = new JsonShippingZoneRepository(directory);
+            var rates = new JsonShippingRateRepository(directory);
+            var terminals = new JsonCounterTerminalRepository(directory);
+            var seeder = new DemoDataSeeder(
+                branches,
+                staff,
+                products,
+                inventory,
+                transactions,
+                moneyOrders,
+                verifications,
+                zones,
+                rates,
+                terminals,
+                new TestStaffPasswordService(),
+                new MoneyOrderPolicy(0m, 50m, "DEMO-VALID-"),
+                "CounterDemo!2026");
+
+            await seeder.SeedAsync();
+
+            var seededOrders = await moneyOrders.GetAllAsync();
+            Assert.NotEmpty(seededOrders);
+            Assert.All(seededOrders, order => Assert.Equal(IdentityVerificationStatus.Verified, order.VerificationStatus));
         });
     }
 
@@ -126,6 +176,8 @@ public sealed class JsonPersistenceReliabilityTests
         JsonProductRepository products,
         JsonInventoryRepository inventory,
         JsonCounterTransactionRepository transactions,
+        JsonMoneyOrderRepository moneyOrders,
+        JsonIdentityVerificationRepository verifications,
         JsonShippingZoneRepository zones,
         JsonShippingRateRepository rates,
         JsonCounterTerminalRepository terminals) =>
@@ -135,6 +187,8 @@ public sealed class JsonPersistenceReliabilityTests
         (await products.GetAllAsync()).Count,
         (await inventory.GetAllAsync()).Count,
         (await transactions.GetAllAsync()).Count,
+        (await moneyOrders.GetAllAsync()).Count,
+        (await verifications.GetAllAsync()).Count,
         (await zones.GetAllAsync()).Count,
         (await rates.GetAllAsync()).Count,
         (await terminals.GetAllAsync()).Count

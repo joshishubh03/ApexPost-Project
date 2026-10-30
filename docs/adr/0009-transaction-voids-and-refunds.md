@@ -14,3 +14,9 @@ Represent transaction status in the domain and permit a one-way transition from 
 ## Consequences
 
 The user interface and authorization attributes provide convenient access control, while the service and domain enforce the business rule independently. Inventory and transaction status remain separate JSON collections; the service compensates a failed inventory write by rolling back the status update, but this is not equivalent to a database transaction.
+
+## Alternatives considered
+
+- Delete a receipt when it is voided: rejected because it would remove the history required for audit and reporting.
+- Allow the clerk who made the sale to reverse it: rejected because the assignment explicitly requires Branch Manager approval.
+- Support partial refunds in this training slice: deferred because it requires line-level quantity and payment settlement behavior beyond the specified full reversal workflow.

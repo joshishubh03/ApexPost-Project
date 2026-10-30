@@ -54,10 +54,13 @@ public static class DependencyInjection
             serviceProvider.GetRequiredService<IProductRepository>(),
             serviceProvider.GetRequiredService<IInventoryRepository>(),
             serviceProvider.GetRequiredService<ICounterTransactionRepository>(),
+            serviceProvider.GetRequiredService<IMoneyOrderRepository>(),
+            serviceProvider.GetRequiredService<IIdentityVerificationRepository>(),
             serviceProvider.GetRequiredService<IShippingZoneRepository>(),
             serviceProvider.GetRequiredService<IShippingRateRepository>(),
             serviceProvider.GetRequiredService<ICounterTerminalRepository>(),
             serviceProvider.GetRequiredService<IStaffPasswordService>(),
+            moneyOrderPolicy,
             demoPassword));
 
         return services;

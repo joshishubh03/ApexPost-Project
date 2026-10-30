@@ -18,3 +18,9 @@ Counter terminals are separate domain records persisted in `counter-terminals.js
 - Receipts identify the counter terminal for audit and operational review.
 - Terminals can be retired without deleting historical receipt references.
 - A later schedule policy can add timezones and weekly/holiday hours without inferring them from the demo's simple daily times.
+
+## Alternatives considered
+
+- Compare current server time to opening hours: deferred because the brief does not specify branch timezones, weekdays, holidays, or daylight-saving behavior.
+- Store terminal IDs directly as strings on branches: rejected because terminals have their own active state and history references.
+- Allow checkout without identifying a terminal: rejected because the assignment requires one or more counter terminals and the receipt should identify which one processed the sale.

@@ -14,3 +14,9 @@ Store recipient name, destination address, and positive two-decimal parcel dimen
 ## Consequences
 
 The receipt contains the shipping information needed to render the training label without a separate mutable label store. Address validation checks presence and length but does not invent a destination schema or dimension ceiling; the selected shipping rate remains the source of truth for maximum weight. Production label generation, barcode format, and courier integration remain future work.
+
+## Alternatives considered
+
+- Create a separately mutable label record: rejected because the required preview can be derived from the shipment snapshot on the receipt.
+- Recalculate the label using current shipping rates: rejected because future rate changes must not rewrite the original sale's quoted service.
+- Require dimensions for all shipments: rejected because letters do not have parcel dimensions.

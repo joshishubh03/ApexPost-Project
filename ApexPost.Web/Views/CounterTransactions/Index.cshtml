@@ -118,7 +118,7 @@ else
                     @if (User.IsInRole("BranchManager"))
                     {
                         <td>
-                            @if (transaction.Status == TransactionStatus.Completed)
+                            @if (transaction.Status is TransactionStatus.Paid or TransactionStatus.Completed)
                             {
                                 <form asp-action="Reverse" method="post" class="d-flex gap-1 align-items-start">
                                     <input type="hidden" name="TransactionId" value="@transaction.Id" />

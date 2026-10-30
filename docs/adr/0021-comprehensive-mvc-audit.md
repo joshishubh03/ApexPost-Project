@@ -19,3 +19,9 @@ Record identity verification outcomes through a dedicated application event afte
 - Failed or rejected requests are traceable by their result status, while the domain event records whether a business operation committed.
 - Audit entries do not contain passwords, identity numbers, API keys, card data, or free-form request models.
 - Audit appends remain best-effort after operations have committed; failures are logged for operators.
+
+## Alternatives considered
+
+- Audit only committed application events: rejected because it would omit rejected MVC requests and their HTTP result.
+- Serialize all bound action models into the log: rejected because forms may contain credentials, personal identifiers, or other sensitive fields.
+- Record a safe allowlist of actor, action, status, duration, correlation, and route identifiers: selected to provide useful traceability without copying request payloads.

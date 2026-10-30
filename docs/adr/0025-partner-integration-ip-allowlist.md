@@ -16,3 +16,9 @@ Use `EndpointIpRestrictionMiddleware` for administrative mutations and `/api/par
 - A partner request from an unapproved address receives 403 before API-key validation.
 - Approved partners still need a valid API key and remain subject to their own rate limit.
 - Deployments behind proxies must configure trusted forwarded headers before the application can safely use the original client address; trusting arbitrary forwarded headers would defeat the allowlist.
+
+## Alternatives considered
+
+- Restrict partners by URL-prefix checks inside controllers: rejected because protection could be missed on a new endpoint and mixes network policy with endpoint behavior.
+- Trust any `X-Forwarded-For` value: rejected because callers could spoof their source address.
+- Apply separate configured exact-address lists in middleware after trusted forwarded-header processing: selected so policy covers marked endpoints consistently and can be deployed explicitly.

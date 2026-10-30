@@ -14,11 +14,12 @@ public sealed class EndpointIpRestrictionMiddleware(RequestDelegate next, IConfi
                  path.StartsWithSegments("/Inventory/Adjust") ||
                  path.StartsWithSegments("/Shipping/CreateZone") ||
                  path.StartsWithSegments("/Shipping/CreateRate")));
-        var integrationPath = path.StartsWithSegments("/api/partner");
+        var integrationEndpoint = context.GetEndpoint()?.Metadata
+            .GetMetadata<ProtectedIntegrationEndpointAttribute>() is not null;
 
         var allowlistSection = administrativePath
             ? "Security:AdminAllowedIpAddresses"
-            : integrationPath
+            : integrationEndpoint
                 ? "Security:IntegrationAllowedIpAddresses"
                 : null;
 

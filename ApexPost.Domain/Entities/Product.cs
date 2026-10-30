@@ -1,3 +1,5 @@
+using ApexPost.Domain.ValueObjects;
+
 namespace ApexPost.Domain.Entities;
 
 public sealed record Product
@@ -26,7 +28,6 @@ public sealed record Product
             throw new ArgumentException("A product ID is required.", nameof(id));
         }
 
-        ArgumentException.ThrowIfNullOrWhiteSpace(sku);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(category);
         ArgumentException.ThrowIfNullOrWhiteSpace(taxCategory);
@@ -35,12 +36,7 @@ public sealed record Product
             throw new ArgumentOutOfRangeException(nameof(price), "Price must be non-negative and have no more than two decimal places.");
         }
 
-        var normalizedSku = sku.Trim().ToUpperInvariant();
-        if (normalizedSku.Length is < 2 or > 24 ||
-            normalizedSku.Any(character => !char.IsAsciiLetterOrDigit(character) && character != '-'))
-        {
-            throw new ArgumentException("SKU must contain 2 to 24 letters, numbers, or hyphens.", nameof(sku));
-        }
+        var normalizedSku = new Sku(sku).Value;
 
         Id = id;
         Sku = normalizedSku;

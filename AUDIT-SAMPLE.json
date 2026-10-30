@@ -1,66 +1,36 @@
 [
   {
-    "id": "a1000000-0000-0000-0000-000000000001",
-    "occurredAt": "2026-10-20T09:30:00+00:00",
-    "action": "CounterTransactionCompleted",
-    "entityType": "CounterTransaction",
-    "entityId": "b1000000-0000-0000-0000-000000000001",
-    "actorId": "c1000000-0000-0000-0000-000000000001",
-    "branchId": "d1000000-0000-0000-0000-000000000001",
-    "correlationId": "demo-correlation-transaction-001",
-    "amount": 245.00
-  },
-  {
-    "id": "a1000000-0000-0000-0000-000000000002",
-    "occurredAt": "2026-10-20T10:15:00+00:00",
-    "action": "CounterTransactionVoided",
-    "entityType": "CounterTransaction",
-    "entityId": "b1000000-0000-0000-0000-000000000002",
-    "actorId": "e1000000-0000-0000-0000-000000000001",
-    "branchId": "d1000000-0000-0000-0000-000000000001",
-    "correlationId": "demo-correlation-void-001",
-    "amount": 120.00
-  },
-  {
-    "id": "a1000000-0000-0000-0000-000000000003",
-    "occurredAt": "2026-10-20T11:05:00+00:00",
-    "action": "MoneyOrderIssued",
-    "entityType": "MoneyOrder",
-    "entityId": "f1000000-0000-0000-0000-000000000001",
-    "actorId": "c1000000-0000-0000-0000-000000000001",
-    "branchId": "d1000000-0000-0000-0000-000000000001",
-    "correlationId": "demo-correlation-money-order-001",
-    "amount": 5050.00
-  },
-  {
-    "id": "a1000000-0000-0000-0000-000000000004",
-    "occurredAt": "2026-10-20T11:20:00+00:00",
-    "action": "IdentityVerificationFailed",
-    "entityType": "IdentityVerification",
-    "entityId": "f1000000-0000-0000-0000-000000000002",
-    "actorId": "c1000000-0000-0000-0000-000000000001",
-    "branchId": "d1000000-0000-0000-0000-000000000001",
-    "correlationId": "demo-correlation-verification-001",
-    "amount": 15000.00,
-    "details": "DocumentType=NationalId; Result=Failed"
-  },
-  {
-    "id": "a1000000-0000-0000-0000-000000000005",
-    "occurredAt": "2026-10-20T11:23:00+00:00",
-    "action": "MvcInventoryAdjust",
-    "entityType": "Inventory",
-    "entityId": "20000000-0000-0000-0000-000000000001",
-    "actorId": "e1000000-0000-0000-0000-000000000001",
-    "branchId": "d1000000-0000-0000-0000-000000000001",
-    "correlationId": "demo-correlation-stock-001",
+    "id": "818a191d-61c9-4599-9cc5-94c398d41717",
+    "occurredAt": "2026-10-30T10:34:20.87135+00:00",
+    "action": "MvcCatalogCreate",
+    "entityType": "Catalog",
+    "entityId": "0HNPME5DO2TDB",
+    "actorId": "10000000-0000-0000-0000-000000000001",
+    "branchId": "20000000-0000-0000-0000-000000000001",
+    "correlationId": "f598647d-cda6-498f-b389-d0fe4a7e1b41",
     "amount": null,
     "details": "MVC action request",
-    "role": "BranchManager",
+    "role": "Administrator",
     "resultStatusCode": 302,
-    "durationMilliseconds": 42,
+    "durationMilliseconds": 31,
+    "routeValues": {}
+  },
+  {
+    "id": "2e58b045-0a76-4b86-97ee-22214b289133",
+    "occurredAt": "2026-10-30T10:34:20.9874846+00:00",
+    "action": "MvcCatalogSetActive",
+    "entityType": "Catalog",
+    "entityId": "dc21a687-8de3-400c-b8ed-3496ba735145",
+    "actorId": "10000000-0000-0000-0000-000000000001",
+    "branchId": "20000000-0000-0000-0000-000000000001",
+    "correlationId": "20afccd7-fd95-4385-8f58-48dcd1300baf",
+    "amount": null,
+    "details": "MVC action request",
+    "role": "Administrator",
+    "resultStatusCode": 302,
+    "durationMilliseconds": 6,
     "routeValues": {
-      "branchId": "d1000000-0000-0000-0000-000000000001",
-      "productId": "20000000-0000-0000-0000-000000000001"
+      "id": "dc21a687-8de3-400c-b8ed-3496ba735145"
     }
   }
 ]

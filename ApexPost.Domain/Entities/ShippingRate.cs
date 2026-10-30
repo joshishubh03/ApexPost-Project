@@ -1,4 +1,5 @@
 using ApexPost.Domain.Enums;
+using ApexPost.Domain.ValueObjects;
 
 namespace ApexPost.Domain.Entities;
 
@@ -49,17 +50,16 @@ public sealed record ShippingRate
 
     public decimal CalculatePrice(decimal weightKilograms)
     {
-        if (weightKilograms <= 0 || decimal.Round(weightKilograms, 2) != weightKilograms)
-        {
-            throw new ArgumentOutOfRangeException(nameof(weightKilograms), "Weight must be positive and have no more than two decimal places.");
-        }
+        var shipmentWeight = new Weight(weightKilograms);
 
-        if (weightKilograms > MaximumWeightKilograms)
+        if (shipmentWeight.Kilograms > MaximumWeightKilograms)
         {
             throw new InvalidOperationException($"This rate supports shipments up to {MaximumWeightKilograms:0.##} kg.");
         }
 
-        return decimal.Round(BasePrice + PricePerKilogram * weightKilograms, 2, MidpointRounding.AwayFromZero);
+        var price = new Money(BasePrice).Amount +
+            new Money(PricePerKilogram).Multiply(shipmentWeight.Kilograms).Amount;
+        return new Money(price.ToCurrencyAmount()).Amount;
     }
 
     private static void ValidateAmount(decimal amount, string parameterName)

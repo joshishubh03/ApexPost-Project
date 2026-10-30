@@ -1,4 +1,5 @@
 using ApexPost.Application.Abstractions;
+using ApexPost.Application.Models;
 using ApexPost.Domain.Entities;
 using ApexPost.Domain.Enums;
 
@@ -10,10 +11,13 @@ public sealed class DemoDataSeeder(
     IProductRepository productRepository,
     IInventoryRepository inventoryRepository,
     ICounterTransactionRepository transactionRepository,
+    IMoneyOrderRepository moneyOrderRepository,
+    IIdentityVerificationRepository verificationRepository,
     IShippingZoneRepository shippingZoneRepository,
     IShippingRateRepository shippingRateRepository,
     ICounterTerminalRepository terminalRepository,
     IStaffPasswordService passwordService,
+    MoneyOrderPolicy moneyOrderPolicy,
     string demoPassword)
 {
     public async Task SeedAsync(CancellationToken cancellationToken = default)
@@ -61,14 +65,14 @@ public sealed class DemoDataSeeder(
                 ("PACK-006", "Bubble Wrap Roll", "Protective bubble wrap roll", "Packaging", 110.00m),
                 ("PACK-007", "Packing Tape", "Standard clear packing tape", "Packaging", 35.00m),
                 ("PACK-008", "Shipping Labels", "Pack of adhesive shipping labels", "Packaging", 55.00m),
-                ("RETL-001", "ApexPost Pen", "Branded blue ballpoint pen", "Retail", 20.00m),
-                ("RETL-002", "ApexPost Notebook", "Branded pocket notebook", "Retail", 60.00m),
-                ("RETL-003", "Address Book", "Hardcover address book", "Retail", 125.00m),
-                ("RETL-004", "Greeting Card", "Blank all-occasion greeting card", "Retail", 40.00m),
-                ("RETL-005", "Gift Wrap Sheet", "Decorative gift wrapping sheet", "Retail", 25.00m),
-                ("RETL-006", "Postage Stamp Sheet", "Sheet of domestic postage stamps", "Retail", 100.00m),
-                ("RETL-007", "Desk Calendar", "ApexPost annual desk calendar", "Retail", 85.00m),
-                ("RETL-008", "Document Folder", "Reusable document folder", "Retail", 45.00m),
+                ("RETL-001", "ApexPost Pen", "Branded blue ballpoint pen", "Stationery", 20.00m),
+                ("RETL-002", "ApexPost Notebook", "Branded pocket notebook", "Stationery", 60.00m),
+                ("RETL-003", "Address Book", "Hardcover address book", "Stationery", 125.00m),
+                ("RETL-004", "Greeting Card", "Blank all-occasion greeting card", "Stationery", 40.00m),
+                ("RETL-005", "Gift Wrap Sheet", "Decorative gift wrapping sheet", "Packaging", 25.00m),
+                ("RETL-006", "Postage Stamp Sheet", "Sheet of domestic postage stamps", "Postage", 100.00m),
+                ("RETL-007", "Desk Calendar", "ApexPost annual desk calendar", "Office Supplies", 85.00m),
+                ("RETL-008", "Document Folder", "Reusable document folder", "Office Supplies", 45.00m),
                 ("SHIP-001", "Small Parcel Service", "Domestic small parcel handling", "Shipping", 90.00m),
                 ("SHIP-002", "Medium Parcel Service", "Domestic medium parcel handling", "Shipping", 160.00m),
                 ("SHIP-003", "Large Parcel Service", "Domestic large parcel handling", "Shipping", 280.00m),
@@ -235,6 +239,7 @@ public sealed class DemoDataSeeder(
         }
 
         await SeedHistoricalTransactionsAsync(branches, staff, products, terminals, cancellationToken);
+        await SeedAuditorHistoryAsync(branches, staff, cancellationToken);
     }
 
     private async Task SeedHistoricalTransactionsAsync(
@@ -292,6 +297,22 @@ public sealed class DemoDataSeeder(
             var occurredAt = now.AddDays(-40 + index).AddHours(index % 9);
             var id = StableGuid($"historical-transaction-{index + 1:000}");
             var number = $"APT-{occurredAt:yyyyMMdd}-DEMO{index + 1:0000}";
+            var manager = staff.First(person => person.Role == StaffRole.BranchManager && person.BranchId == branch.Id);
+            var status = (index % 20) switch
+            {
+                0 => TransactionStatus.Voided,
+                1 => TransactionStatus.Refunded,
+                _ => TransactionStatus.Paid
+            };
+            var resolutionTime = status is TransactionStatus.Voided or TransactionStatus.Refunded
+                ? occurredAt.AddHours(1)
+                : (DateTimeOffset?)null;
+            var resolutionReason = status switch
+            {
+                TransactionStatus.Voided => "Seeded historical void",
+                TransactionStatus.Refunded => "Seeded historical refund",
+                _ => null
+            };
             var line = new TransactionLine(product.Id, product.Sku, product.Name, quantity, product.Price);
             Guid? shippingRateId = null;
             string? zoneName = null;
@@ -330,18 +351,126 @@ public sealed class DemoDataSeeder(
                     0 => PaymentMethod.Cash,
                     1 => PaymentMethod.Card,
                     _ => PaymentMethod.DigitalWallet
-                }, terminalId: terminals.First(terminal => terminal.BranchId == branch.Id && terminal.IsActive).Id));
+                },
+                status: status,
+                resolvedAt: resolutionTime,
+                resolvedByStaffId: resolutionTime is null ? null : manager.Id,
+                resolutionReason: resolutionReason,
+                terminalId: terminals.First(terminal => terminal.BranchId == branch.Id && terminal.IsActive).Id));
 
-            inventory[itemIndex] = inventory[itemIndex].ApplyChange(
+            var changedInventory = inventory[itemIndex].ApplyChange(
                 -quantity,
                 inventory[itemIndex].ReorderLevel,
                 $"Seeded historical sale {number}",
                 clerk.Id,
                 occurredAt);
+            if (resolutionTime is { } resolvedAt)
+            {
+                changedInventory = changedInventory.ApplyChange(
+                    quantity,
+                    changedInventory.ReorderLevel,
+                    resolutionReason!,
+                    manager.Id,
+                    resolvedAt);
+            }
+            inventory[itemIndex] = changedInventory;
         }
 
         await inventoryRepository.SaveAllAsync(inventory, cancellationToken);
         await transactionRepository.SaveAllAsync(seededTransactions, cancellationToken);
+    }
+
+    private async Task SeedAuditorHistoryAsync(
+        IReadOnlyList<Branch> branches,
+        IReadOnlyList<StaffMember> staff,
+        CancellationToken cancellationToken)
+    {
+        var orders = (await moneyOrderRepository.GetAllAsync(cancellationToken)).ToList();
+        var verifications = (await verificationRepository.GetAllAsync(cancellationToken)).ToList();
+        var now = DateTimeOffset.UtcNow;
+        var changedOrders = false;
+        var changedVerifications = false;
+
+        foreach (var (branch, branchIndex) in branches.Select((value, index) => (value, index)))
+        {
+            var clerk = staff.FirstOrDefault(person => person.Role == StaffRole.CounterClerk && person.BranchId == branch.Id);
+            var manager = staff.FirstOrDefault(person => person.Role == StaffRole.BranchManager && person.BranchId == branch.Id);
+            if (clerk is null || manager is null)
+                continue;
+
+            var verificationId = StableGuid($"historical-verification-{branch.Code}");
+            var verifiedOrderId = StableGuid($"historical-verified-money-order-{branch.Code}");
+            var verifiedAmount = Math.Max(100m, moneyOrderPolicy.IdentityVerificationThreshold + 1m);
+            var occurredAt = now.AddDays(-10).AddHours(branchIndex);
+            var maskedIdentifier = "****1234";
+
+            if (verifications.All(record => record.Id != verificationId))
+            {
+                verifications.Add(new IdentityVerificationRecord(
+                    verificationId,
+                    branch.Id,
+                    clerk.Id,
+                    occurredAt,
+                    IdentityDocumentType.NationalId,
+                    maskedIdentifier,
+                    verifiedAmount,
+                    IdentityVerificationStatus.Verified,
+                    $"seed-{branch.Code.ToLowerInvariant()}"));
+                changedVerifications = true;
+            }
+
+            if (orders.All(order => order.Id != verifiedOrderId))
+            {
+                var refund = branchIndex == 0;
+                orders.Add(new MoneyOrder(
+                    verifiedOrderId,
+                    $"APM-{occurredAt:yyyyMMdd}-{verifiedOrderId.ToString("N")[..8].ToUpperInvariant()}",
+                    branch.Id,
+                    clerk.Id,
+                    occurredAt,
+                    $"Demo Sender {branch.Code}",
+                    $"Demo Recipient {branch.Code}",
+                    verifiedAmount,
+                    moneyOrderPolicy.FeeAmount,
+                    IdentityVerificationStatus.Verified,
+                    verificationId,
+                    IdentityDocumentType.NationalId,
+                    maskedIdentifier,
+                    refund ? MoneyOrderStatus.Refunded : MoneyOrderStatus.Issued,
+                    refund ? occurredAt.AddHours(1) : null,
+                    refund ? manager.Id : null,
+                    refund ? "Seeded historical refund" : null));
+                changedOrders = true;
+            }
+
+            var standardOrderId = StableGuid($"historical-standard-money-order-{branch.Code}");
+            if (moneyOrderPolicy.IdentityVerificationThreshold > 0 &&
+                orders.All(order => order.Id != standardOrderId))
+            {
+                var standardAmount = moneyOrderPolicy.IdentityVerificationThreshold;
+                var standardOccurredAt = occurredAt.AddDays(-2);
+                orders.Add(new MoneyOrder(
+                    standardOrderId,
+                    $"APM-{standardOccurredAt:yyyyMMdd}-{standardOrderId.ToString("N")[..8].ToUpperInvariant()}",
+                    branch.Id,
+                    clerk.Id,
+                    standardOccurredAt,
+                    $"Demo Sender {branch.Code}",
+                    $"Demo Recipient {branch.Code}",
+                    standardAmount,
+                    moneyOrderPolicy.FeeAmount,
+                    IdentityVerificationStatus.NotRequired,
+                    null,
+                    null,
+                    null));
+                changedOrders = true;
+            }
+        }
+
+        if (changedVerifications)
+            await verificationRepository.SaveAllAsync(verifications, cancellationToken);
+        if (changedOrders)
+            await moneyOrderRepository.SaveAllAsync(orders, cancellationToken);
     }
 
     private static Guid StableGuid(string value)

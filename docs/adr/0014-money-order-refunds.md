@@ -16,3 +16,9 @@ Only an active Branch Manager assigned to the open branch can refund an issued m
 - The order remains in JSON history and cannot be refunded twice.
 - Counter Clerks and Administrators cannot use the manager refund operation.
 - The money-order collection write and audit append are separate JSON operations; there is no cross-file transaction.
+
+## Alternatives considered
+
+- Delete a refunded order: rejected because the auditor needs the original order and its resolution history.
+- Permit refund by any counter clerk: rejected because the assignment reserves voids and refunds for Branch Managers.
+- Permit refunding linked orders independently: rejected because the associated counter receipt and money-order status could diverge.

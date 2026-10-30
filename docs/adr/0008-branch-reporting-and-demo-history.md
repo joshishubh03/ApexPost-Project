@@ -14,3 +14,9 @@ Keep report calculations in an Application service. The service reads independen
 ## Consequences
 
 Reports are consistent with the records available at request time, but concurrent JSON writes do not provide a cross-repository snapshot. Seeded inventory starts with ample opening quantities and then records the historical sales as stock movements. Existing populated data is preserved.
+
+## Alternatives considered
+
+- Precompute and persist report totals: rejected because JSON changes would require rebuilding derived state and could leave reports stale.
+- Read independent collections one after another: rejected because the report does not depend on their ordering and can await them concurrently.
+- Generate random demo history on each run: rejected because repeated runs would be difficult to compare and could duplicate or corrupt existing data.

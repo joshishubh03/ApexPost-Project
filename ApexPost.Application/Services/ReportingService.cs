@@ -52,7 +52,7 @@ public sealed class ReportingService(
             .OrderBy(item => item.QuantityOnHand)
             .ThenBy(item => item.Name)
             .ToArray();
-        var completedSales = transactions.Where(item => item.Status == TransactionStatus.Completed).ToArray();
+        var completedSales = transactions.Where(item => item.Status is TransactionStatus.Paid or TransactionStatus.Completed).ToArray();
         var moneyOrders = (await moneyOrdersTask).Where(item => item.BranchId == branchId).ToArray();
         var linkedMoneyOrderIds = transactions
             .Where(item => item.MoneyOrderId is not null)
