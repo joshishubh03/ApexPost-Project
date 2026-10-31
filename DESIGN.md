@@ -295,3 +295,7 @@ The implementation demonstrates the listed technique groups with use cases tied 
 ## Decisions
 
 See docs/adr/ for accepted architecture decision records, including explicit alternatives in the core architecture, persistence, audit, security, filter, and logging decisions. ADR 0028 documents trusted forwarded headers. The domain, middleware, filter, security, audit, performance, and SOLID notes above describe the current implementation and its known limitations.
+
+## Week 3 SQL Server persistence foundation
+
+The Week 3 SQL Server schema, EF Core mapping decisions, migration commands, and data relationships are documented in [docs/week3-sqlserver.md](docs/week3-sqlserver.md). That page describes the current persistence foundation and clearly marks the remaining JSON-to-EF repository migration work.

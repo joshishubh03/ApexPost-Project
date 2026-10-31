@@ -6,6 +6,8 @@ Assignment 2 implementation of a secure retail and postal counter platform using
 
 The staff-auth slice adds branch and staff domain records, JSON demo data, and cookie-based staff sign-in. The branch-staff-management slice adds Administrator-only branch and staff management. The product-catalogue slice adds product search and management, with 30 seeded demo products. The inventory slice tracks branch-specific quantities and a reasoned movement history. The shipping-rates slice defines destination zones, service levels, and weight-based quotes for parcel and letter shipments. Unified counter baskets support products, shipment services, and money orders. Branch Managers can void or fully refund completed receipts with a reason. Branch reports summarize sales, stock, shipping, money orders, identity checks, audit events, and recent operational notifications. Simulated notifications are emitted for low-stock threshold crossings, high-value money orders, and every void or refund. The money-order slice adds configurable fees, high-value identity verification, and masked document recording. Development seeding supplies 40 historical transactions.
 
+Week 3 is underway. The first feature slice adds the SQL Server EF Core model, optimistic-concurrency columns, scoped unit of work, initial migration, and parameterized stored-procedure scripts. Existing use cases still use JSON repositories until their SQL repository and checkout slices are merged. The Week 3 deliverable does not include Couchbase.
+
 ## Solution projects
 
 - ApexPost.Domain — business entities, value objects, calculations, and invariants.
