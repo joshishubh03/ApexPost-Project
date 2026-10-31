@@ -8,6 +8,11 @@ public sealed class MaintenanceModeMiddleware(RequestDelegate next, IConfigurati
         if (enabled && !context.Request.Path.Equals("/health", StringComparison.OrdinalIgnoreCase))
         {
             context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            var retryAfterSeconds = Math.Clamp(
+                configuration.GetValue<int?>("Security:MaintenanceRetryAfterSeconds") ?? 300,
+                1,
+                86_400);
+            context.Response.Headers.RetryAfter = retryAfterSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
             context.Response.ContentType = "application/problem+json";
             await context.Response.WriteAsJsonAsync(new
             {

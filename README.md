@@ -33,14 +33,14 @@ PowerShell commands:
 
 `ApexPost.Tests` contains xUnit unit tests and `WebApplicationFactory` integration tests for the current counter-platform rules. Coverage includes non-negative stock, money-order identity verification, shipping weight and pricing, mixed receipts, branch report totals, authentication and role denials, API-key and IP restrictions, rate limiting, security headers, correlation IDs, and maintenance mode. Infrastructure tests also verify missing and malformed JSON, I/O failure propagation and temporary-file cleanup, concurrent audit appends, and repeatable development seeding with the required demo-data counts.
 
-The demo data is seeded on first run in Development. The seed creates five branches, two active counter terminals per branch, at least 20 staff, 30 products, 10 shipping zones with Standard, Express, and Registered rates, opening inventory, and 40 historical transactions when both the inventory and transaction files are empty. All seeded accounts use the password CounterDemo!2026. Example accounts:
+The demo data is seeded on first run in Development. The seed creates five branches, two active counter terminals per branch, at least 20 staff, 30 products across the brief's retail categories plus postal services, 10 shipping zones with Standard, Express, and Registered rates, opening inventory, and 40 historical receipts when the inventory and transaction files are empty. It also creates historical money orders, verified identity checks, voids, and refunds so the corresponding reports have data on first run. All seeded accounts use the local password configured through user-secrets. Example accounts:
 
 - admin@apexpost.local
 - manager1@apexpost.local
 - clerk11@apexpost.local
 - auditor1@apexpost.local
 
-The demo password is public training data and must never be reused outside this local demo. Password hashes, not plaintext passwords, are stored in JSON.
+Set a local demo password before starting the seeded Development environment. The application refuses to seed when `DemoData:Password` is missing. Password hashes, not plaintext passwords, are stored in JSON.
 
 ## Branch and staff administration
 
@@ -50,7 +50,7 @@ The MVC administration controller calls `StaffManagementService` in the Applicat
 
 ## Product catalogue
 
-All signed-in staff can search active products by SKU, name, category, or description. Administrators and Branch Managers can create products and activate or deactivate them. Product SKUs are normalized to uppercase and must be unique; prices are non-negative and support up to two decimal places. Products carry a tax category (Standard by default). Development seeding creates 30 sample catalogue products in `data/products.json` when the file is empty or missing.
+All signed-in staff can search active products by SKU, name, category, or description. Administrators and Branch Managers can create products and activate or deactivate them. Product SKUs are normalized to uppercase and must be unique; prices are non-negative and support up to two decimal places. Products carry a tax category (Standard by default). Development seeding creates 30 sample catalogue products in `data/products.json` when the file is empty or missing. Warm catalogue reads use a cached snapshot and a small version marker so changes made by another local application process refresh the cache.
 
 ## Inventory
 
@@ -66,19 +66,19 @@ Counter Clerks, Branch Managers, and Administrators can record sales for their a
 
 ### Voids and refunds
 
-Branch Managers can void or fully refund a completed counter transaction for their assigned branch. Both actions require a reason, are recorded with the manager and timestamp, restore the transaction's product quantities to branch inventory, and produce an audit event with the request correlation ID. Managers can also refund a standalone issued money order once, with a reason and correlated audit event. Money orders in a counter basket must be refunded through that receipt so the receipt and instrument are resolved together. Partial counter-transaction refunds are not supported. Inventory, transaction, and money order status are stored in separate JSON files, so a process or file failure between writes can require a retry or reconciliation; this training adapter does not provide cross-file atomicity.
+Branch Managers can void or fully refund a completed counter transaction for their assigned branch. Both actions require a reason, are recorded with the manager and timestamp, restore the transaction's product quantities to branch inventory, and produce an audit event with the request correlation ID. Managers can also refund a standalone issued money order once, with a reason and correlated audit event. Money orders in a counter basket must be refunded through that receipt so the receipt and instrument are resolved together. Partial counter-transaction refunds are not supported. Multi-file business mutations use a JSON journal and recoverable commit coordinator; this protects local files across process interruption, but does not provide database-level durability or guarantees on network file shares.
 
 ## Branch reports
 
-Administrators can select a branch; Branch Managers and Auditors are restricted to their assigned branch. The report summarizes completed sales, daily retail and service totals, voids and refunds, low-stock active products, shipping volume by zone and service, money orders, failed identity checks, the latest 20 operational notifications, and the latest 50 audit events. Service totals include Postage, Shipping, and Money Order catalogue lines, receipt shipping and money-order amounts, and standalone issued money orders. Daily grouping follows the server's local calendar date; rows distinguish completed receipts from standalone money orders. Independent JSON reads are loaded concurrently with `Task.WhenAll`. Notifications are simulated operational records in `data/notifications.json`; they do not send email, SMS, or external messages.
+Administrators can select a branch; Branch Managers are restricted to their assigned branch. Auditors use a separate cross-branch overview, while the normal report remains branch-scoped. The report summarizes completed sales, daily retail and service totals, voids and refunds, low-stock active products, shipping volume by zone and service, money orders, failed identity checks, the latest 20 operational notifications, and the latest 50 audit events. Service totals include Postage, Shipping, and Money Order catalogue lines, receipt shipping and money-order amounts, and standalone issued money orders. Daily grouping follows the server's local calendar date; rows distinguish completed receipts from standalone money orders. Independent JSON reads are loaded concurrently with `Task.WhenAll`. Notifications are simulated operational records in `data/notifications.json`; they do not send email, SMS, or external messages.
 
 ## Security and partner tracking
 
-The web pipeline adds structured method/path/status/duration request logs, security headers, an optional maintenance response (`503`, with `/health` left available), loopback-only default access to administrative mutation routes and partner integration endpoints, a five-attempt-per-minute login limit, and a 30-request-per-minute partner API limit partitioned by configured partner ID. Failed requests are timed and logged as well. Unexpected server errors return safe `application/problem+json` responses with trace and correlation IDs; exception details remain in server logs. Configure each partner key through user-secrets or the environment before using `/api/partner/tracking/{transactionNumber}`. The legacy single `PartnerApi__ApiKey` setting remains supported as the `default` partner. Set `PartnerApi__AllowedCorsOrigins__0` to the approved tracking-widget origin; CORS does not replace the API key. Set `Security__AdminAllowedIpAddresses__0` and `Security__IntegrationAllowedIpAddresses__0` to the approved administrator and partner egress IPs. Both lists default to loopback only, so deployment addresses must be configured explicitly. Unauthenticated browser requests still redirect to login, while authenticated users who lack a required role receive 403. When deploying behind a reverse proxy, configure trusted forwarded headers before relying on client IP restrictions. Missing or invalid partner keys receive 401; requests from unapproved IPs receive 403; if no partner keys are configured, the API returns 500.
+The web pipeline adds structured method/path/status/duration request logs, security headers, an optional maintenance response (`503` with `Retry-After`, while `/health` remains available), loopback-only default access to administrative mutation routes and partner integration endpoints, a five-attempt-per-minute login limit, and a 30-request-per-minute partner API limit partitioned by configured partner ID. Protected integration endpoints are marked with endpoint metadata, so API-key and IP checks do not depend on a URL prefix. Failed requests are timed and logged as well. Unexpected server errors return safe `application/problem+json` responses with trace and correlation IDs; exception details remain in server logs. Configure each partner key through user-secrets or the environment before using `/api/partner/tracking/{transactionNumber}`. The legacy single `PartnerApi__ApiKey` setting remains supported as the `default` partner. Set `PartnerApi__AllowedCorsOrigins__0` to the approved tracking-widget origin; CORS does not replace the API key. Set `Security__AdminAllowedIpAddresses__0` and `Security__IntegrationAllowedIpAddresses__0` to the approved administrator and partner egress IPs. Both lists default to loopback only, so deployment addresses must be configured explicitly. Unauthenticated browser requests still redirect to login, while authenticated users who lack a required role receive 403. When deploying behind a reverse proxy, configure trusted forwarded headers before relying on client IP restrictions. Missing or invalid partner keys receive 401; requests from unapproved IPs receive 403; if no partner keys are configured, the API returns 500.
 
 Example local configuration and request:
 
-    dotnet user-secrets init --project ApexPost.Web
+    dotnet user-secrets set "DemoData:Password" "choose-a-local-demo-password" --project ApexPost.Web
     dotnet user-secrets set "PartnerApi:Partners:CourierNorth" "replace-with-a-local-secret" --project ApexPost.Web
     dotnet user-secrets set "PartnerApi:Partners:CourierSouth" "replace-with-another-local-secret" --project ApexPost.Web
     $env:PartnerApi__AllowedCorsOrigins__0 = "https://widget.example"
@@ -86,7 +86,31 @@ Example local configuration and request:
     $trackingNumber = (Get-Content data/counter-transactions.json | ConvertFrom-Json | Where-Object { $_.shippingRateId } | Select-Object -First 1).transactionNumber
     curl.exe -H "X-API-Key: replace-with-a-local-secret" "https://localhost:5001/api/partner/tracking/$trackingNumber"
 
-The tracking response contains receipt-level shipment type, service, zone, weight, status, and accepted time only; it does not expose customer names or identity data. `AUDIT-SAMPLE.json` contains synthetic event and MVC-filter audit entries. MVC action filters validate bound model state, audit configuration changes, sales, reversals, money-order issue/refund and identity-verification requests, and log slow actions at the configured `Diagnostics:SlowActionThresholdMilliseconds` threshold. Audit entries record actor, role, branch, safe route IDs, HTTP result status, duration, and correlation ID without serializing request bodies or sensitive form values. JSON requests with invalid models receive a validation problem response; HTML forms retain their controller-specific redisplay behavior. Transaction services publish events for committed sales, reversals, money orders, and identity verification outcomes.
+The tracking response contains receipt-level shipment type, service, zone, weight, status, and accepted time only; it does not expose customer names or identity data. Tracking uses a simulated adapter by default, with a three-request concurrency limit. To connect a provider, configure the generic REST adapter:
+
+    dotnet user-secrets set "CourierTracking:ProviderBaseUrl" "https://courier.example/" --project ApexPost.Web
+    dotnet user-secrets set "CourierTracking:ApiKey" "replace-with-a-local-secret" --project ApexPost.Web
+    dotnet user-secrets set "CourierTracking:TrackingPath" "api/tracking" --project ApexPost.Web
+
+The adapter sends `GET {ProviderBaseUrl}/{TrackingPath}/{URL-encoded tracking number}` with an `X-API-Key` header. A 404 response means no tracking record. A successful response must contain this JSON shape:
+
+```json
+{
+  "trackingNumber": "APT-2026-001",
+  "zoneName": "North Zone",
+  "serviceLevel": "Express",
+  "shipmentType": "Parcel",
+  "weightKilograms": 1.25,
+  "status": "InTransit",
+  "acceptedAt": "2026-10-29T08:30:00+00:00"
+}
+```
+
+The adapter requires HTTPS, checks the returned tracking number, applies the configured timeout, and limits concurrent provider calls. Caller cancellation remains cancellation; provider timeout returns 503. Leave `CourierTracking:ProviderBaseUrl` empty to use the simulator. `AUDIT-SAMPLE.json` contains sanitized records captured from a live local MVC session that signed in, created a product, and deactivated it.
+
+The checked-in sample contains no password, document number, payment data, or request body.
+
+MVC action filters validate bound model state, audit configuration changes, sales, reversals, money-order issue/refund and identity-verification requests, and log slow actions at the configured `Diagnostics:SlowActionThresholdMilliseconds` threshold. Audit entries record actor, role, branch, safe route IDs, HTTP result status, duration, and correlation ID without serializing request bodies or sensitive form values. JSON requests with invalid models receive a validation problem response; HTML forms retain their controller-specific redisplay behavior. Transaction services publish events for committed sales, reversals, money orders, and identity verification outcomes.
 
 ## Money orders and identity verification
 
@@ -112,3 +136,7 @@ Replace the documentation-only address with the actual proxy IP. The app accepts
 ## Assessment evidence index
 
 See [docs/ASSESSMENT-EVIDENCE.md](docs/ASSESSMENT-EVIDENCE.md) for a requirement-to-file map, seed counts, test locations, and the documented performance and persistence limits.
+
+## Local performance sample
+
+Run `dotnet run --project ApexPost.Benchmarks --no-build` after building the solution to repeat the simple local benchmark. On 2026-10-30, .NET 10.0.13 on Windows 11 with four logical processors measured a 20.00x median ratio between 500 JSON read-and-deserialize calls and 500 warm cached reads of 1,000 synthetic products (2,814.280 ms versus 140.684 ms). Twelve simulated 40 ms courier calls took 568.009 ms at concurrency one and 184.323 ms at concurrency three. These are local illustrative measurements with warm OS file cache and synthetic delay, not production throughput claims.

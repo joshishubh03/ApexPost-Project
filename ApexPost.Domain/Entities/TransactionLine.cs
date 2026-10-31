@@ -1,3 +1,5 @@
+using ApexPost.Domain.ValueObjects;
+
 namespace ApexPost.Domain.Entities;
 
 public sealed record TransactionLine
@@ -50,9 +52,10 @@ public sealed record TransactionLine
         ProductName = productName.Trim();
         Quantity = quantity;
         UnitPrice = unitPrice;
-        LineTotal = decimal.Round(quantity * unitPrice, 2, MidpointRounding.AwayFromZero);
+        var unitPriceMoney = new Money(unitPrice);
+        LineTotal = unitPriceMoney.Multiply(quantity).Amount;
         TaxCategory = taxCategory.Trim();
         TaxRatePercent = taxRatePercent;
-        TaxAmount = decimal.Round(LineTotal * taxRatePercent / 100m, 2, MidpointRounding.AwayFromZero);
+        TaxAmount = new Money(LineTotal).Percentage(taxRatePercent).Amount;
     }
 }

@@ -22,7 +22,7 @@ public sealed class CounterTransactionReversalTests
         Assert.Equal(managerId, resolved.ResolvedByStaffId);
         Assert.Equal(resolvedAt, resolved.ResolvedAt);
         Assert.NotNull(resolved.ResolutionReason);
-        Assert.Equal(TransactionStatus.Completed, transaction.Status);
+        Assert.Equal(TransactionStatus.Paid, transaction.Status);
         Assert.Equal(transaction.TotalAmount, resolved.TotalAmount);
     }
 

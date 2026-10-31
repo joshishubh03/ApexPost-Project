@@ -161,6 +161,8 @@ public sealed class ReportingServiceTests
 
         public Task SaveAllAsync(IEnumerable<Product> items, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
+        public ValueTask<string> GetVersionAsync(CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult("0");
     }
 
     private sealed class FakeMoneyOrderRepository(IReadOnlyList<MoneyOrder> moneyOrders) : IMoneyOrderRepository

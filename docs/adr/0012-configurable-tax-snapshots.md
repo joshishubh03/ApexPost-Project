@@ -19,3 +19,9 @@ The demo configuration uses 0% for `Standard` and `Shipping` until approved rate
 - Product categories can use deployment-specific rates without changing application code.
 - Operators must provide approved rates for any additional categories before using them in sales.
 - Tax rounding is performed per line and for shipping, to two decimal places.
+
+## Alternatives considered
+
+- Hard-code tax rates in Domain code: rejected because rates were not supplied and can vary by configuration.
+- Silently treat unknown categories as zero-rated: rejected because missing configuration could undercharge a sale.
+- Store only the final total: rejected because the applied category, rate, and tax calculation would not be explainable later.

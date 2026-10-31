@@ -16,3 +16,9 @@ Keep the cookie challenge redirect to `/Account/Login`, and configure the cookie
 - Browser clients retain the login flow for unauthenticated requests.
 - Authenticated users and blocked partner clients receive a clear 403 response.
 - The tests cover both required response contracts without weakening role or IP checks.
+
+## Alternatives considered
+
+- Redirect every denied user to an access-denied page: rejected because non-browser clients and the assignment need an explicit 403 response.
+- Return 401 for both missing identity and missing permission: rejected because an authenticated clerk is not unauthenticated.
+- Preserve login challenges while returning 403 for authenticated denials: selected to keep the browser sign-in flow and make authorization failures unambiguous.
