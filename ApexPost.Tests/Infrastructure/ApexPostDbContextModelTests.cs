@@ -50,6 +50,9 @@ public sealed class ApexPostDbContextModelTests
 
         var transaction = context.Model.FindEntityType(typeof(CounterTransactionRow));
         Assert.True(transaction!.FindProperty(nameof(CounterTransactionRow.RowVersion))!.IsConcurrencyToken);
+
+        var product = context.Model.FindEntityType(typeof(ProductRow));
+        Assert.True(product!.FindProperty(nameof(ProductRow.RowVersion))!.IsConcurrencyToken);
     }
 
     [Fact]
@@ -62,5 +65,19 @@ public sealed class ApexPostDbContextModelTests
         Assert.Contains(nameof(IdentityVerificationRow.MaskedDocumentIdentifier), propertyNames);
         Assert.DoesNotContain(propertyNames, name => name.Contains("FullDocument", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(propertyNames, name => name.Contains("DocumentNumber", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void ProductCatalogueVersionLookup_OrdersByIndexedRowVersionAndTakesOneRow()
+    {
+        using var context = CreateContext();
+        var sql = context.Products.AsNoTracking()
+            .OrderByDescending(row => row.RowVersion)
+            .Select(row => row.RowVersion)
+            .Take(1)
+            .ToQueryString();
+
+        Assert.Contains("TOP(@p)", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("ORDER BY [p].[RowVersion] DESC", sql, StringComparison.OrdinalIgnoreCase);
     }
 }

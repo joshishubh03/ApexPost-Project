@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using ApexPost.Application.Abstractions;
 using ApexPost.Application.Services;
 using ApexPost.Infrastructure;
+using ApexPost.Infrastructure.Persistence;
 using ApexPost.Infrastructure.Seed;
 using ApexPost.Web.Middleware;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -12,6 +13,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using ApexPost.Web.Authorization;
 using ApexPost.Application.Validation;
 
@@ -44,6 +46,18 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 var dataDirectory = Path.GetFullPath(
     builder.Configuration["ApexPost:DataDirectory"] ??
     Path.Combine(builder.Environment.ContentRootPath, "..", "data"));
+var persistenceProvider = builder.Configuration["Persistence:Provider"] ??
+    (builder.Environment.IsEnvironment("Testing") ? "Json" : "SqlServer");
+var useSqlServer = string.Equals(persistenceProvider, "SqlServer", StringComparison.OrdinalIgnoreCase);
+if (!useSqlServer && !string.Equals(persistenceProvider, "Json", StringComparison.OrdinalIgnoreCase))
+{
+    throw new InvalidOperationException("Persistence:Provider must be either 'SqlServer' or 'Json'.");
+}
+var sqlConnectionString = builder.Configuration.GetConnectionString("ApexPost");
+if (useSqlServer && string.IsNullOrWhiteSpace(sqlConnectionString))
+{
+    throw new InvalidOperationException("Configure ConnectionStrings:ApexPost for the SQL Server persistence provider.");
+}
 var demoPassword = builder.Configuration["DemoData:Password"];
 if (builder.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(demoPassword))
 {
@@ -89,20 +103,20 @@ builder.Services.AddExceptionHandler<SafeProblemDetailsExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddScoped<ApexPost.Application.Abstractions.IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<StaffManagementService>();
-builder.Services.AddSingleton<ProductCatalogueService>();
+builder.Services.AddScoped<ProductCatalogueService>();
 builder.Services.AddScoped<InventoryManagementService>();
 builder.Services.AddScoped<ShippingRateService>();
 builder.Services.AddScoped<CounterTransactionService>();
 builder.Services.AddScoped<MoneyOrderService>();
 builder.Services.AddScoped<ReportingService>();
 builder.Services.AddSingleton(ApexPost.Application.Models.LowStockRule.AtOrBelowReorderLevel);
-builder.Services.AddSingleton(provider => new SimulatedCourierTrackingClient(
+builder.Services.AddScoped(provider => new SimulatedCourierTrackingClient(
     provider.GetRequiredService<ICounterTransactionRepository>(),
     builder.Configuration.GetValue<int>("CourierTracking:MaximumConcurrency", 3),
     TimeSpan.FromSeconds(builder.Configuration.GetValue<int>("CourierTracking:TimeoutSeconds", 2)),
     TimeSpan.FromMilliseconds(builder.Configuration.GetValue<int>("CourierTracking:SimulatedLatencyMilliseconds", 40))));
 builder.Services.AddHttpClient("CourierTracking");
-builder.Services.AddSingleton<ICourierTrackingClient>(provider =>
+builder.Services.AddScoped<ICourierTrackingClient>(provider =>
 {
     var baseAddress = builder.Configuration["CourierTracking:ProviderBaseUrl"];
     if (string.IsNullOrWhiteSpace(baseAddress))
@@ -165,6 +179,12 @@ builder.Services.AddApexPostInfrastructure(
     demoPassword,
     moneyOrderPolicy,
     builder.Environment.IsDevelopment());
+if (useSqlServer)
+{
+    builder.Services.AddApexPostSqlServer(
+        sqlConnectionString!,
+        builder.Configuration.GetValue("Persistence:CommandTimeoutSeconds", 30));
+}
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
@@ -195,7 +215,20 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddSingleton<IAuthorizationHandler, SameBranchAuthorizationHandler>();
 
 var app = builder.Build();
-await app.Services.GetRequiredService<IApplicationMutationCoordinator>().InitializeAsync();
+await using (var startupScope = app.Services.CreateAsyncScope())
+{
+    await startupScope.ServiceProvider.GetRequiredService<IApplicationMutationCoordinator>().InitializeAsync();
+    if (useSqlServer && !builder.Environment.IsEnvironment("Testing") &&
+        builder.Configuration.GetValue("Persistence:ApplyMigrationsOnStartup", builder.Environment.IsDevelopment()))
+    {
+        await startupScope.ServiceProvider.GetRequiredService<ApexPostDbContext>().Database.MigrateAsync();
+    }
+
+    if (app.Environment.IsDevelopment())
+    {
+        await startupScope.ServiceProvider.GetRequiredService<DemoDataSeeder>().SeedAsync();
+    }
+}
 
 app.UseForwardedHeaders();
 app.UseMiddleware<CorrelationIdMiddleware>();
@@ -205,11 +238,6 @@ app.UseExceptionHandler();
 if (!app.Environment.IsDevelopment())
 {
     app.UseHsts();
-}
-else
-{
-    using var scope = app.Services.CreateScope();
-    await scope.ServiceProvider.GetRequiredService<DemoDataSeeder>().SeedAsync();
 }
 
 app.UseMiddleware<RequestExceptionLoggingMiddleware>();

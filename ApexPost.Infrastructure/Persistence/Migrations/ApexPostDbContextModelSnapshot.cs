@@ -33,6 +33,10 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<decimal?>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<Guid?>("BranchId")
                         .HasColumnType("uniqueidentifier");
 
@@ -41,6 +45,9 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .HasMaxLength(64)
                         .IsUnicode(false)
                         .HasColumnType("varchar(64)");
+
+                    b.Property<long?>("DurationMilliseconds")
+                        .HasColumnType("bigint");
 
                     b.Property<Guid?>("EntityId")
                         .HasColumnType("uniqueidentifier");
@@ -61,6 +68,9 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .HasMaxLength(32)
                         .IsUnicode(false)
                         .HasColumnType("varchar(32)");
+
+                    b.Property<string>("RouteValuesJson")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("SafeDetailsJson")
                         .HasColumnType("nvarchar(max)");
@@ -203,6 +213,9 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<Guid?>("MoneyOrderId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTimeOffset>("OccurredAt")
                         .HasColumnType("datetimeoffset(3)");
 
@@ -306,6 +319,10 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .HasColumnType("varchar(40)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("MoneyOrderId")
+                        .IsUnique()
+                        .HasFilter("[MoneyOrderId] IS NOT NULL");
 
                     b.HasIndex("ResolvedByStaffId");
 
@@ -493,6 +510,12 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("BranchId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("CorrelationId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
                     b.Property<bool>("IsAcknowledged")
                         .HasColumnType("bit");
 
@@ -510,7 +533,17 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("OccurredAt")
                         .HasColumnType("datetimeoffset(3)");
 
+                    b.Property<string>("ReferenceId")
+                        .HasMaxLength(80)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(80)");
+
+                    b.Property<Guid?>("StaffId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("StaffId");
 
                     b.HasIndex("BranchId", "IsAcknowledged", "OccurredAt");
 
@@ -581,7 +614,8 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CounterTransactionId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[CounterTransactionId] IS NOT NULL");
 
                     b.ToTable("Payments", null, t =>
                         {
@@ -633,6 +667,12 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
                     b.Property<string>("Sku")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -647,6 +687,8 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Category");
+
+                    b.HasIndex("RowVersion");
 
                     b.HasIndex("Sku")
                         .IsUnique();
@@ -864,6 +906,9 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("CounterTransactionId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("LineNumber")
+                        .HasColumnType("int");
+
                     b.Property<decimal>("LineTotal")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
@@ -904,15 +949,18 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CounterTransactionId");
-
                     b.HasIndex("ProductId");
 
                     b.HasIndex("TaxCategory");
 
+                    b.HasIndex("CounterTransactionId", "LineNumber")
+                        .IsUnique();
+
                     b.ToTable("TransactionLines", null, t =>
                         {
                             t.HasCheckConstraint("CK_TransactionLines_Amounts", "[Quantity] > 0 AND [UnitPrice] >= 0 AND [LineTotal] >= 0 AND [TaxAmount] >= 0");
+
+                            t.HasCheckConstraint("CK_TransactionLines_LineNumber", "[LineNumber] >= 0");
                         });
                 });
 
@@ -1274,6 +1322,11 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                     b.HasOne("ApexPost.Infrastructure.Persistence.Entities.BranchRow", null)
                         .WithMany()
                         .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ApexPost.Infrastructure.Persistence.Entities.StaffRow", null)
+                        .WithMany()
+                        .HasForeignKey("StaffId")
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 

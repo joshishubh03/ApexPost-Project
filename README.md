@@ -6,7 +6,7 @@ Assignment 2 implementation of a secure retail and postal counter platform using
 
 The staff-auth slice adds branch and staff domain records, JSON demo data, and cookie-based staff sign-in. The branch-staff-management slice adds Administrator-only branch and staff management. The product-catalogue slice adds product search and management, with 30 seeded demo products. The inventory slice tracks branch-specific quantities and a reasoned movement history. The shipping-rates slice defines destination zones, service levels, and weight-based quotes for parcel and letter shipments. Unified counter baskets support products, shipment services, and money orders. Branch Managers can void or fully refund completed receipts with a reason. Branch reports summarize sales, stock, shipping, money orders, identity checks, audit events, and recent operational notifications. Simulated notifications are emitted for low-stock threshold crossings, high-value money orders, and every void or refund. The money-order slice adds configurable fees, high-value identity verification, and masked document recording. Development seeding supplies 40 historical transactions.
 
-Week 3 is underway. The first feature slice adds the SQL Server EF Core model, optimistic-concurrency columns, scoped unit of work, initial migration, and parameterized stored-procedure scripts. Existing use cases still use JSON repositories until their SQL repository and checkout slices are merged. The Week 3 deliverable does not include Couchbase.
+Week 3 is underway. SQL Server EF Core is now the default web persistence provider, with scoped repositories, a scoped unit of work, optimistic-concurrency columns, migrations, and parameterized stored-procedure scripts. JSON remains available by setting `Persistence:Provider` to `Json`; the test host does this explicitly. Existing JSON files are not yet automatically imported into SQL, and report-specific query DTOs and measured SQL workloads are still in progress. The Week 3 deliverable does not include Couchbase.
 
 ## Solution projects
 
@@ -21,6 +21,16 @@ Week 3 is underway. The first feature slice adds the SQL Server EF Core model, o
 ## Prerequisites
 
 - .NET 10 SDK
+- SQL Server instance accessible with the configured Windows authentication connection string
+
+## SQL Server persistence
+
+The Development web app applies the EF Core migrations before running the idempotent demo seeder. The default connection string targets a local SQL Server instance named `localhost`; override it in the environment when your instance uses another name:
+
+    $env:ConnectionStrings__ApexPost = 'Server=localhost;Database=ApexPostCounter;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true'
+    dotnet run --project ApexPost.Web --urls https://localhost:5001
+
+For manual deployment, apply `scripts/database/initial-schema.sql`, then `reference-data.sql`, then `stored-procedures.sql`. Set `Persistence:ApplyMigrationsOnStartup` to `false` when the deployment process applies migrations. Set `Persistence:Provider` to `Json` only for a local JSON-backed run; integration tests use that setting explicitly. Couchbase is not part of Week 3.
 
 ## Restore, build, test, and run
 
@@ -34,6 +44,8 @@ PowerShell commands:
 ## Automated test coverage
 
 `ApexPost.Tests` contains xUnit unit tests and `WebApplicationFactory` integration tests for the current counter-platform rules. Coverage includes non-negative stock, money-order identity verification, shipping weight and pricing, mixed receipts, branch report totals, authentication and role denials, API-key and IP restrictions, rate limiting, security headers, correlation IDs, and maintenance mode. Infrastructure tests also verify missing and malformed JSON, I/O failure propagation and temporary-file cleanup, concurrent audit appends, and repeatable development seeding with the required demo-data counts.
+
+EF model tests verify the normalized SQL tables, composite stock key, SQL Server rowversion tokens, separate masked identity-verification columns, and the indexed one-row catalogue-version query shape. Live repository tests against SQL Server require a separate disposable test database and are being added with the SQL workload slices.
 
 The demo data is seeded on first run in Development. The seed creates five branches, two active counter terminals per branch, at least 20 staff, 30 products across the brief's retail categories plus postal services, 10 shipping zones with Standard, Express, and Registered rates, opening inventory, and 40 historical receipts when the inventory and transaction files are empty. It also creates historical money orders, verified identity checks, voids, and refunds so the corresponding reports have data on first run. All seeded accounts use the local password configured through user-secrets. Example accounts:
 

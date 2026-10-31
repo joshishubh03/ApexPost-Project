@@ -7,6 +7,7 @@ using ApexPost.Infrastructure.Repositories;
 using ApexPost.Infrastructure.Security;
 using ApexPost.Infrastructure.Seed;
 using ApexPost.Infrastructure.Persistence;
+using ApexPost.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -32,6 +33,19 @@ public static class DependencyInjection
                 .EnableRetryOnFailure(3, TimeSpan.FromSeconds(5), null)
                 .MigrationsAssembly(typeof(ApexPostDbContext).Assembly.GetName().Name)));
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
+        services.AddScoped<IApplicationMutationCoordinator, EfApplicationMutationCoordinator>();
+        services.AddScoped<IBranchRepository, EfBranchRepository>();
+        services.AddScoped<ICounterTerminalRepository, EfCounterTerminalRepository>();
+        services.AddScoped<IStaffRepository, EfStaffRepository>();
+        services.AddScoped<IProductRepository, EfProductRepository>();
+        services.AddScoped<IInventoryRepository, EfInventoryRepository>();
+        services.AddScoped<IShippingZoneRepository, EfShippingZoneRepository>();
+        services.AddScoped<IShippingRateRepository, EfShippingRateRepository>();
+        services.AddScoped<ICounterTransactionRepository, EfCounterTransactionRepository>();
+        services.AddScoped<IMoneyOrderRepository, EfMoneyOrderRepository>();
+        services.AddScoped<IIdentityVerificationRepository, EfIdentityVerificationRepository>();
+        services.AddScoped<IAuditLogRepository, EfAuditLogRepository>();
+        services.AddScoped<INotificationRepository, EfNotificationRepository>();
         return services;
     }
 
@@ -72,7 +86,7 @@ public static class DependencyInjection
         services.AddScoped<IApplicationEventHandler, OperationalNotificationHandler>();
         services.AddScoped<IApplicationEventPublisher, ApplicationEventPublisher>();
         services.AddSingleton<IStaffPasswordService, AspNetStaffPasswordService>();
-        services.AddSingleton(serviceProvider => new DemoDataSeeder(
+        services.AddScoped(serviceProvider => new DemoDataSeeder(
             serviceProvider.GetRequiredService<IBranchRepository>(),
             serviceProvider.GetRequiredService<IStaffRepository>(),
             serviceProvider.GetRequiredService<IProductRepository>(),

@@ -340,11 +340,13 @@ public sealed class WebIntegrationTests
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Testing");
+            builder.UseSetting("Persistence:Provider", "Json");
             builder.UseSetting("ApexPost:DataDirectory", dataDirectory);
             builder.ConfigureAppConfiguration((_, configuration) =>
             {
                 var testSettings = new Dictionary<string, string?>
                 {
+                    ["Persistence:Provider"] = "Json",
                     ["ApexPost:DataDirectory"] = dataDirectory,
                     ["PartnerApi:ApiKey"] = "integration-test-key",
                     ["PartnerApi:AllowedCorsOrigins:0"] = "https://widget.example",

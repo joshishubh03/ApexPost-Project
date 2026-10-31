@@ -1,6 +1,6 @@
 # Week 3 SQL Server persistence
 
-This page records the Week 3 persistence design. Couchbase is outside this assignment scope. The SQL Server model is being introduced behind Infrastructure; existing JSON services remain the active application store until their repositories and checkout unit of work are moved in the next feature slices.
+This page records the Week 3 persistence design. Couchbase is outside this assignment scope. SQL Server is now the default web persistence provider. The JSON provider remains available for local comparisons and tests. Existing JSON files are not automatically imported into SQL yet; a separate migration/import feature remains necessary before treating an existing JSON installation as converted.
 
 ## Dependency and data flow
 
@@ -15,7 +15,7 @@ flowchart LR
     EF --> Migration[Versioned migrations and SQL scripts]
 ```
 
-EF persistence rows are mutable database shapes kept in Infrastructure. Application services continue to work with the immutable Domain records. The EF repositories will map between those shapes and return application DTOs; they will not expose `IQueryable` or track entities outside a request scope. The current application workflows still use the JSON adapters while those repository slices are implemented.
+EF persistence rows are mutable database shapes kept in Infrastructure. Application services continue to work with the immutable Domain records. Scoped EF repositories map between those shapes and return domain records; they do not expose `IQueryable` or track entities outside a request scope. The stored procedure and report DTO query paths are being added in later slices for workloads that should run entirely in SQL.
 
 ## Relational model
 
@@ -54,19 +54,19 @@ erDiagram
 
 Money values use `decimal(18,2)`, weights and dimensions use fixed precision, event times use `datetimeoffset(3)`, and branch hours use SQL `time`. Check constraints repeat important invariants at the storage boundary, including non-negative stock, positive prices/quantities, receipt totals, and required reversal details. Unique indexes cover branch codes, email, SKU, terminal code within a branch, transaction number, money-order number, and one payment per receipt.
 
-`BranchStock.RowVersion` and `CounterTransactions.RowVersion` are SQL Server `rowversion` concurrency tokens. A stale checkout or adjustment will receive an EF concurrency failure that the application layer will translate to a conflict response. The scoped unit of work is implemented to save tracked changes inside a serializable EF transaction. The existing JSON checkout remains active until the application is switched to the EF repositories.
+`BranchStock.RowVersion` and `CounterTransactions.RowVersion` are SQL Server `rowversion` concurrency tokens. Products also use `rowversion` for efficient catalogue-cache invalidation. EF rejects stale stock and transaction updates with a concurrency exception; mapping that exception to an HTTP conflict response remains an API error-handling follow-up. The scoped unit of work saves tracked changes inside a serializable EF transaction. EF repositories are registered with scoped lifetimes so they share the request's `DbContext` and transaction.
 
 Each mutable table carries created/updated UTC timestamps, actor IDs, and a correlation ID. Audit records are append-only and store safe details only. Outbox messages persist event payloads for retryable notification/synchronization work; processing status and attempts are separate from the business transaction.
 
 ## Migrations and stored procedures
 
-The initial model migration lives in `ApexPost.Infrastructure/Persistence/Migrations`. `scripts/database/initial-schema.sql` is an idempotent SQL Server deployment script generated from that migration. Run the scripts in this order:
+The model migrations live in `ApexPost.Infrastructure/Persistence/Migrations`. `scripts/database/initial-schema.sql` is an idempotent SQL Server deployment script generated from the migrations. Run the scripts in this order when deploying manually:
 
 1. `scripts/database/initial-schema.sql`
 2. `scripts/database/reference-data.sql`
 3. `scripts/database/stored-procedures.sql`
 
-The reference-data script is repeatable and creates the supported staff roles, product categories, and tax categories. Stored procedures use parameters; stock adjustment uses a transaction and locks its target stock row while checking the non-negative rule. The EF tool factory reads `ConnectionStrings__ApexPost` or `APEXPOST_SQLSERVER` from the environment and otherwise uses LocalDB for design-time model generation. No credentials are committed.
+The reference-data script is repeatable and creates the supported staff roles, product categories, and tax categories. The EF demo seeder also creates missing reference rows before saving dependent records. Stored procedures use parameters; stock adjustment uses a transaction and locks its target stock row while checking the non-negative rule. In Development, the web application applies migrations before seeding. Set `Persistence:ApplyMigrationsOnStartup` to `false` when deployment applies the generated scripts separately. The EF tool factory reads `ConnectionStrings__ApexPost` or `APEXPOST_SQLSERVER` from the environment and otherwise uses LocalDB for design-time model generation. No credentials are committed.
 
 Useful commands:
 
