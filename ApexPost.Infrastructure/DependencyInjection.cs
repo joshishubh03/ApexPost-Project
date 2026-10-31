@@ -6,12 +6,35 @@ using ApexPost.Infrastructure.Events;
 using ApexPost.Infrastructure.Repositories;
 using ApexPost.Infrastructure.Security;
 using ApexPost.Infrastructure.Seed;
+using ApexPost.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ApexPost.Infrastructure;
 
 public static class DependencyInjection
 {
+    public static IServiceCollection AddApexPostSqlServer(
+        this IServiceCollection services,
+        string connectionString,
+        int commandTimeoutSeconds = 30)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
+        if (commandTimeoutSeconds is < 1 or > 120)
+        {
+            throw new ArgumentOutOfRangeException(nameof(commandTimeoutSeconds));
+        }
+
+        services.AddDbContext<ApexPostDbContext>(options => options.UseSqlServer(
+            connectionString,
+            sql => sql
+                .CommandTimeout(commandTimeoutSeconds)
+                .EnableRetryOnFailure(3, TimeSpan.FromSeconds(5), null)
+                .MigrationsAssembly(typeof(ApexPostDbContext).Assembly.GetName().Name)));
+        services.AddScoped<IUnitOfWork, EfUnitOfWork>();
+        return services;
+    }
+
     public static IServiceCollection AddApexPostInfrastructure(
         this IServiceCollection services,
         string dataDirectory,
