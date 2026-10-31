@@ -106,12 +106,9 @@ The adapter sends `GET {ProviderBaseUrl}/{TrackingPath}/{URL-encoded tracking nu
 }
 ```
 
-The adapter requires HTTPS, checks the returned tracking number, applies the configured timeout, and limits concurrent provider calls. Caller cancellation remains cancellation; provider timeout returns 503. Leave `CourierTracking:ProviderBaseUrl` empty to use the simulator. `AUDIT-SAMPLE.json` contains sanitized records from a live local MVC session that signed in, created a product, and deactivated it. Refresh it from the repository root with:
+The adapter requires HTTPS, checks the returned tracking number, applies the configured timeout, and limits concurrent provider calls. Caller cancellation remains cancellation; provider timeout returns 503. Leave `CourierTracking:ProviderBaseUrl` empty to use the simulator. `AUDIT-SAMPLE.json` contains sanitized records captured from a live local MVC session that signed in, created a product, and deactivated it.
 
-    dotnet build ApexPost.slnx
-    .\scripts\GenerateAuditSample.ps1
-
-The script starts a hidden local host with a temporary password and isolated JSON directory, sends the MVC requests, writes only the sanitized audit records, and removes its temporary data when it exits.
+The checked-in sample contains no password, document number, payment data, or request body.
 
 MVC action filters validate bound model state, audit configuration changes, sales, reversals, money-order issue/refund and identity-verification requests, and log slow actions at the configured `Diagnostics:SlowActionThresholdMilliseconds` threshold. Audit entries record actor, role, branch, safe route IDs, HTTP result status, duration, and correlation ID without serializing request bodies or sensitive form values. JSON requests with invalid models receive a validation problem response; HTML forms retain their controller-specific redisplay behavior. Transaction services publish events for committed sales, reversals, money orders, and identity verification outcomes.
 

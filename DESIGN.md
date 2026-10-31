@@ -281,7 +281,7 @@ MVC action filters log slow actions and append request audit records for branch 
 | Value objects | `Money`, `Weight`, and `Sku` are used by transaction lines, shipping-rate calculations, and product construction | Validation and rounding stay attached to the value instead of being copied across services. |
 | C# 14 extension members | `DecimalMoneyExtensions` provides currency rounding used by `Money` | Currency rounding has one named rule while keeping decimal persistence compatible. |
 | Pattern matching | Enum `switch` expressions and `is`/`is not` checks in workflow validation | Branching rules stay readable and exhaustive. |
-| Generics | `JsonCollectionStore<T>` and `IApplicationEventHandler<T>` | Shared persistence and event dispatch avoid duplicated type-specific plumbing. |
+| Generics | `JsonCollectionStore<T> where T : class`, typed event handlers, and `IReportSpecification<T>` applied by `ReportFilter` | JSON collections are limited to reference-type domain records; report selection rules can be reused and tested independently of storage. |
 | Delegates and `Func` | `LowStockRule` accepts a `Func<int, int, bool>` predicate used by branch reporting | The low-stock comparison is an explicit policy that can be replaced and tested without rewriting report orchestration. |
 | Events and observers | Counter completion, money-order issuance, and reversal events | Audit observers are decoupled from the business operation. |
 | Custom attributes and reflection | `[CurrencyAmount]` and `CachedAttributeValidator` | Reusable currency amount rules are discovered once per model type; compiled property accessors are cached for later validations. |

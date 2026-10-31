@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace ApexPost.Infrastructure.Repositories;
 
-internal sealed class JsonCollectionStore<T>(string path)
+internal sealed class JsonCollectionStore<T>(string path) where T : class
 {
     private static readonly JsonSerializerOptions JsonOptions = CreateJsonOptions();
     private readonly string versionPath = path + ".version";

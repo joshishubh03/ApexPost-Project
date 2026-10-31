@@ -5,11 +5,11 @@ This index points reviewers to the current implementation and checks. The stated
 | Assessment area | Implementation evidence | Verification evidence |
 | --- | --- | --- |
 | Domain rules and mixed checkout | `ApexPost.Domain/Entities`, `ApexPost.Application/Services/CounterTransactionService.cs`, `MoneyOrderService.cs`, and `ReportingService.cs` | `ApexPost.Tests/BusinessRuleTests.cs`, `CounterTransactionReversalTests.cs`, and `Reporting/ReportingServiceTests.cs` |
-| Advanced C# techniques | `DESIGN.md`, “SOLID mapping and advanced C# usage”; records/value objects, C# 14 extension members, pattern matching, generics, delegates, events, cached reflection validation, async cancellation, `Task.WhenAll`, `SemaphoreSlim`, and `ValueTask` cache | `ValueObjectTests.cs`, `CachedAttributeValidatorTests.cs`, `ProductCatalogueCacheTests.cs`, courier tests, and application service tests |
+| Advanced C# techniques | `DESIGN.md`, “SOLID mapping and advanced C# usage”; records/value objects, C# 14 extension members, pattern matching, constrained generic JSON collections, report specifications, delegates, events, cached reflection validation, async cancellation, `Task.WhenAll`, `SemaphoreSlim`, and `ValueTask` cache | `ValueObjectTests.cs`, `ReportSpecificationTests.cs`, `CachedAttributeValidatorTests.cs`, `ProductCatalogueCacheTests.cs`, courier tests, and application service tests |
 | MVC workflows | `ApexPost.Web/Controllers` and `ApexPost.Web/Views`; Auditors have a cross-branch overview while the standard report remains branch-scoped | `ApexPost.Tests/WebIntegrationTests.cs` covers login redirects, role restrictions, auditor overview, safe MVC audit records, and branch-scoped label access |
 | Middleware and security | `ApexPost.Web/Program.cs` and `ApexPost.Web/Middleware`; forwarded headers trust only configured proxy IPs | `WebIntegrationTests.cs` covers security headers, API-key/IP behavior, trusted/untrusted forwarding, login limiting, correlation IDs, and maintenance mode |
-| Action filters and audit | `ApexPost.Web/Middleware/MvcActionFilters.cs`, Application events, `AUDIT-SAMPLE.json`, and `scripts/GenerateAuditSample.ps1` | Web integration tests verify filter metadata. The script runs a local Development host, signs in, creates and deactivates a product, then exports only the safe audit records. |
-| Persistence and seed data | `ApexPost.Infrastructure/Repositories/JsonMutationCoordinator.cs`, `JsonCollectionStore.cs`, and `DemoDataSeeder.cs` | `JsonPersistenceReliabilityTests.cs` covers missing/malformed files, write failure, concurrent appends, and repeatable seed data. `JsonMutationCoordinatorTests.cs` covers multiple coordinator instances, multi-file commit/rollback, reader blocking, and recovery from a prepared journal. |
+| Action filters and audit | `ApexPost.Web/Middleware/MvcActionFilters.cs`, Application events, and `AUDIT-SAMPLE.json` | Web integration tests verify filter metadata. The checked-in sample contains sanitized entries captured from a local Development session. |
+| Persistence and seed data | `ApexPost.Infrastructure/Repositories/JsonMutationCoordinator.cs`, `JsonCollectionStore.cs`, and `DemoDataSeeder.cs` | `JsonPersistenceReliabilityTests.cs` covers missing/malformed files, write failure, concurrent appends, and repeatable seed data. `JsonMutationCoordinatorTests.cs` covers multiple coordinator instances, multi-file commit/rollback, reader blocking, and recovery from a prepared journal. `JsonCounterCheckoutConcurrencyTests.cs` exercises parallel checkouts through the production JSON repositories and coordinator. |
 | Architecture decisions | `docs/adr/` plus `DESIGN.md` | ADRs include context, decision, alternatives, and consequences. ADR-0030 covers recoverable JSON mutations; ADR-0031 the configurable courier contract; ADR-0032 cached attribute validation and measurement. |
 
 ## Seed data counts
@@ -28,7 +28,7 @@ The singleton catalogue cache checks a small version marker so another local pro
 
 ## Reproducible checks
 
-Verified on 2026-10-30: `Directory.Build.props` sets .NET 10, C# 14, and nullable reference types. `dotnet build ApexPost.slnx` succeeded with zero warnings; `dotnet test ApexPost.slnx` passed all 85 tests.
+Verified on 2026-10-30: `Directory.Build.props` sets .NET 10, C# 14, and nullable reference types. `dotnet build ApexPost.slnx` succeeded with zero warnings; `dotnet test ApexPost.slnx` passed all 87 tests.
 
 From the repository root:
 
@@ -36,7 +36,6 @@ From the repository root:
 dotnet build ApexPost.slnx
 dotnet test ApexPost.slnx
 dotnet run --project ApexPost.Benchmarks --no-build
-.\scripts\GenerateAuditSample.ps1
 ```
 
-The audit sample script uses an isolated temporary JSON directory and temporary Development password, and removes both after its local MVC session. It does not change the project's user-secrets store. Regular automated tests use their own temporary directories and do not require provider credentials.
+The audit sample contains only safe audit fields from a local MVC session. Regular automated tests use their own temporary directories and do not require provider credentials.
