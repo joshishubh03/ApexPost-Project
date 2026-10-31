@@ -82,6 +82,7 @@ public sealed class ProductRow : IAuditedRow
     public string TaxCategory { get; set; } = string.Empty;
     public decimal Price { get; set; }
     public bool IsActive { get; set; }
+    public byte[] RowVersion { get; set; } = [];
     public AuditColumns Audit { get; set; } = new();
 }
 
@@ -173,6 +174,7 @@ public sealed class CounterTransactionRow : IAuditedRow
     public Guid BranchId { get; set; }
     public Guid StaffId { get; set; }
     public Guid? TerminalId { get; set; }
+    public Guid? MoneyOrderId { get; set; }
     public Guid? ShippingRateId { get; set; }
     public string? ShippingZoneName { get; set; }
     public ShippingServiceLevel? ShippingServiceLevel { get; set; }
@@ -204,6 +206,7 @@ public sealed class TransactionLineRow
 {
     public Guid Id { get; set; }
     public Guid CounterTransactionId { get; set; }
+    public int LineNumber { get; set; }
     public Guid ProductId { get; set; }
     public string Sku { get; set; } = string.Empty;
     public string ProductName { get; set; } = string.Empty;
@@ -237,6 +240,9 @@ public sealed class AuditEntryRow
     public int ResultStatusCode { get; set; }
     public DateTimeOffset OccurredAt { get; set; }
     public string CorrelationId { get; set; } = string.Empty;
+    public decimal? Amount { get; set; }
+    public long? DurationMilliseconds { get; set; }
+    public string? RouteValuesJson { get; set; }
     public string? SafeDetailsJson { get; set; }
 }
 
@@ -244,9 +250,12 @@ public sealed class OperationalNotificationRow
 {
     public Guid Id { get; set; }
     public Guid? BranchId { get; set; }
+    public Guid? StaffId { get; set; }
     public string Kind { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
     public DateTimeOffset OccurredAt { get; set; }
+    public string CorrelationId { get; set; } = string.Empty;
+    public string? ReferenceId { get; set; }
     public bool IsAcknowledged { get; set; }
 }
 

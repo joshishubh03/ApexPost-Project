@@ -111,7 +111,9 @@ public sealed class ApexPostDbContext(DbContextOptions<ApexPostDbContext> option
         entity.Property(x => x.Category).HasMaxLength(60).IsRequired();
         entity.Property(x => x.TaxCategory).HasMaxLength(60).IsRequired();
         entity.Property(x => x.Price).HasPrecision(18, 2);
+        entity.Property(x => x.RowVersion).IsRowVersion().IsConcurrencyToken();
         entity.HasIndex(x => x.Sku).IsUnique();
+        entity.HasIndex(x => x.RowVersion);
         entity.HasOne<ProductCategoryRow>().WithMany().HasForeignKey(x => x.Category).HasPrincipalKey(x => x.Code).OnDelete(DeleteBehavior.Restrict);
         entity.HasOne<TaxCategoryRow>().WithMany().HasForeignKey(x => x.TaxCategory).HasPrincipalKey(x => x.Code).OnDelete(DeleteBehavior.Restrict);
         ConfigureAudit(entity);
@@ -265,6 +267,7 @@ public sealed class ApexPostDbContext(DbContextOptions<ApexPostDbContext> option
         entity.Property(x => x.ParcelHeightCentimeters).HasPrecision(9, 2);
         entity.Property(x => x.ShippingRecipientName).HasMaxLength(100);
         entity.Property(x => x.ShippingAddress).HasMaxLength(300);
+        entity.HasIndex(x => x.MoneyOrderId).IsUnique().HasFilter("[MoneyOrderId] IS NOT NULL");
         entity.Property(x => x.ResolutionReason).HasMaxLength(250);
         entity.Property(x => x.OccurredAt).HasColumnType("datetimeoffset(3)");
         entity.Property(x => x.ResolvedAt).HasColumnType("datetimeoffset(3)");
@@ -282,9 +285,13 @@ public sealed class ApexPostDbContext(DbContextOptions<ApexPostDbContext> option
 
     private static void ConfigureTransactionLines(EntityTypeBuilder<TransactionLineRow> entity)
     {
-        entity.ToTable("TransactionLines", table => table.HasCheckConstraint(
-            "CK_TransactionLines_Amounts", "[Quantity] > 0 AND [UnitPrice] >= 0 AND [LineTotal] >= 0 AND [TaxAmount] >= 0"));
+        entity.ToTable("TransactionLines", table =>
+        {
+            table.HasCheckConstraint("CK_TransactionLines_Amounts", "[Quantity] > 0 AND [UnitPrice] >= 0 AND [LineTotal] >= 0 AND [TaxAmount] >= 0");
+            table.HasCheckConstraint("CK_TransactionLines_LineNumber", "[LineNumber] >= 0");
+        });
         entity.HasKey(x => x.Id);
+        entity.Property(x => x.LineNumber).IsRequired();
         entity.Property(x => x.Sku).HasMaxLength(32).IsUnicode(false).IsRequired();
         entity.Property(x => x.ProductName).HasMaxLength(120).IsRequired();
         entity.Property(x => x.UnitPrice).HasPrecision(18, 2);
@@ -292,7 +299,7 @@ public sealed class ApexPostDbContext(DbContextOptions<ApexPostDbContext> option
         entity.Property(x => x.TaxCategory).HasMaxLength(60).IsRequired();
         entity.Property(x => x.TaxRatePercent).HasPrecision(5, 2);
         entity.Property(x => x.TaxAmount).HasPrecision(18, 2);
-        entity.HasIndex(x => x.CounterTransactionId);
+        entity.HasIndex(x => new { x.CounterTransactionId, x.LineNumber }).IsUnique();
         entity.HasOne<CounterTransactionRow>().WithMany().HasForeignKey(x => x.CounterTransactionId).OnDelete(DeleteBehavior.Cascade);
         entity.HasOne<ProductRow>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
         entity.HasOne<TaxCategoryRow>().WithMany().HasForeignKey(x => x.TaxCategory).HasPrincipalKey(x => x.Code).OnDelete(DeleteBehavior.Restrict);
@@ -305,7 +312,7 @@ public sealed class ApexPostDbContext(DbContextOptions<ApexPostDbContext> option
         entity.Property(x => x.Method).HasConversion<string>().HasMaxLength(24).IsUnicode(false);
         entity.Property(x => x.Amount).HasPrecision(18, 2);
         entity.Property(x => x.PaidAt).HasColumnType("datetimeoffset(3)");
-        entity.HasIndex(x => x.CounterTransactionId).IsUnique();
+        entity.HasIndex(x => x.CounterTransactionId).IsUnique().HasFilter("[CounterTransactionId] IS NOT NULL");
         entity.HasOne<CounterTransactionRow>().WithOne().HasForeignKey<PaymentRow>(x => x.CounterTransactionId).OnDelete(DeleteBehavior.Cascade);
         ConfigureAudit(entity);
     }
@@ -319,6 +326,8 @@ public sealed class ApexPostDbContext(DbContextOptions<ApexPostDbContext> option
         entity.Property(x => x.EntityType).HasMaxLength(80).IsRequired();
         entity.Property(x => x.CorrelationId).HasMaxLength(64).IsUnicode(false).IsRequired();
         entity.Property(x => x.SafeDetailsJson).HasColumnType("nvarchar(max)");
+        entity.Property(x => x.Amount).HasPrecision(18, 2);
+        entity.Property(x => x.RouteValuesJson).HasColumnType("nvarchar(max)");
         entity.Property(x => x.OccurredAt).HasColumnType("datetimeoffset(3)");
         entity.HasIndex(x => new { x.BranchId, x.OccurredAt });
         entity.HasIndex(x => x.CorrelationId);
@@ -332,9 +341,12 @@ public sealed class ApexPostDbContext(DbContextOptions<ApexPostDbContext> option
         entity.HasKey(x => x.Id);
         entity.Property(x => x.Kind).HasMaxLength(60).IsUnicode(false).IsRequired();
         entity.Property(x => x.Message).HasMaxLength(500).IsRequired();
+        entity.Property(x => x.CorrelationId).HasMaxLength(64).IsUnicode(false).IsRequired();
+        entity.Property(x => x.ReferenceId).HasMaxLength(80).IsUnicode(false);
         entity.Property(x => x.OccurredAt).HasColumnType("datetimeoffset(3)");
         entity.HasIndex(x => new { x.BranchId, x.IsAcknowledged, x.OccurredAt });
         entity.HasOne<BranchRow>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        entity.HasOne<StaffRow>().WithMany().HasForeignKey(x => x.StaffId).OnDelete(DeleteBehavior.Restrict);
     }
 
     private static void ConfigureOutbox(EntityTypeBuilder<OutboxMessageRow> entity)

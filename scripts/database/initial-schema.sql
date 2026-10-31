@@ -786,3 +786,202 @@ END;
 
 COMMIT;
 GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261031133837_AddProductCatalogueRowVersion'
+)
+BEGIN
+    ALTER TABLE [Products] ADD [RowVersion] rowversion NOT NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261031133837_AddProductCatalogueRowVersion'
+)
+BEGIN
+    CREATE INDEX [IX_Products_RowVersion] ON [Products] ([RowVersion]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261031133837_AddProductCatalogueRowVersion'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261031133837_AddProductCatalogueRowVersion', N'10.0.14');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261031134126_AddRepositoryConcurrencyAndOperationalFields'
+)
+BEGIN
+    ALTER TABLE [OperationalNotifications] ADD [CorrelationId] varchar(64) NOT NULL DEFAULT '';
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261031134126_AddRepositoryConcurrencyAndOperationalFields'
+)
+BEGIN
+    ALTER TABLE [OperationalNotifications] ADD [ReferenceId] varchar(80) NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261031134126_AddRepositoryConcurrencyAndOperationalFields'
+)
+BEGIN
+    ALTER TABLE [OperationalNotifications] ADD [StaffId] uniqueidentifier NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261031134126_AddRepositoryConcurrencyAndOperationalFields'
+)
+BEGIN
+    ALTER TABLE [CounterTransactions] ADD [MoneyOrderId] uniqueidentifier NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261031134126_AddRepositoryConcurrencyAndOperationalFields'
+)
+BEGIN
+    ALTER TABLE [AuditEntries] ADD [Amount] decimal(18,2) NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261031134126_AddRepositoryConcurrencyAndOperationalFields'
+)
+BEGIN
+    ALTER TABLE [AuditEntries] ADD [DurationMilliseconds] bigint NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261031134126_AddRepositoryConcurrencyAndOperationalFields'
+)
+BEGIN
+    ALTER TABLE [AuditEntries] ADD [RouteValuesJson] nvarchar(max) NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261031134126_AddRepositoryConcurrencyAndOperationalFields'
+)
+BEGIN
+    CREATE INDEX [IX_OperationalNotifications_StaffId] ON [OperationalNotifications] ([StaffId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261031134126_AddRepositoryConcurrencyAndOperationalFields'
+)
+BEGIN
+    CREATE INDEX [IX_CounterTransactions_MoneyOrderId] ON [CounterTransactions] ([MoneyOrderId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261031134126_AddRepositoryConcurrencyAndOperationalFields'
+)
+BEGIN
+    ALTER TABLE [OperationalNotifications] ADD CONSTRAINT [FK_OperationalNotifications_Staff_StaffId] FOREIGN KEY ([StaffId]) REFERENCES [Staff] ([Id]) ON DELETE NO ACTION;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261031134126_AddRepositoryConcurrencyAndOperationalFields'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261031134126_AddRepositoryConcurrencyAndOperationalFields', N'10.0.14');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261031134651_PreserveTransactionLineOrderAndLinkIntegrity'
+)
+BEGIN
+    DROP INDEX [IX_TransactionLines_CounterTransactionId] ON [TransactionLines];
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261031134651_PreserveTransactionLineOrderAndLinkIntegrity'
+)
+BEGIN
+    DROP INDEX [IX_Payments_CounterTransactionId] ON [Payments];
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261031134651_PreserveTransactionLineOrderAndLinkIntegrity'
+)
+BEGIN
+    DROP INDEX [IX_CounterTransactions_MoneyOrderId] ON [CounterTransactions];
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261031134651_PreserveTransactionLineOrderAndLinkIntegrity'
+)
+BEGIN
+    ALTER TABLE [TransactionLines] ADD [LineNumber] int NOT NULL DEFAULT 0;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261031134651_PreserveTransactionLineOrderAndLinkIntegrity'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_TransactionLines_CounterTransactionId_LineNumber] ON [TransactionLines] ([CounterTransactionId], [LineNumber]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261031134651_PreserveTransactionLineOrderAndLinkIntegrity'
+)
+BEGIN
+    EXEC(N'ALTER TABLE [TransactionLines] ADD CONSTRAINT [CK_TransactionLines_LineNumber] CHECK ([LineNumber] >= 0)');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261031134651_PreserveTransactionLineOrderAndLinkIntegrity'
+)
+BEGIN
+    EXEC(N'CREATE UNIQUE INDEX [IX_Payments_CounterTransactionId] ON [Payments] ([CounterTransactionId]) WHERE [CounterTransactionId] IS NOT NULL');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261031134651_PreserveTransactionLineOrderAndLinkIntegrity'
+)
+BEGIN
+    EXEC(N'CREATE UNIQUE INDEX [IX_CounterTransactions_MoneyOrderId] ON [CounterTransactions] ([MoneyOrderId]) WHERE [MoneyOrderId] IS NOT NULL');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261031134651_PreserveTransactionLineOrderAndLinkIntegrity'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261031134651_PreserveTransactionLineOrderAndLinkIntegrity', N'10.0.14');
+END;
+
+COMMIT;
+GO

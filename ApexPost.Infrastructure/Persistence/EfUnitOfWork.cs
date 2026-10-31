@@ -15,6 +15,13 @@ public sealed class EfUnitOfWork(ApexPostDbContext context) : IUnitOfWork
     {
         ArgumentNullException.ThrowIfNull(operation);
 
+        if (context.Database.CurrentTransaction is not null)
+        {
+            var nestedResult = await operation(cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
+            return nestedResult;
+        }
+
         var strategy = context.Database.CreateExecutionStrategy();
         return await strategy.ExecuteAsync(async () =>
         {
