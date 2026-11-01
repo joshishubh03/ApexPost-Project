@@ -37,7 +37,7 @@ The Week 3 SQL Server work keeps the application contracts stable while moving t
     dotnet ef database update --project ApexPost.Infrastructure --startup-project ApexPost.Web
     dotnet ef migrations script --idempotent --project ApexPost.Infrastructure --startup-project ApexPost.Web --output sql/ApexPostDb_schema.sql
 
-The database design follows a normalized, branch-led structure for branches, staff, products, stock, shipping, money orders, identity verification, transactions, and audit entries. The reporting scripts under `sql/` are the starter baseline for the daily sales, low-stock, shipping, and branch summary views, and the SQL procedures in `sql/stored-procedures.sql` cover the report and stock-adjustment routines required by the assignment.
+The database design follows a normalized, branch-led structure for branches, staff, products, stock, shipping, money orders, identity verification, transactions, and audit entries. The reporting scripts under `sql/` are the starter baseline for the daily sales, low-stock, shipping, and branch summary views, the SQL procedures in `sql/stored-procedures.sql` cover the report and stock-adjustment routines required by the assignment, and `sql/performance-workloads.sql` provides the repeatable execution-plan and statistics workload set. `PERFORMANCE.md` records the before/after plan strategy and the no-fabrication rule for actual CPU and I/O numbers.
 
 ## Automated test coverage
 
