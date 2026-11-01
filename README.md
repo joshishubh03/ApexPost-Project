@@ -29,6 +29,16 @@ PowerShell commands:
     dotnet test ApexPost.slnx
     dotnet run --project ApexPost.Web --urls https://localhost:5001
 
+## Assignment 3 SQL Server notes
+
+The Week 3 SQL Server work keeps the application contracts stable while moving the persistence layer behind EF Core and SQL Server. The database name is `ApexPostDb`; the connection string is read from `ConnectionStrings:ApexPostDb` and the environment variable `APEXPOST_DB_CONNECTION`.
+
+    dotnet user-secrets set "ConnectionStrings:ApexPostDb" "Server=(localdb)\\MSSQLLocalDB;Database=ApexPostDb;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true" --project ApexPost.Web
+    dotnet ef database update --project ApexPost.Infrastructure --startup-project ApexPost.Web
+    dotnet ef migrations script --idempotent --project ApexPost.Infrastructure --startup-project ApexPost.Web --output sql/ApexPostDb_schema.sql
+
+The database design follows a normalized, branch-led structure for branches, staff, products, stock, shipping, money orders, identity verification, transactions, and audit entries. The reporting scripts under `sql/` are the starter baseline for the daily sales, low-stock, shipping, and branch summary views.
+
 ## Automated test coverage
 
 `ApexPost.Tests` contains xUnit unit tests and `WebApplicationFactory` integration tests for the current counter-platform rules. Coverage includes non-negative stock, money-order identity verification, shipping weight and pricing, mixed receipts, branch report totals, authentication and role denials, API-key and IP restrictions, rate limiting, security headers, correlation IDs, and maintenance mode. Infrastructure tests also verify missing and malformed JSON, I/O failure propagation and temporary-file cleanup, concurrent audit appends, and repeatable development seeding with the required demo-data counts.
