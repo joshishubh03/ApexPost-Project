@@ -132,7 +132,7 @@ classDiagram
 
 ### Relational design notes
 
-The assignment schema is normalized to a branch-first model with branch-scoped stock and transactions, table-level uniqueness on branch codes, product SKUs, and staff emails, foreign keys with explicit delete behavior, and audit columns for creation and modification tracking. The design prevents a few classic anomalies:
+The assignment schema is normalized to a branch-first model with branch-scoped stock and transactions, table-level uniqueness on branch codes, product SKUs, and staff emails, foreign keys with explicit delete behavior, and audit columns for creation and modification tracking. For the SQL Server iteration, the database also exposes a small set of stored procedures—`usp_DailyBranchSales`, `usp_LowStockReport`, and `usp_AdjustStock`—to keep report logic and transactional stock updates in the database where they are naturally set-based or atomic. The design prevents a few classic anomalies:
 
 1. Product duplication anomalies: a product SKU is stored once and reused across inventory and transaction lines rather than being repeatedly copied with conflicting attributes.
 2. Branch stock drift anomalies: stock balances are kept in one branch-stock record with stock adjustments captured separately, preventing mismatched branch totals and hidden movement history.
