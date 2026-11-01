@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using ApexPost.Application.Abstractions;
 using ApexPost.Application.Services;
 using ApexPost.Infrastructure;
+using ApexPost.Infrastructure.Repositories;
 using ApexPost.Infrastructure.Seed;
 using ApexPost.Web.Middleware;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -165,6 +166,13 @@ builder.Services.AddApexPostInfrastructure(
     demoPassword,
     moneyOrderPolicy,
     builder.Environment.IsDevelopment());
+
+var sqlConnectionString = builder.Configuration.GetConnectionString("ApexPostDb") ??
+    Environment.GetEnvironmentVariable("APEXPOST_DB_CONNECTION");
+if (!string.IsNullOrWhiteSpace(sqlConnectionString))
+{
+    builder.Services.AddApexPostSqlServerInfrastructure(sqlConnectionString);
+}
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
