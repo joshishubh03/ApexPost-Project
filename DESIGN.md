@@ -130,6 +130,33 @@ classDiagram
     StaffMember "1" --> "0..*" IdentityVerificationRecord : performs
 ```
 
+### Relational design notes
+
+The assignment schema is normalized to a branch-first model with branch-scoped stock and transactions, table-level uniqueness on branch codes, product SKUs, and staff emails, foreign keys with explicit delete behavior, and audit columns for creation and modification tracking. The design prevents a few classic anomalies:
+
+1. Product duplication anomalies: a product SKU is stored once and reused across inventory and transaction lines rather than being repeatedly copied with conflicting attributes.
+2. Branch stock drift anomalies: stock balances are kept in one branch-stock record with stock adjustments captured separately, preventing mismatched branch totals and hidden movement history.
+3. Transaction and reporting anomalies: a transaction line stores a snapshot of the sold product and pricing, so the receipt remains auditable even when catalog data later changes.
+
+A simplified ER shape is:
+
+```mermaid
+ erDiagram
+     Branch ||--o{ Staff : has
+     Branch ||--o{ CounterTerminal : has
+     Branch ||--o{ BranchStock : holds
+     Product ||--o{ BranchStock : stocked_in
+     Product ||--o{ TransactionLine : sold_as
+     CounterTransaction ||--o{ TransactionLine : contains
+     Branch ||--o{ CounterTransaction : processes
+     Branch ||--o{ MoneyOrder : issues
+     Branch ||--o{ IdentityVerification : records
+     Staff ||--o{ AuditEntry : writes
+     ShippingZone ||--o{ ShippingRate : offers
+     CounterTransaction }o--|| ShippingRate : uses
+     CounterTransaction ||--o| MoneyOrder : may_include
+```
+
 ## Middleware and MVC filters
 
 The HTTP pipeline is ordered as follows so cross-cutting checks happen before endpoint execution:
