@@ -11,7 +11,9 @@ public sealed class PartnerApiKeyMiddleware(RequestDelegate next, IConfiguration
 
     public async Task InvokeAsync(HttpContext context)
     {
-        if (context.Request.Path.StartsWithSegments("/api/partner") && !HttpMethods.IsOptions(context.Request.Method))
+        var endpointRequiresKey = context.GetEndpoint()?.Metadata
+            .GetMetadata<ProtectedIntegrationEndpointAttribute>() is not null;
+        if (endpointRequiresKey && !HttpMethods.IsOptions(context.Request.Method))
         {
             var providedKey = context.Request.Headers["X-API-Key"].ToString();
             if (partnerKeyHashes.Count == 0)

@@ -7,7 +7,8 @@ namespace ApexPost.Application.Services;
 
 public sealed class ShippingRateService(
     IShippingZoneRepository zoneRepository,
-    IShippingRateRepository rateRepository)
+    IShippingRateRepository rateRepository,
+    IApplicationMutationCoordinator mutationCoordinator)
 {
     public async Task<IReadOnlyList<ShippingSchedule>> GetScheduleAsync(
         bool includeInactive,
@@ -26,48 +27,48 @@ public sealed class ShippingRateService(
         return schedules;
     }
 
-    public async Task CreateZoneAsync(
+    public Task CreateZoneAsync(
         string code,
         string name,
         string destination,
-        CancellationToken cancellationToken = default)
-    {
-        var zones = (await zoneRepository.GetAllAsync(cancellationToken)).ToList();
-        var zone = new ShippingZone(Guid.NewGuid(), code, name, destination, isActive: true);
-        if (zones.Any(existing => string.Equals(existing.Code, zone.Code, StringComparison.OrdinalIgnoreCase)))
+        CancellationToken cancellationToken = default) => mutationCoordinator.RunAsync(async () =>
         {
-            throw new InvalidOperationException("A shipping zone with this code already exists.");
-        }
+            var zones = (await zoneRepository.GetAllAsync(cancellationToken)).ToList();
+            var zone = new ShippingZone(Guid.NewGuid(), code, name, destination, isActive: true);
+            if (zones.Any(existing => string.Equals(existing.Code, zone.Code, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new InvalidOperationException("A shipping zone with this code already exists.");
+            }
 
-        zones.Add(zone);
-        await zoneRepository.SaveAllAsync(zones, cancellationToken);
-    }
+            zones.Add(zone);
+            await zoneRepository.SaveAllAsync(zones, cancellationToken);
+        }, cancellationToken);
 
-    public async Task CreateRateAsync(
+    public Task CreateRateAsync(
         Guid zoneId,
         ShippingServiceLevel serviceLevel,
         decimal basePrice,
         decimal pricePerKilogram,
         decimal maximumWeightKilograms,
-        CancellationToken cancellationToken = default)
-    {
-        var zone = (await zoneRepository.GetAllAsync(cancellationToken))
-            .FirstOrDefault(candidate => candidate.Id == zoneId);
-        if (zone is null || !zone.IsActive)
+        CancellationToken cancellationToken = default) => mutationCoordinator.RunAsync(async () =>
         {
-            throw new InvalidOperationException("Select an active shipping zone.");
-        }
+            var zone = (await zoneRepository.GetAllAsync(cancellationToken))
+                .FirstOrDefault(candidate => candidate.Id == zoneId);
+            if (zone is null || !zone.IsActive)
+            {
+                throw new InvalidOperationException("Select an active shipping zone.");
+            }
 
-        var rates = (await rateRepository.GetAllAsync(cancellationToken)).ToList();
-        if (rates.Any(rate => rate.ZoneId == zoneId && rate.ServiceLevel == serviceLevel))
-        {
-            throw new InvalidOperationException("This service level already has a rate for the selected zone.");
-        }
+            var rates = (await rateRepository.GetAllAsync(cancellationToken)).ToList();
+            if (rates.Any(rate => rate.ZoneId == zoneId && rate.ServiceLevel == serviceLevel))
+            {
+                throw new InvalidOperationException("This service level already has a rate for the selected zone.");
+            }
 
-        rates.Add(new ShippingRate(
-            Guid.NewGuid(), zoneId, serviceLevel, basePrice, pricePerKilogram, maximumWeightKilograms, isActive: true));
-        await rateRepository.SaveAllAsync(rates, cancellationToken);
-    }
+            rates.Add(new ShippingRate(
+                Guid.NewGuid(), zoneId, serviceLevel, basePrice, pricePerKilogram, maximumWeightKilograms, isActive: true));
+            await rateRepository.SaveAllAsync(rates, cancellationToken);
+        }, cancellationToken);
 
     public async Task<ShippingQuote> QuoteAsync(
         Guid rateId,

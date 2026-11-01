@@ -8,7 +8,8 @@ public sealed class StaffManagementService(
     IBranchRepository branchRepository,
     IStaffRepository staffRepository,
     IStaffPasswordService passwordService,
-    ICounterTerminalRepository terminalRepository)
+    ICounterTerminalRepository terminalRepository,
+    IApplicationMutationCoordinator mutationCoordinator)
 {
     public Task<IReadOnlyList<Branch>> GetBranchesAsync(CancellationToken cancellationToken = default) =>
         branchRepository.GetAllAsync(cancellationToken);
@@ -16,72 +17,75 @@ public sealed class StaffManagementService(
     public Task<IReadOnlyList<StaffMember>> GetStaffAsync(CancellationToken cancellationToken = default) =>
         staffRepository.GetAllAsync(cancellationToken);
 
-    public async Task CreateBranchAsync(
+    public Task CreateBranchAsync(
         string code,
         string name,
         string region,
         TimeOnly openingTime,
         TimeOnly closingTime,
-        CancellationToken cancellationToken = default)
-    {
-        var branches = (await branchRepository.GetAllAsync(cancellationToken)).ToList();
-        var branch = new Branch(Guid.NewGuid(), code, name, region, isOpen: true,
-            openingTime: openingTime, closingTime: closingTime);
-
-        if (branches.Any(existing => string.Equals(existing.Code, branch.Code, StringComparison.OrdinalIgnoreCase)))
+        CancellationToken cancellationToken = default) => mutationCoordinator.RunAsync(async () =>
         {
-            throw new InvalidOperationException("A branch with this code already exists.");
-        }
+            var branches = (await branchRepository.GetAllAsync(cancellationToken)).ToList();
+            var branch = new Branch(Guid.NewGuid(), code, name, region, isOpen: true,
+                openingTime: openingTime, closingTime: closingTime);
 
-        branches.Add(branch);
-        await branchRepository.SaveAllAsync(branches, cancellationToken);
-    }
+            if (branches.Any(existing => string.Equals(existing.Code, branch.Code, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new InvalidOperationException("A branch with this code already exists.");
+            }
+
+            branches.Add(branch);
+            await branchRepository.SaveAllAsync(branches, cancellationToken);
+        }, cancellationToken);
 
     public async Task<IReadOnlyList<CounterTerminal>> GetTerminalsAsync(CancellationToken cancellationToken = default) =>
         await terminalRepository.GetAllAsync(cancellationToken);
 
-    public async Task CreateTerminalAsync(Guid branchId, string code, string name, CancellationToken cancellationToken = default)
-    {
-        if (await branchRepository.GetByIdAsync(branchId, cancellationToken) is null)
-            throw new InvalidOperationException("Select an existing branch for this terminal.");
+    public Task CreateTerminalAsync(Guid branchId, string code, string name, CancellationToken cancellationToken = default) =>
+        mutationCoordinator.RunAsync(async () =>
+        {
+            if (await branchRepository.GetByIdAsync(branchId, cancellationToken) is null)
+                throw new InvalidOperationException("Select an existing branch for this terminal.");
 
-        var terminals = (await terminalRepository.GetAllAsync(cancellationToken)).ToList();
-        var terminal = new CounterTerminal(Guid.NewGuid(), branchId, code, name);
-        if (terminals.Any(existing => existing.BranchId == branchId &&
-            string.Equals(existing.Code, terminal.Code, StringComparison.OrdinalIgnoreCase)))
-            throw new InvalidOperationException("A terminal with this code already exists at the selected branch.");
+            var terminals = (await terminalRepository.GetAllAsync(cancellationToken)).ToList();
+            var terminal = new CounterTerminal(Guid.NewGuid(), branchId, code, name);
+            if (terminals.Any(existing => existing.BranchId == branchId &&
+                string.Equals(existing.Code, terminal.Code, StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidOperationException("A terminal with this code already exists at the selected branch.");
 
-        terminals.Add(terminal);
-        await terminalRepository.SaveAllAsync(terminals, cancellationToken);
-    }
+            terminals.Add(terminal);
+            await terminalRepository.SaveAllAsync(terminals, cancellationToken);
+        }, cancellationToken);
 
-    public async Task SetTerminalActiveAsync(Guid id, bool isActive, CancellationToken cancellationToken = default)
-    {
-        var terminals = (await terminalRepository.GetAllAsync(cancellationToken)).ToList();
-        var index = terminals.FindIndex(terminal => terminal.Id == id);
-        if (index < 0)
-            throw new KeyNotFoundException("The counter terminal could not be found.");
-        terminals[index] = terminals[index].WithActiveStatus(isActive);
-        await terminalRepository.SaveAllAsync(terminals, cancellationToken);
-    }
+    public Task SetTerminalActiveAsync(Guid id, bool isActive, CancellationToken cancellationToken = default) =>
+        mutationCoordinator.RunAsync(async () =>
+        {
+            var terminals = (await terminalRepository.GetAllAsync(cancellationToken)).ToList();
+            var index = terminals.FindIndex(terminal => terminal.Id == id);
+            if (index < 0)
+                throw new KeyNotFoundException("The counter terminal could not be found.");
+            terminals[index] = terminals[index].WithActiveStatus(isActive);
+            await terminalRepository.SaveAllAsync(terminals, cancellationToken);
+        }, cancellationToken);
 
-    public async Task SetBranchOpenStatusAsync(Guid id, bool isOpen, CancellationToken cancellationToken = default)
-    {
-        var branches = (await branchRepository.GetAllAsync(cancellationToken)).ToList();
-        var index = branches.FindIndex(branch => branch.Id == id);
-        if (index < 0)
-            throw new KeyNotFoundException("The branch could not be found.");
-        branches[index] = branches[index].WithOpenStatus(isOpen);
-        await branchRepository.SaveAllAsync(branches, cancellationToken);
-    }
+    public Task SetBranchOpenStatusAsync(Guid id, bool isOpen, CancellationToken cancellationToken = default) =>
+        mutationCoordinator.RunAsync(async () =>
+        {
+            var branches = (await branchRepository.GetAllAsync(cancellationToken)).ToList();
+            var index = branches.FindIndex(branch => branch.Id == id);
+            if (index < 0)
+                throw new KeyNotFoundException("The branch could not be found.");
+            branches[index] = branches[index].WithOpenStatus(isOpen);
+            await branchRepository.SaveAllAsync(branches, cancellationToken);
+        }, cancellationToken);
 
-    public async Task CreateStaffAsync(
+    public Task CreateStaffAsync(
         string email,
         string fullName,
         StaffRole role,
         Guid? branchId,
         string initialPassword,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) => mutationCoordinator.RunAsync(async () =>
     {
         var staff = (await staffRepository.GetAllAsync(cancellationToken)).ToList();
         var normalizedEmail = email.Trim().ToLowerInvariant();
@@ -107,12 +111,12 @@ public sealed class StaffManagementService(
             passwordService.Hash(initialPassword));
         staff.Add(member);
         await staffRepository.SaveAllAsync(staff, cancellationToken);
-    }
+    }, cancellationToken);
 
-    public async Task SetStaffActiveAsync(
+    public Task SetStaffActiveAsync(
         Guid staffId,
         bool isActive,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) => mutationCoordinator.RunAsync(async () =>
     {
         var staff = (await staffRepository.GetAllAsync(cancellationToken)).ToList();
         var index = staff.FindIndex(member => member.Id == staffId);
@@ -130,15 +134,15 @@ public sealed class StaffManagementService(
 
         staff[index] = target.WithActiveStatus(isActive);
         await staffRepository.SaveAllAsync(staff, cancellationToken);
-    }
+    }, cancellationToken);
 
-    public async Task UpdateStaffAsync(
+    public Task UpdateStaffAsync(
         Guid staffId,
         string email,
         string fullName,
         StaffRole role,
         Guid? branchId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) => mutationCoordinator.RunAsync(async () =>
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(email);
         ArgumentException.ThrowIfNullOrWhiteSpace(fullName);
@@ -182,5 +186,5 @@ public sealed class StaffManagementService(
 
         staff[index] = target.WithProfile(normalizedEmail, fullName, role, branchId);
         await staffRepository.SaveAllAsync(staff, cancellationToken);
-    }
+    }, cancellationToken);
 }

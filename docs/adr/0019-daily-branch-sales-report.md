@@ -16,3 +16,9 @@ Group completed counter receipts by the server's local calendar date. Classify c
 - Daily totals include receipt sales and standalone issued money orders; refunded orders are excluded.
 - The current product catalogue category determines the classification for historical product lines; categories are not currently editable after creation.
 - Branches do not store a timezone, so the server's local calendar date is used for daily grouping.
+
+## Alternatives considered
+
+- Show only a lifetime branch total: rejected because the requirement asks for daily retail and service sales.
+- Classify all receipt value as retail: rejected because shipping and money orders are service revenue.
+- Store a daily report snapshot: rejected because the underlying JSON collections are the source of truth and the report is small enough to calculate on demand.

@@ -1,0 +1,47 @@
+@model IReadOnlyList<ApexPost.Application.Models.BranchOperationsReport>
+@{
+    ViewData["Title"] = "Auditor cross-branch overview";
+    var inr = System.Globalization.CultureInfo.GetCultureInfo("en-IN");
+}
+
+<h1>Auditor cross-branch overview</h1>
+<p class="text-muted">Read-only operational totals for every active and closed branch.</p>
+
+@if (Model.Count == 0)
+{
+    <div class="alert alert-info">No branch reports are available yet.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Branch</th>
+                    <th class="text-end">Paid receipts</th>
+                    <th class="text-end">Sales total</th>
+                    <th class="text-end">Low stock items</th>
+                    <th class="text-end">Shipments</th>
+                    <th class="text-end">Money orders</th>
+                    <th class="text-end">Failed verifications</th>
+                    <th class="text-end">Voids / refunds</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var report in Model)
+                {
+                    <tr>
+                        <th scope="row">@report.Branch.Code — @report.Branch.Name</th>
+                        <td class="text-end">@report.CompletedSalesCount</td>
+                        <td class="text-end">@report.CompletedSalesTotal.ToString("C2", inr)</td>
+                        <td class="text-end">@report.LowStockItems.Count</td>
+                        <td class="text-end">@report.ShippingVolumes.Sum(item => item.Shipments)</td>
+                        <td class="text-end">@report.MoneyOrderCount</td>
+                        <td class="text-end">@report.IdentityVerificationFailures</td>
+                        <td class="text-end">@report.VoidedTransactionsCount / @report.RefundedTransactionsCount</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

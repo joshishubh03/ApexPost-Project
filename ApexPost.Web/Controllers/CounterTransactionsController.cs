@@ -16,6 +16,7 @@ public sealed class CounterTransactionsController(
     ApexPost.Application.Models.MoneyOrderPolicy moneyOrderPolicy) : Controller
 {
     [HttpGet]
+    [Authorize(Policy = "SameBranchOnly")]
     public async Task<IActionResult> Index(Guid? branchId, CancellationToken cancellationToken)
     {
         var isAdministrator = User.IsInRole(nameof(StaffRole.Administrator));
@@ -141,7 +142,7 @@ public sealed class CounterTransactionsController(
 
         var transaction = await transactionService.GetTransactionForBranchAsync(
             permittedBranchId.Value, id, cancellationToken);
-        if (transaction is null || transaction.Status != TransactionStatus.Completed ||
+        if (transaction is null || transaction.Status is not (TransactionStatus.Paid or TransactionStatus.Completed) ||
             transaction.ShippingRateId is null || transaction.ShippingRecipientName is null)
         {
             return NotFound();
@@ -151,7 +152,7 @@ public sealed class CounterTransactionsController(
     }
 
     [HttpPost]
-    [Authorize(Roles = "BranchManager")]
+    [Authorize(Policy = "BranchManagerOnly")]
     public async Task<IActionResult> Reverse(
         ReverseCounterTransactionInputModel input,
         CancellationToken cancellationToken)

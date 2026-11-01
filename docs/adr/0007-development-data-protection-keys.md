@@ -14,3 +14,9 @@ Use an ephemeral data-protection provider only in the Development environment. P
 ## Consequences
 
 Local development does not depend on user-profile DPAPI files or store key material in the repository. Production deployments must configure durable, access-controlled key storage when running multiple instances or when cookies must survive restarts.
+
+## Alternatives considered
+
+- Commit a fixed data-protection key: rejected because key material must not be stored in source control.
+- Persist development keys under a machine-specific profile: rejected because local checkouts and test accounts vary across training environments.
+- Use ephemeral keys only in Development: selected because it keeps the sample portable and deliberately invalidates local cookies on restart.

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using ApexPost.Application.Validation;
 using ApexPost.Domain.Enums;
 
 namespace ApexPost.Web.Models;
@@ -11,6 +12,7 @@ public sealed class CreateCounterTransactionInputModel : IValidatableObject
     [Required]
     public Guid? TerminalId { get; set; }
 
+    [CurrencyAmount(allowNull: true)]
     [Range(typeof(decimal), "0.01", "10000000")]
     public decimal? MoneyOrderAmount { get; set; }
 

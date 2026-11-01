@@ -1,4 +1,5 @@
 using ApexPost.Domain.Enums;
+using ApexPost.Domain.ValueObjects;
 
 namespace ApexPost.Domain.Entities;
 
@@ -97,7 +98,7 @@ public sealed record MoneyOrder
         RecipientName = recipientName.Trim();
         Amount = amount;
         Fee = fee;
-        TotalAmount = decimal.Round(amount + fee, 2, MidpointRounding.AwayFromZero);
+        TotalAmount = Money.Sum([new Money(amount), new Money(fee)]).Amount;
         VerificationStatus = verificationStatus;
         VerificationRecordId = verificationRecordId;
         DocumentType = documentType;

@@ -49,4 +49,17 @@ public sealed class ReportsController(
             Report = report
         });
     }
+
+    [HttpGet]
+    [Authorize(Roles = nameof(StaffRole.Auditor))]
+    public async Task<IActionResult> AuditOverview(CancellationToken cancellationToken)
+    {
+        var branches = (await branchRepository.GetAllAsync(cancellationToken))
+            .OrderBy(branch => branch.Code)
+            .ToArray();
+        var reports = await Task.WhenAll(branches.Select(branch =>
+            reportingService.GetBranchReportAsync(branch.Id, cancellationToken)));
+
+        return View(reports);
+    }
 }

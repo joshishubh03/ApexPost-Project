@@ -16,3 +16,9 @@ Add Registered to `ShippingServiceLevel`. Use the existing rate creation, quote,
 - Administrators can configure Registered rates through the existing rate form.
 - Staff can quote and select Registered for parcel and letter shipments; receipts, labels, partner tracking, and branch reports retain the selected level.
 - Seeded Registered prices are demo values and should be replaced with approved tariffs before operational use.
+
+## Alternatives considered
+
+- Add Registered as a special workflow outside the rate catalogue: rejected because it shares the existing zone pricing and maximum-weight rules.
+- Enable the enum but omit demo rates: rejected because staff could not exercise the required level locally.
+- Add the level to the existing rate, checkout, label, tracking, and report paths: selected to keep all service levels on one pricing model.

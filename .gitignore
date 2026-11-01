@@ -9,6 +9,9 @@
 work/
 TestResults/
 coverage/
+**/.apexpost-mutation.lock
+**/.apexpost-transaction/
+**/*.version
 .env
 .env.*
 !.env.example

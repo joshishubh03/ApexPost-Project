@@ -125,6 +125,64 @@ public sealed class BusinessRuleTests
     }
 
     [Fact]
+    public async Task Counter_checkout_rejects_a_closed_branch_without_writing_a_receipt()
+    {
+        var fixture = new CounterCheckoutFixture(branchIsOpen: false);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.CompleteSaleAsync());
+
+        Assert.Empty(fixture.TransactionRepository.Transactions);
+        Assert.Equal(10, fixture.InventoryRepository.Items.Single().QuantityOnHand);
+    }
+
+    [Fact]
+    public async Task Counter_checkout_rejects_inactive_staff()
+    {
+        var fixture = new CounterCheckoutFixture(staffIsActive: false);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => fixture.CompleteSaleAsync());
+
+        Assert.Empty(fixture.TransactionRepository.Transactions);
+    }
+
+    [Fact]
+    public async Task Counter_checkout_rejects_staff_assigned_to_another_branch()
+    {
+        var fixture = new CounterCheckoutFixture(staffBranchId: Guid.NewGuid());
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => fixture.CompleteSaleAsync());
+
+        Assert.Empty(fixture.TransactionRepository.Transactions);
+    }
+
+    [Fact]
+    public async Task Counter_checkout_rejects_insufficient_stock_without_writing_a_receipt()
+    {
+        var fixture = new CounterCheckoutFixture(stockOnHand: 0);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.CompleteSaleAsync());
+
+        Assert.Contains("not enough stock", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(fixture.TransactionRepository.Transactions);
+        Assert.Equal(0, fixture.InventoryRepository.Items.Single().QuantityOnHand);
+    }
+
+    [Fact]
+    public async Task Concurrent_counter_sales_preserve_every_receipt_and_stock_change()
+    {
+        var fixture = new CounterCheckoutFixture(
+            stockOnHand: 25,
+            ioDelay: TimeSpan.FromMilliseconds(2));
+
+        var sales = await Task.WhenAll(Enumerable.Range(0, 20)
+            .Select(_ => fixture.CompleteSaleAsync()));
+
+        Assert.Equal(20, sales.Length);
+        Assert.Equal(20, fixture.TransactionRepository.Transactions.Count);
+        Assert.Equal(5, fixture.InventoryRepository.Items.Single().QuantityOnHand);
+    }
+
+    [Fact]
     public async Task Counter_checkout_links_money_order_and_retail_to_one_receipt()
     {
         var branch = new Branch(Guid.NewGuid(), "AP-020", "Mixed Basket Branch", "Central", true);
@@ -142,13 +200,13 @@ public sealed class BusinessRuleTests
         var publisher = new FakeEventPublisher();
         var moneyOrderPolicy = new MoneyOrderPolicy(10_000m, 50m, "DEMO-VALID-");
         var moneyOrderService = new MoneyOrderService(branches, staff, orders, transactions, verification,
-            new FakeIdentityVerificationService(true), publisher, moneyOrderPolicy);
-        var inventoryService = new InventoryManagementService(inventory, products, branches, publisher);
-        var shippingService = new ShippingRateService(new FakeShippingZoneRepository(), new FakeShippingRateRepository());
+            new FakeIdentityVerificationService(true), publisher, moneyOrderPolicy, ImmediateMutationCoordinator.Instance);
+        var inventoryService = new InventoryManagementService(inventory, products, branches, publisher, ImmediateMutationCoordinator.Instance);
+        var shippingService = new ShippingRateService(new FakeShippingZoneRepository(), new FakeShippingRateRepository(), ImmediateMutationCoordinator.Instance);
         var checkout = new CounterTransactionService(branches, products, inventory, transactions, staff, publisher,
             inventoryService, shippingService,
             new TaxPolicy(new Dictionary<string, decimal> { ["Standard"] = 5m, ["Shipping"] = 0m }),
-            new FakeTerminalRepository([terminal]), moneyOrderService, moneyOrderPolicy);
+            new FakeTerminalRepository([terminal]), moneyOrderService, moneyOrderPolicy, ImmediateMutationCoordinator.Instance);
 
         var receipt = await checkout.CompleteSaleAsync(
             branch.Id, clerk.Id, new Dictionary<Guid, int> { [product.Id] = 1 }, PaymentMethod.Cash,
@@ -297,6 +355,88 @@ public sealed class BusinessRuleTests
         Assert.Equal(MoneyOrderStatus.Issued, fixture.MoneyOrderRepository.Orders.Single().Status);
     }
 
+    private sealed class CounterCheckoutFixture
+    {
+        public Branch Branch { get; }
+        public StaffMember Staff { get; }
+        public Product Product { get; }
+        public CounterTerminal Terminal { get; }
+        public FakeInventoryRepository InventoryRepository { get; }
+        public FakeCounterRepository TransactionRepository { get; }
+        public CounterTransactionService Service { get; }
+
+        public CounterCheckoutFixture(
+            bool branchIsOpen = true,
+            bool staffIsActive = true,
+            Guid? staffBranchId = null,
+            int stockOnHand = 10,
+            TimeSpan ioDelay = default)
+        {
+            Branch = new Branch(Guid.NewGuid(), "AP-021", "Checkout Branch", "Central", branchIsOpen);
+            Staff = new StaffMember(Guid.NewGuid(), "clerk@apexpost.local", "Checkout Clerk", StaffRole.CounterClerk,
+                staffBranchId ?? Branch.Id, staffIsActive, "hash");
+            Product = new Product(Guid.NewGuid(), "CHECKOUT-1", "Test item", "Test description", "Retail", 25m, true, "Standard");
+            Terminal = new CounterTerminal(Guid.NewGuid(), Branch.Id, "T-01", "Front counter");
+            InventoryRepository = new FakeInventoryRepository(
+                [new InventoryItem(Branch.Id, Product.Id, stockOnHand, 2, [])], ioDelay);
+            TransactionRepository = new FakeCounterRepository(ioDelay);
+
+            var branches = new FakeBranchRepository(Branch);
+            var staff = new FakeStaffRepository(Staff);
+            var products = new FakeProductRepository([Product]);
+            var publisher = new FakeEventPublisher();
+            var moneyOrderPolicy = new MoneyOrderPolicy(10_000m, 50m, "DEMO-VALID-");
+            var moneyOrderService = new MoneyOrderService(
+                branches,
+                staff,
+                new FakeMoneyOrderRepository(),
+                TransactionRepository,
+                new FakeVerificationRepository(),
+                new FakeIdentityVerificationService(true),
+                publisher,
+                moneyOrderPolicy,
+                ImmediateMutationCoordinator.Instance);
+            var inventoryService = new InventoryManagementService(InventoryRepository, products, branches, publisher, ImmediateMutationCoordinator.Instance);
+            var shippingService = new ShippingRateService(new FakeShippingZoneRepository(), new FakeShippingRateRepository(), ImmediateMutationCoordinator.Instance);
+
+            Service = new CounterTransactionService(
+                branches,
+                products,
+                InventoryRepository,
+                TransactionRepository,
+                staff,
+                publisher,
+                inventoryService,
+                shippingService,
+                new TaxPolicy(new Dictionary<string, decimal> { ["Standard"] = 5m, ["Shipping"] = 0m }),
+                new FakeTerminalRepository([Terminal]),
+                moneyOrderService,
+                moneyOrderPolicy,
+                ImmediateMutationCoordinator.Instance);
+        }
+
+        public Task<CounterTransaction> CompleteSaleAsync() => Service.CompleteSaleAsync(
+            Branch.Id,
+            Staff.Id,
+            new Dictionary<Guid, int> { [Product.Id] = 1 },
+            PaymentMethod.Cash,
+            shippingRateId: null,
+            shipmentType: null,
+            shippingWeightKilograms: null,
+            shippingRecipientName: null,
+            shippingAddress: null,
+            parcelLengthCentimeters: null,
+            parcelWidthCentimeters: null,
+            parcelHeightCentimeters: null,
+            terminalId: Terminal.Id,
+            moneyOrderAmount: null,
+            moneyOrderSenderName: null,
+            moneyOrderRecipientName: null,
+            moneyOrderDocumentType: null,
+            moneyOrderDocumentIdentifier: null,
+            correlationId: "counter-checkout-test");
+    }
+
     private sealed class MoneyOrderFixture
     {
         public Branch Branch { get; }
@@ -321,7 +461,8 @@ public sealed class BusinessRuleTests
                 VerificationRepository,
                 new FakeIdentityVerificationService(verificationResult),
                 new FakeEventPublisher(),
-                new MoneyOrderPolicy(10_000m, 50m, "DEMO-VALID-"));
+                new MoneyOrderPolicy(10_000m, 50m, "DEMO-VALID-"),
+                ImmediateMutationCoordinator.Instance);
         }
     }
 
@@ -354,27 +495,44 @@ public sealed class BusinessRuleTests
     {
         public Task<IReadOnlyList<Product>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult(products);
         public Task SaveAllAsync(IEnumerable<Product> items, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public ValueTask<string> GetVersionAsync(CancellationToken cancellationToken = default) => ValueTask.FromResult("0");
     }
 
-    private sealed class FakeInventoryRepository(IEnumerable<InventoryItem> items) : IInventoryRepository
+    private sealed class FakeInventoryRepository(IEnumerable<InventoryItem> items, TimeSpan ioDelay = default) : IInventoryRepository
     {
         public List<InventoryItem> Items { get; private set; } = items.ToList();
-        public Task<IReadOnlyList<InventoryItem>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<InventoryItem>>(Items);
-        public Task SaveAllAsync(IEnumerable<InventoryItem> items, CancellationToken cancellationToken = default)
+
+        public async Task<IReadOnlyList<InventoryItem>> GetAllAsync(CancellationToken cancellationToken = default)
         {
+            if (ioDelay > TimeSpan.Zero)
+                await Task.Delay(ioDelay, cancellationToken);
+            return Items;
+        }
+
+        public async Task SaveAllAsync(IEnumerable<InventoryItem> items, CancellationToken cancellationToken = default)
+        {
+            if (ioDelay > TimeSpan.Zero)
+                await Task.Delay(ioDelay, cancellationToken);
             Items = items.ToList();
-            return Task.CompletedTask;
         }
     }
 
-    private sealed class FakeCounterRepository : ICounterTransactionRepository
+    private sealed class FakeCounterRepository(TimeSpan ioDelay = default) : ICounterTransactionRepository
     {
         public List<CounterTransaction> Transactions { get; private set; } = [];
-        public Task<IReadOnlyList<CounterTransaction>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<CounterTransaction>>(Transactions);
-        public Task SaveAllAsync(IEnumerable<CounterTransaction> transactions, CancellationToken cancellationToken = default)
+
+        public async Task<IReadOnlyList<CounterTransaction>> GetAllAsync(CancellationToken cancellationToken = default)
         {
+            if (ioDelay > TimeSpan.Zero)
+                await Task.Delay(ioDelay, cancellationToken);
+            return Transactions;
+        }
+
+        public async Task SaveAllAsync(IEnumerable<CounterTransaction> transactions, CancellationToken cancellationToken = default)
+        {
+            if (ioDelay > TimeSpan.Zero)
+                await Task.Delay(ioDelay, cancellationToken);
             Transactions = transactions.ToList();
-            return Task.CompletedTask;
         }
     }
 

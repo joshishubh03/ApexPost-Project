@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using ApexPost.Application.Validation;
 
 namespace ApexPost.Web.Models;
 
@@ -20,6 +21,7 @@ public sealed class CreateProductInputModel
     [Required, StringLength(60, MinimumLength = 1)]
     public string TaxCategory { get; set; } = "Standard";
 
+    [CurrencyAmount(allowZero: true)]
     [Range(typeof(decimal), "0", "9999999.99")]
     public decimal Price { get; set; }
 }

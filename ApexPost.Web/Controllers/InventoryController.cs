@@ -16,6 +16,7 @@ public sealed class InventoryController(
     IBranchRepository branchRepository) : Controller
 {
     [HttpGet]
+    [Authorize(Policy = "SameBranchOnly")]
     public async Task<IActionResult> Index(Guid? branchId, CancellationToken cancellationToken)
     {
         var isAdministrator = User.IsInRole(nameof(StaffRole.Administrator));

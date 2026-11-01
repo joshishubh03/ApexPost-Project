@@ -16,3 +16,9 @@ Register `SafeProblemDetailsExceptionHandler` with ASP.NET Core's exception-hand
 - MVC and integration callers receive a consistent machine-readable 500 response.
 - Callers can provide the trace or correlation ID to support without learning internal exception details.
 - An exception raised after the response has started cannot be replaced with a Problem Details document; the handler leaves that response to ASP.NET Core's exception handling behavior.
+
+## Alternatives considered
+
+- Return an HTML error view from every unhandled exception: rejected because integration clients need a consistent machine-readable response.
+- Include exception messages and stack traces in the response: rejected because they can reveal paths, implementation details, or sensitive values.
+- Return generic Problem Details with trace and correlation identifiers: selected so callers can report an error without seeing internal details.

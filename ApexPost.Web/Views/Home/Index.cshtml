@@ -1,17 +1,66 @@
+@model ApexPost.Web.Models.HomeDashboardViewModel
 @{
     ViewData["Title"] = "Branch dashboard";
     var canSeeReports = User.IsInRole("Administrator") || User.IsInRole("BranchManager") || User.IsInRole("Auditor");
-    var isAdministrator = User.IsInRole("Administrator");
+    var isAdministrator = Model.IsAdministrator;
 }
 
 <section class="dashboard-intro">
     <div>
         <p class="eyebrow">STAFF WORKSPACE</p>
         <h1>Welcome, @User.Identity?.Name</h1>
-        <p class="dashboard-context">@ViewData["BranchName"] <span aria-hidden="true">·</span> @ViewData["StaffRole"]</p>
+        <p class="dashboard-context">@Model.BranchName <span aria-hidden="true">·</span> @Model.StaffRole</p>
     </div>
     <a asp-controller="CounterTransactions" asp-action="Index" class="btn btn-primary">Open counter</a>
 </section>
+
+@if (Model.Reports.Count > 0)
+{
+    if (isAdministrator)
+    {
+        <section class="mb-4" aria-labelledby="live-summary-heading">
+            <div class="section-heading">
+                <h2 id="live-summary-heading" class="h5 mb-0">Live network summary</h2>
+                <span class="text-muted small">Current JSON-backed branch data</span>
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-sm-6 col-xl-3"><div class="card card-body h-100"><span class="text-muted">Branches reporting</span><strong class="fs-4">@Model.Reports.Count</strong></div></div>
+                <div class="col-sm-6 col-xl-3"><div class="card card-body h-100"><span class="text-muted">Paid receipts</span><strong class="fs-4">@Model.Reports.Sum(report => report.CompletedSalesCount)</strong></div></div>
+                <div class="col-sm-6 col-xl-3"><div class="card card-body h-100"><span class="text-muted">Low-stock items</span><strong class="fs-4">@Model.Reports.Sum(report => report.LowStockItems.Count)</strong></div></div>
+                <div class="col-sm-6 col-xl-3"><div class="card card-body h-100"><span class="text-muted">Money orders</span><strong class="fs-4">@Model.Reports.Sum(report => report.MoneyOrderCount)</strong></div></div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead><tr><th>Branch</th><th class="text-end">Sales</th><th class="text-end">Low stock</th><th class="text-end">Money orders</th><th class="text-end">Failed ID checks</th></tr></thead>
+                    <tbody>
+                    @foreach (var report in Model.Reports)
+                    {
+                        <tr><th scope="row">@report.Branch.Code — @report.Branch.Name</th><td class="text-end">@report.CompletedSalesTotal.ToString("C2")</td><td class="text-end">@report.LowStockItems.Count</td><td class="text-end">@report.MoneyOrderCount</td><td class="text-end">@report.IdentityVerificationFailures</td></tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    }
+    else
+    {
+        var report = Model.Reports[0];
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        var todaySales = report.DailySales.FirstOrDefault(day => day.Date == today);
+        <section class="mb-4" aria-labelledby="live-summary-heading">
+            <div class="section-heading">
+                <h2 id="live-summary-heading" class="h5 mb-0">Today's branch summary</h2>
+                <a asp-controller="Reports" asp-action="Index" class="small">Open full report</a>
+            </div>
+            <div class="row g-3">
+                <div class="col-sm-6 col-xl-3"><div class="card card-body h-100"><span class="text-muted">Paid receipts</span><strong class="fs-4">@(todaySales?.CompletedTransactionCount ?? 0)</strong><span>@((todaySales?.TotalSales ?? 0m).ToString("C2"))</span></div></div>
+                <div class="col-sm-6 col-xl-3"><div class="card card-body h-100"><span class="text-muted">Retail / service sales</span><strong class="fs-5">@((todaySales?.RetailSales ?? 0m).ToString("C2")) / @((todaySales?.ServiceSales ?? 0m).ToString("C2"))</strong></div></div>
+                <div class="col-sm-6 col-xl-3"><div class="card card-body h-100"><span class="text-muted">Low-stock items</span><strong class="fs-4">@report.LowStockItems.Count</strong></div></div>
+                <div class="col-sm-6 col-xl-3"><div class="card card-body h-100"><span class="text-muted">Money orders</span><strong class="fs-4">@report.MoneyOrderCount</strong></div></div>
+            </div>
+        </section>
+    }
+}
 
 <section class="mb-4" aria-labelledby="operations-heading">
     <div class="section-heading">

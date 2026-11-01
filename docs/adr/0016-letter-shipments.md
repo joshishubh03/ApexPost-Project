@@ -16,3 +16,9 @@ Persist a nullable shipment type on counter receipts to preserve older JSON data
 - Letter shipments can use the existing zone and service pricing without a parcel-only form requirement.
 - Existing shipment receipts with no shipment type remain readable and display as parcels in the label preview.
 - Letter pricing remains weight-based because no separate letter tariff was supplied.
+
+## Alternatives considered
+
+- Store letters as parcels with zero dimensions: rejected because it would permit invalid parcel data and confuse label/report behavior.
+- Add a separate letter pricing system: deferred because the brief supplies shared service levels and no independent letter tariffs.
+- Add a shipment-type field while reusing the configured weight rates: selected because it preserves parcel rules and allows letter receipts through the same quote workflow.

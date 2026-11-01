@@ -9,7 +9,8 @@ public sealed class InventoryManagementService(
     IInventoryRepository inventoryRepository,
     IProductRepository productRepository,
     IBranchRepository branchRepository,
-    IApplicationEventPublisher eventPublisher)
+    IApplicationEventPublisher eventPublisher,
+    IApplicationMutationCoordinator mutationCoordinator)
 {
     public async Task<IReadOnlyList<ProductInventorySummary>> GetBranchInventoryAsync(
         Guid branchId,
@@ -47,7 +48,7 @@ public sealed class InventoryManagementService(
             .ToArray();
     }
 
-    public async Task ChangeStockAsync(
+    public Task ChangeStockAsync(
         Guid branchId,
         Guid productId,
         int quantityChange,
@@ -55,7 +56,21 @@ public sealed class InventoryManagementService(
         string reason,
         Guid staffId,
         string correlationId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        mutationCoordinator.RunAsync(
+            () => ChangeStockCoreAsync(
+                branchId, productId, quantityChange, reorderLevel, reason, staffId, correlationId, cancellationToken),
+            cancellationToken);
+
+    private async Task ChangeStockCoreAsync(
+        Guid branchId,
+        Guid productId,
+        int quantityChange,
+        int reorderLevel,
+        string reason,
+        Guid staffId,
+        string correlationId,
+        CancellationToken cancellationToken)
     {
         var branch = await branchRepository.GetByIdAsync(branchId, cancellationToken)
             ?? throw new KeyNotFoundException("The branch could not be found.");

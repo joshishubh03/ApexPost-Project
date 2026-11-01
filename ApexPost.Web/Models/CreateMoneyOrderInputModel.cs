@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using ApexPost.Application.Validation;
 using ApexPost.Domain.Enums;
 
 namespace ApexPost.Web.Models;
@@ -14,6 +15,7 @@ public sealed class CreateMoneyOrderInputModel
     [Required, StringLength(100, MinimumLength = 2)]
     public string RecipientName { get; set; } = string.Empty;
 
+    [CurrencyAmount]
     [Range(typeof(decimal), "0.01", "10000000")]
     public decimal Amount { get; set; }
 

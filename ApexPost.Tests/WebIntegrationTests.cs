@@ -1,5 +1,6 @@
 using System.Net;
 using System.Security.Claims;
+using System.Text.Json;
 using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using ApexPost.Application.Abstractions;
@@ -10,6 +11,8 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
@@ -91,6 +94,37 @@ public sealed class WebIntegrationTests
     }
 
     [Fact]
+    public async Task Trusted_proxy_forwarded_for_is_used_for_admin_ip_allowlist()
+    {
+        using var factory = new ApexPostWebFactory(trustLoopbackProxy: true);
+        using var client = CreateSecureClient(factory, allowAutoRedirect: false);
+        Assert.Equal("Testing", factory.Services.GetRequiredService<IWebHostEnvironment>().EnvironmentName);
+        Assert.Equal(factory.DataDirectory,
+            factory.Services.GetRequiredService<IConfiguration>()["ApexPost:DataDirectory"]);
+        Assert.Empty(await factory.Services.GetRequiredService<IProductRepository>().GetAllAsync());
+        client.DefaultRequestHeaders.Add("X-Test-Role", nameof(StaffRole.Administrator));
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/Administration/Branches");
+        request.Headers.Add("X-Forwarded-For", "192.0.2.10");
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Untrusted_forwarded_for_cannot_bypass_admin_ip_allowlist()
+    {
+        using var factory = new ApexPostWebFactory();
+        using var client = CreateSecureClient(factory, allowAutoRedirect: false);
+        client.DefaultRequestHeaders.Add("X-Test-Role", nameof(StaffRole.Administrator));
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/Administration/Branches");
+        request.Headers.Add("X-Forwarded-For", "192.0.2.10");
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+    [Fact]
     public async Task Login_post_is_rate_limited_after_five_attempts()
     {
         using var factory = new ApexPostWebFactory();
@@ -124,6 +158,98 @@ public sealed class WebIntegrationTests
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.StartsWith("/Account/Login", response.Headers.Location?.AbsolutePath);
+    }
+
+    [Fact]
+    public async Task Staff_cannot_request_inventory_for_another_branch()
+    {
+        using var factory = new ApexPostWebFactory();
+        using var client = CreateSecureClient(factory, allowAutoRedirect: false);
+        client.DefaultRequestHeaders.Add("X-Test-Role", nameof(StaffRole.CounterClerk));
+
+        using var response = await client.GetAsync(
+            "/Inventory/Index?branchId=20000000-0000-0000-0000-000000000002");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Auditor_can_open_the_cross_branch_overview()
+    {
+        using var factory = new ApexPostWebFactory();
+        using var client = CreateSecureClient(factory, allowAutoRedirect: false);
+        client.DefaultRequestHeaders.Add("X-Test-Role", nameof(StaffRole.Auditor));
+
+        using var response = await client.GetAsync("/Reports/AuditOverview");
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Auditor cross-branch overview", html);
+    }
+
+    [Fact]
+    public async Task Mvc_audit_filter_records_safe_product_changes()
+    {
+        using var factory = new ApexPostWebFactory(trustLoopbackProxy: true);
+        using var client = CreateSecureClient(factory, allowAutoRedirect: false);
+        client.DefaultRequestHeaders.Add("X-Test-Role", nameof(StaffRole.Administrator));
+        var antiforgeryToken = await GetAntiforgeryTokenAsync(client, "/Catalog/Index");
+
+        using var createRequest = new HttpRequestMessage(HttpMethod.Post, "/Catalog/Create");
+        createRequest.Headers.Add("X-Forwarded-For", "192.0.2.10");
+        createRequest.Content = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["NewProduct.Sku"] = "AUDIT-SAMPLE-1",
+            ["NewProduct.Name"] = "Audit Sample Product",
+            ["NewProduct.Description"] = "Created by the MVC audit integration test.",
+            ["NewProduct.Category"] = "Stationery",
+            ["NewProduct.TaxCategory"] = "Standard",
+            ["NewProduct.Price"] = "8.95",
+            ["__RequestVerificationToken"] = antiforgeryToken
+        });
+        using var createResponse = await client.SendAsync(createRequest);
+        Assert.True(createResponse.StatusCode == HttpStatusCode.Redirect,
+            $"Product creation returned {(int)createResponse.StatusCode}: {await createResponse.Content.ReadAsStringAsync()}");
+
+        var products = await factory.Services.GetRequiredService<IProductRepository>().GetAllAsync();
+        var product = Assert.Single(products, item => item.Sku == "AUDIT-SAMPLE-1");
+
+        using var deactivateRequest = new HttpRequestMessage(HttpMethod.Post, "/Catalog/SetActive");
+        deactivateRequest.Headers.Add("X-Forwarded-For", "192.0.2.10");
+        deactivateRequest.Content = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["id"] = product.Id.ToString("D"),
+            ["isActive"] = "false",
+            ["__RequestVerificationToken"] = antiforgeryToken
+        });
+        using var deactivateResponse = await client.SendAsync(deactivateRequest);
+        Assert.Equal(HttpStatusCode.Redirect, deactivateResponse.StatusCode);
+
+        var records = await factory.Services.GetRequiredService<IAuditLogRepository>().GetAllAsync();
+        Assert.Equal(2, records.Count);
+        Assert.All(records, record =>
+        {
+            Assert.Equal("Catalog", record.EntityType);
+            Assert.Equal(Guid.Parse("20000000-0000-0000-0000-000000000001"), record.BranchId);
+            Assert.Equal(nameof(StaffRole.Administrator), record.Role);
+            Assert.Equal(StatusCodes.Status302Found, record.ResultStatusCode);
+            Assert.False(string.IsNullOrWhiteSpace(record.CorrelationId));
+        });
+        Assert.Contains(records, record => record.Action == "MvcCatalogCreate");
+        Assert.Contains(records, record => record.Action == "MvcCatalogSetActive" &&
+            record.RouteValues?.GetValueOrDefault("id") == product.Id.ToString("D"));
+
+        var samplePath = Environment.GetEnvironmentVariable("APEXPOST_AUDIT_SAMPLE_OUTPUT");
+        if (!string.IsNullOrWhiteSpace(samplePath))
+        {
+            var fullPath = Path.GetFullPath(samplePath);
+            Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+            var json = JsonSerializer.Serialize(records, new JsonSerializerOptions(JsonSerializerDefaults.Web)
+            {
+                WriteIndented = true
+            });
+            await File.WriteAllTextAsync(fullPath, json);
+        }
     }
 
     [Fact]
@@ -184,11 +310,12 @@ public sealed class WebIntegrationTests
 
         Assert.Equal(HttpStatusCode.OK, healthResponse.StatusCode);
         Assert.Equal(HttpStatusCode.ServiceUnavailable, loginResponse.StatusCode);
+        Assert.Equal("300", loginResponse.Headers.GetValues("Retry-After").Single());
     }
 
-    private static async Task<string> GetAntiforgeryTokenAsync(HttpClient client)
+    private static async Task<string> GetAntiforgeryTokenAsync(HttpClient client, string path = "/Account/Login")
     {
-        var html = await client.GetStringAsync("/Account/Login");
+        var html = await client.GetStringAsync(path);
         var match = Regex.Match(html, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"");
         Assert.True(match.Success, "The login form should contain an antiforgery token.");
         return WebUtility.HtmlDecode(match.Groups[1].Value);
@@ -204,13 +331,16 @@ public sealed class WebIntegrationTests
 
     private sealed class ApexPostWebFactory(
         bool maintenanceMode = false,
-        string? integrationAllowedIpAddress = null) : WebApplicationFactory<Program>
+        string? integrationAllowedIpAddress = null,
+        bool trustLoopbackProxy = false) : WebApplicationFactory<Program>
     {
         private readonly string dataDirectory = Path.Combine(Path.GetTempPath(), $"apexpost-web-tests-{Guid.NewGuid():N}");
+        public string DataDirectory => dataDirectory;
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Testing");
+            builder.UseSetting("ApexPost:DataDirectory", dataDirectory);
             builder.ConfigureAppConfiguration((_, configuration) =>
             {
                 var testSettings = new Dictionary<string, string?>
@@ -230,6 +360,16 @@ public sealed class WebIntegrationTests
             });
             builder.ConfigureTestServices(services =>
             {
+                if (trustLoopbackProxy)
+                {
+                    services.PostConfigure<ForwardedHeadersOptions>(options =>
+                    {
+                        options.KnownIPNetworks.Clear();
+                        options.KnownProxies.Clear();
+                        options.KnownProxies.Add(IPAddress.Loopback);
+                        options.KnownProxies.Add(IPAddress.IPv6Loopback);
+                    });
+                }
                 services.AddSingleton<IStartupFilter, LoopbackAddressStartupFilter>();
                 services.RemoveAll<ApexPost.Application.Abstractions.IAuthenticationService>();
                 services.AddSingleton<ApexPost.Application.Abstractions.IAuthenticationService, TestAuthenticationService>();
@@ -299,7 +439,7 @@ public sealed class WebIntegrationTests
 
             var claims = new[]
             {
-                new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString("D")),
+                new Claim(ClaimTypes.NameIdentifier, "10000000-0000-0000-0000-000000000001"),
                 new Claim(ClaimTypes.Name, "Integration Test User"),
                 new Claim(ClaimTypes.Role, role.ToString()),
                 new Claim("branch_id", "20000000-0000-0000-0000-000000000001")

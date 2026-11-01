@@ -1,4 +1,5 @@
 using ApexPost.Domain.Enums;
+using ApexPost.Domain.ValueObjects;
 
 namespace ApexPost.Domain.Entities;
 
@@ -49,7 +50,7 @@ public sealed record CounterTransaction
         decimal? shippingWeightKilograms,
         decimal shippingCharge,
         PaymentMethod paymentMethod,
-        TransactionStatus status = TransactionStatus.Completed,
+        TransactionStatus status = TransactionStatus.Paid,
         DateTimeOffset? resolvedAt = null,
         Guid? resolvedByStaffId = null,
         string? resolutionReason = null,
@@ -82,13 +83,13 @@ public sealed record CounterTransaction
             throw new ArgumentOutOfRangeException(nameof(status));
         }
 
-        if (status == TransactionStatus.Completed &&
+        if (status is (TransactionStatus.Open or TransactionStatus.Paid or TransactionStatus.Completed) &&
             (resolvedAt is not null || resolvedByStaffId is not null || resolutionReason is not null))
         {
-            throw new ArgumentException("Completed transactions cannot contain reversal details.", nameof(status));
+            throw new ArgumentException("Open and paid transactions cannot contain reversal details.", nameof(status));
         }
 
-        if (status != TransactionStatus.Completed &&
+        if (status is (TransactionStatus.Voided or TransactionStatus.Refunded) &&
             (resolvedAt is null || resolvedByStaffId is null || resolvedByStaffId == Guid.Empty || string.IsNullOrWhiteSpace(resolutionReason)))
         {
             throw new ArgumentException("A void or refund requires an actor, time, and reason.", nameof(status));
@@ -176,13 +177,16 @@ public sealed record CounterTransaction
         ShippingServiceLevel = shippingServiceLevel;
         ShipmentType = shipmentType;
         ShippingWeightKilograms = shippingWeightKilograms;
-        Subtotal = decimal.Round(Lines.Sum(line => line.LineTotal), 2, MidpointRounding.AwayFromZero);
-        TaxTotal = decimal.Round(Lines.Sum(line => line.TaxAmount), 2, MidpointRounding.AwayFromZero);
+        Subtotal = Money.Sum(Lines.Select(line => new Money(line.LineTotal))).Amount;
+        TaxTotal = Money.Sum(Lines.Select(line => new Money(line.TaxAmount))).Amount;
         ShippingCharge = shippingCharge;
         ShippingTaxRatePercent = shippingTaxRatePercent;
-        ShippingTaxAmount = decimal.Round(ShippingCharge * shippingTaxRatePercent / 100m, 2, MidpointRounding.AwayFromZero);
-        TaxTotal = decimal.Round(TaxTotal + ShippingTaxAmount, 2, MidpointRounding.AwayFromZero);
-        TotalAmount = decimal.Round(Subtotal + TaxTotal + ShippingCharge + MoneyOrderAmount + MoneyOrderFee, 2, MidpointRounding.AwayFromZero);
+        ShippingTaxAmount = new Money(ShippingCharge).Percentage(shippingTaxRatePercent).Amount;
+        TaxTotal = Money.Sum([new Money(TaxTotal), new Money(ShippingTaxAmount)]).Amount;
+        TotalAmount = Money.Sum([
+            new Money(Subtotal), new Money(TaxTotal), new Money(ShippingCharge),
+            new Money(MoneyOrderAmount), new Money(MoneyOrderFee)
+        ]).Amount;
         PaymentMethod = paymentMethod;
         Status = status;
         ResolvedAt = resolvedAt;
@@ -203,9 +207,9 @@ public sealed record CounterTransaction
 
     private CounterTransaction Resolve(TransactionStatus status, Guid managerId, string reason, DateTimeOffset occurredAt)
     {
-        if (Status != TransactionStatus.Completed)
+        if (Status is not (TransactionStatus.Paid or TransactionStatus.Completed))
         {
-            throw new InvalidOperationException("Only a completed transaction can be voided or refunded.");
+            throw new InvalidOperationException("Only a paid transaction can be voided or refunded.");
         }
 
         if (managerId == Guid.Empty)

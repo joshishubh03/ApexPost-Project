@@ -14,3 +14,9 @@ Create separate Domain, Application, Infrastructure, Web, and Tests projects. Ke
 ## Consequences
 
 The project boundaries make the counter domain independently testable and allow infrastructure implementations to change. Cross-layer changes may require more files, so vertical feature branches should keep each use case coherent.
+
+## Alternatives considered
+
+- Keep the Week 1 console host: rejected because the Week 2 deliverable requires an MVC front end and web-specific security pipeline.
+- Use Razor Pages: rejected because the assignment calls for MVC controllers and action filters around controller actions.
+- Put all code in one project: rejected because it would couple business rules to HTTP and JSON details and make the next persistence adapter harder to replace.

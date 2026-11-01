@@ -1,4 +1,6 @@
+using System.Net;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.HttpOverrides;
 using ApexPost.Application.Abstractions;
 using ApexPost.Application.Services;
 using ApexPost.Infrastructure;
@@ -10,12 +12,44 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.RateLimiting;
+using ApexPost.Web.Authorization;
+using ApexPost.Application.Validation;
 
 var builder = WebApplication.CreateBuilder(args);
+var forwardedHeadersConfiguration = builder.Configuration.GetSection("Security:ForwardedHeaders");
+var knownProxyAddresses = forwardedHeadersConfiguration.GetSection("KnownProxies").Get<string[]>() ?? [];
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.ForwardLimit = 1;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+    foreach (var proxyAddress in knownProxyAddresses)
+    {
+        if (!IPAddress.TryParse(proxyAddress, out var parsedAddress))
+        {
+            throw new InvalidOperationException($"The configured forwarded-header proxy address '{proxyAddress}' is not a valid IP address.");
+        }
+
+        options.KnownProxies.Add(parsedAddress);
+    }
+
+    if (knownProxyAddresses.Length == 0)
+    {
+        // An empty known-proxy list means "trust every proxy" in ASP.NET Core.
+        // A sentinel keeps forwarded headers disabled until an operator configures trusted proxies.
+        options.KnownProxies.Add(IPAddress.None);
+    }
+});
 var dataDirectory = Path.GetFullPath(
     builder.Configuration["ApexPost:DataDirectory"] ??
     Path.Combine(builder.Environment.ContentRootPath, "..", "data"));
-var demoPassword = builder.Configuration["DemoData:Password"] ?? "CounterDemo!2026";
+var demoPassword = builder.Configuration["DemoData:Password"];
+if (builder.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(demoPassword))
+{
+    throw new InvalidOperationException("Set DemoData:Password with dotnet user-secrets before running the seeded Development environment.");
+}
+demoPassword ??= string.Empty;
 var moneyOrderPolicy = new ApexPost.Application.Models.MoneyOrderPolicy(
     builder.Configuration.GetValue<decimal>("MoneyOrders:IdentityVerificationThreshold", 10_000m),
     builder.Configuration.GetValue<decimal>("MoneyOrders:FeeAmount", 50m),
@@ -50,17 +84,46 @@ builder.Services.AddControllersWithViews(options =>
 builder.Services.AddScoped<RequestTimingActionFilter>();
 builder.Services.AddScoped<MvcAuditActionFilter>();
 builder.Services.AddScoped<ModelValidationActionFilter>();
+builder.Services.AddSingleton<CachedAttributeValidator>();
 builder.Services.AddExceptionHandler<SafeProblemDetailsExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddScoped<ApexPost.Application.Abstractions.IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<StaffManagementService>();
-builder.Services.AddScoped<ProductCatalogueService>();
+builder.Services.AddSingleton<ProductCatalogueService>();
 builder.Services.AddScoped<InventoryManagementService>();
 builder.Services.AddScoped<ShippingRateService>();
 builder.Services.AddScoped<CounterTransactionService>();
 builder.Services.AddScoped<MoneyOrderService>();
 builder.Services.AddScoped<ReportingService>();
 builder.Services.AddSingleton(ApexPost.Application.Models.LowStockRule.AtOrBelowReorderLevel);
+builder.Services.AddSingleton(provider => new SimulatedCourierTrackingClient(
+    provider.GetRequiredService<ICounterTransactionRepository>(),
+    builder.Configuration.GetValue<int>("CourierTracking:MaximumConcurrency", 3),
+    TimeSpan.FromSeconds(builder.Configuration.GetValue<int>("CourierTracking:TimeoutSeconds", 2)),
+    TimeSpan.FromMilliseconds(builder.Configuration.GetValue<int>("CourierTracking:SimulatedLatencyMilliseconds", 40))));
+builder.Services.AddHttpClient("CourierTracking");
+builder.Services.AddSingleton<ICourierTrackingClient>(provider =>
+{
+    var baseAddress = builder.Configuration["CourierTracking:ProviderBaseUrl"];
+    if (string.IsNullOrWhiteSpace(baseAddress))
+    {
+        return provider.GetRequiredService<SimulatedCourierTrackingClient>();
+    }
+
+    var apiKey = builder.Configuration["CourierTracking:ApiKey"];
+    if (string.IsNullOrWhiteSpace(apiKey))
+    {
+        throw new InvalidOperationException("Configure CourierTracking:ApiKey in user-secrets or the deployment secret store.");
+    }
+
+    return new HttpCourierTrackingClient(
+        provider.GetRequiredService<IHttpClientFactory>().CreateClient("CourierTracking"),
+        baseAddress,
+        builder.Configuration["CourierTracking:TrackingPath"] ?? "api/tracking",
+        apiKey,
+        builder.Configuration.GetValue<int>("CourierTracking:MaximumConcurrency", 3),
+        TimeSpan.FromSeconds(builder.Configuration.GetValue<int>("CourierTracking:TimeoutSeconds", 2)));
+});
 builder.Services.AddScoped<PartnerTrackingService>();
 builder.Services.AddSingleton(moneyOrderPolicy);
 builder.Services.AddSingleton(taxPolicy);
@@ -125,10 +188,16 @@ builder.Services.AddAuthorization(options =>
     options.FallbackPolicy = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
         .Build();
+    options.AddPolicy("BranchManagerOnly", policy => policy.RequireRole("BranchManager"));
+    options.AddPolicy("SameBranchOnly", policy =>
+        policy.RequireAuthenticatedUser().AddRequirements(new SameBranchRequirement()));
 });
+builder.Services.AddSingleton<IAuthorizationHandler, SameBranchAuthorizationHandler>();
 
 var app = builder.Build();
+await app.Services.GetRequiredService<IApplicationMutationCoordinator>().InitializeAsync();
 
+app.UseForwardedHeaders();
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseExceptionHandler();

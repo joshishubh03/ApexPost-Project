@@ -14,7 +14,8 @@ public sealed class MoneyOrderService(
     IIdentityVerificationRepository verificationRepository,
     IIdentityVerificationService identityVerificationService,
     IApplicationEventPublisher eventPublisher,
-    MoneyOrderPolicy policy)
+    MoneyOrderPolicy policy,
+    IApplicationMutationCoordinator mutationCoordinator)
 {
     public async Task<IReadOnlyList<MoneyOrder>> GetForBranchAsync(
         Guid branchId,
@@ -27,7 +28,7 @@ public sealed class MoneyOrderService(
             .ToArray();
     }
 
-    public async Task<MoneyOrder> IssueAsync(
+    public Task<MoneyOrder> IssueAsync(
         Guid branchId,
         Guid staffId,
         string senderName,
@@ -37,7 +38,24 @@ public sealed class MoneyOrderService(
         string? documentIdentifier,
         string correlationId,
         CancellationToken cancellationToken = default,
-        Guid? orderId = null)
+        Guid? orderId = null) =>
+        mutationCoordinator.RunAsync(
+            () => IssueCoreAsync(
+                branchId, staffId, senderName, recipientName, amount, documentType,
+                documentIdentifier, correlationId, cancellationToken, orderId),
+            cancellationToken);
+
+    private async Task<MoneyOrder> IssueCoreAsync(
+        Guid branchId,
+        Guid staffId,
+        string senderName,
+        string recipientName,
+        decimal amount,
+        IdentityDocumentType? documentType,
+        string? documentIdentifier,
+        string correlationId,
+        CancellationToken cancellationToken,
+        Guid? orderId)
     {
         ValidatePolicy();
         var branch = await branchRepository.GetByIdAsync(branchId, cancellationToken)
@@ -154,14 +172,28 @@ public sealed class MoneyOrderService(
         return order;
     }
 
-    public async Task<MoneyOrder> RefundAsync(
+    public Task<MoneyOrder> RefundAsync(
         Guid branchId,
         Guid moneyOrderId,
         Guid managerId,
         string reason,
         string correlationId,
         CancellationToken cancellationToken = default,
-        bool fromCounterTransaction = false)
+        bool fromCounterTransaction = false) =>
+        mutationCoordinator.RunAsync(
+            () => RefundCoreAsync(
+                branchId, moneyOrderId, managerId, reason, correlationId,
+                cancellationToken, fromCounterTransaction),
+            cancellationToken);
+
+    private async Task<MoneyOrder> RefundCoreAsync(
+        Guid branchId,
+        Guid moneyOrderId,
+        Guid managerId,
+        string reason,
+        string correlationId,
+        CancellationToken cancellationToken,
+        bool fromCounterTransaction)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reason);
         if (reason.Trim().Length > 250)

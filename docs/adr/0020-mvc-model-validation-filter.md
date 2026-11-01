@@ -16,3 +16,9 @@ Register `ModelValidationActionFilter` globally. It short-circuits invalid JSON 
 - Validation responses are consistent for JSON clients and invalid HTML forms continue to show their existing model errors.
 - The filter runs after model binding, while middleware remains responsible for transport-level checks.
 - Domain invariants remain enforced in application/domain services and are not replaced by MVC validation.
+
+## Alternatives considered
+
+- Validate only in middleware: rejected because middleware runs before MVC model binding and cannot inspect `ModelState`.
+- Repeat validation response logic in every controller: rejected because it creates inconsistent handling across HTML and JSON actions.
+- Replace domain validation with model annotations: rejected because HTTP input validation must not be the only protection for business invariants.

@@ -5,7 +5,7 @@ namespace ApexPost.Infrastructure.Repositories;
 
 public sealed class JsonNotificationRepository(string dataDirectory) : INotificationRepository
 {
-    private static readonly SemaphoreSlim AppendGate = new(1, 1);
+    private readonly string notificationPath = Path.Combine(dataDirectory, "notifications.json");
     private readonly JsonCollectionStore<OperationalNotification> store =
         new(Path.Combine(dataDirectory, "notifications.json"));
 
@@ -23,18 +23,15 @@ public sealed class JsonNotificationRepository(string dataDirectory) : INotifica
             .ToArray();
     }
 
-    public async Task AppendAsync(OperationalNotification notification, CancellationToken cancellationToken = default)
-    {
-        await AppendGate.WaitAsync(cancellationToken);
-        try
-        {
-            var notifications = (await store.ReadAllAsync(cancellationToken)).ToList();
-            notifications.Add(notification);
-            await store.WriteAllAsync(notifications, cancellationToken);
-        }
-        finally
-        {
-            AppendGate.Release();
-        }
-    }
+    public Task AppendAsync(OperationalNotification notification, CancellationToken cancellationToken = default) =>
+        JsonMutationCoordinator.RunStorageMutationAsync(
+            Path.GetDirectoryName(notificationPath) ?? ".",
+            async () =>
+            {
+                var notifications = (await store.ReadAllAsync(cancellationToken)).ToList();
+                notifications.Add(notification);
+                await store.WriteAllAsync(notifications, cancellationToken);
+                return true;
+            },
+            cancellationToken);
 }

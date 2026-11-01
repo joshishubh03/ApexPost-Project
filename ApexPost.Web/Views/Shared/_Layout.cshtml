@@ -30,6 +30,10 @@
                             {
                                 <li class="nav-item"><a asp-controller="Reports" asp-action="Index" class="nav-link">Reports</a></li>
                             }
+                            @if (User.IsInRole("Auditor"))
+                            {
+                                <li class="nav-item"><a asp-controller="Reports" asp-action="AuditOverview" class="nav-link">Audit overview</a></li>
+                            }
                             @if (User.IsInRole("Administrator"))
                             {
                                 <li class="nav-item"><a asp-controller="Administration" asp-action="Branches" class="nav-link">Branches</a></li>

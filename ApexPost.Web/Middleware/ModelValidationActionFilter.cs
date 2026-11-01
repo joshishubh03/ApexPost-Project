@@ -1,12 +1,21 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using ApexPost.Application.Validation;
 
 namespace ApexPost.Web.Middleware;
 
-public sealed class ModelValidationActionFilter : IAsyncActionFilter
+public sealed class ModelValidationActionFilter(CachedAttributeValidator attributeValidator) : IAsyncActionFilter
 {
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
+        foreach (var argument in context.ActionArguments.Values)
+        {
+            foreach (var failure in attributeValidator.Validate(argument))
+            {
+                context.ModelState.AddModelError(failure.MemberName, failure.ErrorMessage);
+            }
+        }
+
         if (context.ModelState.IsValid)
         {
             await next();

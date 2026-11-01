@@ -18,6 +18,7 @@ public sealed class MoneyOrdersController(
     MoneyOrderPolicy policy) : Controller
 {
     [HttpGet]
+    [Authorize(Policy = "SameBranchOnly")]
     public async Task<IActionResult> Index(Guid? branchId, CancellationToken cancellationToken)
     {
         var isAdministrator = User.IsInRole(nameof(StaffRole.Administrator));
@@ -66,7 +67,7 @@ public sealed class MoneyOrdersController(
     }
 
     [HttpPost]
-    [Authorize(Roles = nameof(StaffRole.BranchManager))]
+    [Authorize(Policy = "BranchManagerOnly")]
     public async Task<IActionResult> Refund(RefundMoneyOrderInputModel input, CancellationToken cancellationToken)
     {
         if (!Guid.TryParse(User.FindFirstValue("branch_id"), out var branchId) ||

@@ -16,3 +16,9 @@ Add `RequestLoggingMiddleware` outside the global exception handler. It measures
 - Requests through MVC, health, and partner endpoints receive consistent timing records.
 - Handled exceptions are logged with their final 500 status after Problem Details generation; exception details remain in the existing error log.
 - The MVC slow-action filter remains useful for identifying a specific controller action, while this middleware measures the whole HTTP pipeline.
+
+## Alternatives considered
+
+- Time only MVC actions with an action filter: rejected because health checks, partner endpoints, and other non-MVC requests would be missed.
+- Log only at the server or hosting layer: rejected because it would not provide the selected structured fields and correlation scope used by this application.
+- Log request bodies and query strings for extra context: rejected because those values can contain personal or secret data and are not needed for timing.
