@@ -34,8 +34,11 @@ PowerShell commands:
 The Week 3 SQL Server work keeps the application contracts stable while moving the persistence layer behind EF Core and SQL Server. The database name is `ApexPostDb`; the connection string is read from `ConnectionStrings:ApexPostDb` and the environment variable `APEXPOST_DB_CONNECTION`.
 
     dotnet user-secrets set "ConnectionStrings:ApexPostDb" "Server=(localdb)\\MSSQLLocalDB;Database=ApexPostDb;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true" --project ApexPost.Web
+    dotnet user-secrets set "ConnectionStrings:ApexPostDb" "Server=localhost;Database=ApexPostDb;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true" --project ApexPost.Web
     dotnet ef database update --project ApexPost.Infrastructure --startup-project ApexPost.Web
     dotnet ef migrations script --idempotent --project ApexPost.Infrastructure --startup-project ApexPost.Web --output sql/ApexPostDb_schema.sql
+
+For runtime validation, the repo also supports a disposable SQL Server database check that creates a temporary database in `master`, applies the migrations, executes the stored procedures, and then drops the database again. This proves the code works against SQL Server rather than only at code generation time and keeps the development database clean.
 
 The database design follows a normalized, branch-led structure for branches, staff, products, stock, shipping, money orders, identity verification, transactions, and audit entries. The reporting scripts under `sql/` are the starter baseline for the daily sales, low-stock, shipping, and branch summary views, the SQL procedures in `sql/stored-procedures.sql` cover the report and stock-adjustment routines required by the assignment, and `sql/performance-workloads.sql` provides the repeatable execution-plan and statistics workload set. `PERFORMANCE.md` records the before/after plan strategy and the no-fabrication rule for actual CPU and I/O numbers.
 
