@@ -84,6 +84,8 @@ public sealed class ApexPostDbContext : DbContext
     {
         builder.ToTable("Inventory");
         builder.HasKey(x => new { x.BranchId, x.ProductId });
+        builder.HasIndex(x => new { x.QuantityOnHand, x.BranchId, x.ProductId })
+            .HasDatabaseName("IX_Inventory_LowStock");
         builder.Property(x => x.MovementsJson).HasColumnType("nvarchar(max)");
     }
 
@@ -120,6 +122,10 @@ public sealed class ApexPostDbContext : DbContext
     {
         builder.ToTable("CounterTransactions");
         builder.HasKey(x => x.Id);
+        builder.HasIndex(x => new { x.BranchId, x.OccurredAtUtc, x.Status })
+            .HasDatabaseName("IX_CounterTransactions_BranchDateStatus");
+        builder.HasIndex(x => new { x.ShippingZoneName, x.ShippingServiceLevel, x.ShippingRateId })
+            .HasDatabaseName("IX_CounterTransactions_ShippingSearch");
         builder.Property(x => x.TransactionNumber).HasMaxLength(40).IsRequired();
         builder.Property(x => x.PaymentMethod).HasConversion<string>();
         builder.Property(x => x.Status).HasConversion<string>();
@@ -139,6 +145,8 @@ public sealed class ApexPostDbContext : DbContext
     {
         builder.ToTable("MoneyOrders");
         builder.HasKey(x => x.Id);
+        builder.HasIndex(x => new { x.Status, x.OccurredAtUtc })
+            .HasDatabaseName("IX_MoneyOrders_StatusIssuedAt");
         builder.Property(x => x.MoneyOrderNumber).HasMaxLength(40).IsRequired();
         builder.Property(x => x.VerificationStatus).HasConversion<string>();
         builder.Property(x => x.DocumentType).HasConversion<string>();
