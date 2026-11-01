@@ -3,7 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\ApexPost.Application\ApexPost.Application.csproj" />
     <ProjectReference Include="..\ApexPost.Infrastructure\ApexPost.Infrastructure.csproj" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>

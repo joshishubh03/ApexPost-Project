@@ -54,11 +54,7 @@ if (!useSqlServer && !string.Equals(persistenceProvider, "Json", StringCompariso
 {
     throw new InvalidOperationException("Persistence:Provider must be either 'SqlServer' or 'Json'.");
 }
-var sqlConnectionString = builder.Configuration.GetConnectionString("ApexPost");
-if (useSqlServer && string.IsNullOrWhiteSpace(sqlConnectionString))
-{
-    throw new InvalidOperationException("Configure ConnectionStrings:ApexPost for the SQL Server persistence provider.");
-}
+
 var demoPassword = builder.Configuration["DemoData:Password"];
 if (builder.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(demoPassword))
 {
@@ -183,14 +179,16 @@ builder.Services.AddApexPostInfrastructure(
 
 var sqlConnectionString = builder.Configuration.GetConnectionString("ApexPostDb") ??
     Environment.GetEnvironmentVariable("APEXPOST_DB_CONNECTION");
-if (!string.IsNullOrWhiteSpace(sqlConnectionString))
-{
-    builder.Services.AddApexPostSqlServerInfrastructure(sqlConnectionString);
-}
 if (useSqlServer)
 {
+    if (string.IsNullOrWhiteSpace(sqlConnectionString))
+    {
+        throw new InvalidOperationException("Persistence:Provider is set to 'SqlServer' but no ApexPostDb connection string is configured.");
+    }
+
+    builder.Services.AddApexPostSqlServerInfrastructure(sqlConnectionString);
     builder.Services.AddApexPostSqlServer(
-        sqlConnectionString!,
+        sqlConnectionString,
         builder.Configuration.GetValue("Persistence:CommandTimeoutSeconds", 30));
 }
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
