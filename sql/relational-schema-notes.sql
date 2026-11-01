@@ -1,0 +1,26 @@
+﻿-- ApexPostDb relational design note
+-- This file documents the branch-first 3NF schema expectations used by the Assignment 3 SQL Server work.
+
+-- Tables and intent:
+-- Branches               : branch identity and operating metadata
+-- Counters/CounterTerminals : branch counter terminals and status
+-- Staff                  : staff, role, assigned branch, and authentication lookups
+-- Products               : catalog product master
+-- ProductCategories      : optional catalog categorization if needed by the branch model
+-- BranchStock            : branch-specific stock on hand with rowversion concurrency
+-- StockAdjustments       : stock movement history
+-- ShippingZones          : shipping geography and rates
+-- ShippingRates          : service-level rate table
+-- Shipments              : shipment metadata and weight snapshots
+-- MoneyOrders            : money-order instruments and fees
+-- IdentityVerifications  : masked document verification results
+-- CounterTransactions    : sales and refund records with rowversion concurrency
+-- TransactionLines       : line snapshots for reporting and reversal audit
+-- AuditEntries           : MVC and service audit trail
+
+-- Key design points:
+-- 1. Branches are the root entity for stock, staff, and counter activity.
+-- 2. Product master data is normalized once; branch stock is separate to avoid duplicate product copies.
+-- 3. Transaction history stores snapshots, therefore refunds and reports are resilient to later catalog edits.
+-- 4. MoneyOrder and IdentityVerification are deliberately separate but linked by a verification reference.
+-- 5. AuditEntries keep actor metadata and correlation IDs without storing sensitive request bodies.
