@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using ApexPost.Application.Abstractions;
 using ApexPost.Application.Models;
 using ApexPost.Infrastructure.Data;
@@ -14,8 +15,13 @@ public sealed class SqlServerStoredProcedureService(ApexPostDbContext dbContext)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(branchCode);
 
+        var sql = FormattableStringFactory.Create(
+            "EXEC dbo.usp_DailyBranchSales @BranchCode = {0}, @Date = {1}",
+            branchCode,
+            saleDate);
+
         return await dbContext.Database
-            .SqlQuery<DailyBranchSalesRow>($"EXEC dbo.usp_DailyBranchSales @BranchCode = {branchCode}, @Date = {saleDate}")
+            .SqlQuery<DailyBranchSalesRow>(sql)
             .ToListAsync(cancellationToken);
     }
 
@@ -29,10 +35,13 @@ public sealed class SqlServerStoredProcedureService(ApexPostDbContext dbContext)
             throw new ArgumentOutOfRangeException(nameof(threshold), "Threshold cannot be negative.");
         }
 
-        object branchCodeParameter = string.IsNullOrWhiteSpace(branchCode) ? DBNull.Value : branchCode;
+        var sql = FormattableStringFactory.Create(
+            "EXEC dbo.usp_LowStockReport @BranchCode = {0}, @Threshold = {1}",
+            string.IsNullOrWhiteSpace(branchCode) ? DBNull.Value : branchCode,
+            threshold);
 
         return await dbContext.Database
-            .SqlQuery<LowStockReportRow>($"EXEC dbo.usp_LowStockReport @BranchCode = {branchCodeParameter}, @Threshold = {threshold}")
+            .SqlQuery<LowStockReportRow>(sql)
             .ToListAsync(cancellationToken);
     }
 
@@ -54,8 +63,14 @@ public sealed class SqlServerStoredProcedureService(ApexPostDbContext dbContext)
             throw new ArgumentOutOfRangeException(nameof(delta), "Stock delta cannot be zero.");
         }
 
-        await dbContext.Database.ExecuteSqlAsync(
-            $"EXEC dbo.usp_AdjustStock @BranchCode = {branchCode}, @Sku = {sku}, @Delta = {delta}, @Reason = {reason}, @ChangedBy = {changedBy}",
-            cancellationToken);
+        var sql = FormattableStringFactory.Create(
+            "EXEC dbo.usp_AdjustStock @BranchCode = {0}, @Sku = {1}, @Delta = {2}, @Reason = {3}, @ChangedBy = {4}",
+            branchCode,
+            sku,
+            delta,
+            reason,
+            changedBy);
+
+        await dbContext.Database.ExecuteSqlAsync(sql, cancellationToken);
     }
 }
