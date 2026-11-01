@@ -6,12 +6,49 @@ using ApexPost.Infrastructure.Events;
 using ApexPost.Infrastructure.Repositories;
 using ApexPost.Infrastructure.Security;
 using ApexPost.Infrastructure.Seed;
+using ApexPost.Infrastructure.Persistence;
+using ApexPost.Infrastructure.Persistence.Repositories;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ApexPost.Infrastructure;
 
 public static class DependencyInjection
 {
+    public static IServiceCollection AddApexPostSqlServer(
+        this IServiceCollection services,
+        string connectionString,
+        int commandTimeoutSeconds = 30)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
+        if (commandTimeoutSeconds is < 1 or > 120)
+        {
+            throw new ArgumentOutOfRangeException(nameof(commandTimeoutSeconds));
+        }
+
+        services.AddDbContext<ApexPostDbContext>(options => options.UseSqlServer(
+            connectionString,
+            sql => sql
+                .CommandTimeout(commandTimeoutSeconds)
+                .EnableRetryOnFailure(3, TimeSpan.FromSeconds(5), null)
+                .MigrationsAssembly(typeof(ApexPostDbContext).Assembly.GetName().Name)));
+        services.AddScoped<IUnitOfWork, EfUnitOfWork>();
+        services.AddScoped<IApplicationMutationCoordinator, EfApplicationMutationCoordinator>();
+        services.AddScoped<IBranchRepository, EfBranchRepository>();
+        services.AddScoped<ICounterTerminalRepository, EfCounterTerminalRepository>();
+        services.AddScoped<IStaffRepository, EfStaffRepository>();
+        services.AddScoped<IProductRepository, EfProductRepository>();
+        services.AddScoped<IInventoryRepository, EfInventoryRepository>();
+        services.AddScoped<IShippingZoneRepository, EfShippingZoneRepository>();
+        services.AddScoped<IShippingRateRepository, EfShippingRateRepository>();
+        services.AddScoped<ICounterTransactionRepository, EfCounterTransactionRepository>();
+        services.AddScoped<IMoneyOrderRepository, EfMoneyOrderRepository>();
+        services.AddScoped<IIdentityVerificationRepository, EfIdentityVerificationRepository>();
+        services.AddScoped<IAuditLogRepository, EfAuditLogRepository>();
+        services.AddScoped<INotificationRepository, EfNotificationRepository>();
+        return services;
+    }
+
     public static IServiceCollection AddApexPostInfrastructure(
         this IServiceCollection services,
         string dataDirectory,
@@ -49,7 +86,7 @@ public static class DependencyInjection
         services.AddScoped<IApplicationEventHandler, OperationalNotificationHandler>();
         services.AddScoped<IApplicationEventPublisher, ApplicationEventPublisher>();
         services.AddSingleton<IStaffPasswordService, AspNetStaffPasswordService>();
-        services.AddSingleton(serviceProvider => new DemoDataSeeder(
+        services.AddScoped(serviceProvider => new DemoDataSeeder(
             serviceProvider.GetRequiredService<IBranchRepository>(),
             serviceProvider.GetRequiredService<IStaffRepository>(),
             serviceProvider.GetRequiredService<IProductRepository>(),
