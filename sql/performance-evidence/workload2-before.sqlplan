@@ -1,0 +1,61 @@
+BranchCode|SaleDate|RetailRevenue|ServiceRevenue
+----------|--------|-------------|--------------
+AP-001|2026-09-21|177.50|57.46
+AP-001|2026-09-26|252.50|49.96
+AP-001|2026-10-01|327.50|59.96
+AP-001|2026-10-06|402.50|52.46
+AP-001|2026-10-11|477.50|53.71
+AP-001|2026-10-16|550.00|64.95
+AP-001|2026-10-21|456.25|68.70
+AP-001|2026-10-26|362.50|72.45
+AP-001|2026-10-31|268.75|67.45
+AP-002|2026-09-20|192.50|53.71
+AP-002|2026-09-25|267.50|54.96
+AP-002|2026-09-30|342.50|56.21
+AP-002|2026-10-05|417.50|57.46
+AP-002|2026-10-10|492.50|49.96
+AP-002|2026-10-15|568.75|71.20
+AP-002|2026-10-20|475.00|66.20
+AP-002|2026-10-25|381.25|69.95
+AP-002|2026-10-30|287.50|64.95
+AP-003|2026-09-19|207.50|49.96
+AP-003|2026-09-24|282.50|59.96
+AP-003|2026-09-29|357.50|52.46
+AP-003|2026-10-04|432.50|53.71
+AP-003|2026-10-09|507.50|54.96
+AP-003|2026-10-14|587.50|68.70
+AP-003|2026-10-19|493.75|72.45
+AP-003|2026-10-24|400.00|67.45
+AP-003|2026-10-29|306.25|71.20
+AP-004|2026-09-18|222.50|54.96
+AP-004|2026-09-23|297.50|56.21
+AP-004|2026-09-28|372.50|57.46
+AP-004|2026-10-03|447.50|49.96
+AP-004|2026-10-08|522.50|59.96
+AP-004|2026-10-13|606.25|66.20
+AP-004|2026-10-18|512.50|69.95
+AP-004|2026-10-23|418.75|64.95
+AP-004|2026-10-28|325.00|68.70
+AP-005|2026-09-22|162.50|52.46
+AP-005|2026-09-27|237.50|53.71
+AP-005|2026-10-02|312.50|54.96
+AP-005|2026-10-07|387.50|56.21
+AP-005|2026-10-12|475.00|72.45
+AP-005|2026-10-17|531.25|67.45
+AP-005|2026-10-22|437.50|71.20
+AP-005|2026-10-27|343.75|66.20
+AP-005|2026-11-01|237.50|59.96
+
+(45 rows affected)
+Table 'Worktable'. Scan count 0, logical reads 0, physical reads 0, page server reads 0, read-ahead reads 0, page server read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0, lob page server read-ahead reads 0.
+Table 'Workfile'. Scan count 0, logical reads 0, physical reads 0, page server reads 0, read-ahead reads 0, page server read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0, lob page server read-ahead reads 0.
+Table 'CounterTransactions'. Scan count 1, logical reads 24, physical reads 0, page server reads 0, read-ahead reads 0, page server read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0, lob page server read-ahead reads 0.
+Table 'Branches'. Scan count 1, logical reads 2, physical reads 0, page server reads 0, read-ahead reads 0, page server read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0, lob page server read-ahead reads 0.
+Microsoft SQL Server 2005 XML Showplan
+--------------------------------------
+<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan" Version="1.599" Build="17.0.1000.7"><BatchSequence><Batch><Statements><StmtSimple StatementText="SELECT b.Code AS BranchCode, CAST(ct.OccurredAtUtc AS date) AS SaleDate, SUM(CASE 
+
+(1 rows affected)
+
+ SQL Server Execution Times:
+   CPU time = 0 ms,  elapsed time = 5 ms.

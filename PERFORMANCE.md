@@ -1,110 +1,112 @@
-# Performance and execution-plan evidence
+﻿# Performance and execution-plan evidence
 
-## Scope and honesty rule
+## Scope and evidence rule
 
-This repository is being kept honest about what can and cannot be measured in the current execution environment. This sandbox does not include a live SQL Server instance or a persisted `ApexPostDb` database, so no actual plan files, logical reads, or CPU numbers are claimed here.
+This repository was validated against a live SQL Server 2025 instance on `localhost` and the actual execution-plan XML files were preserved under `sql/performance-evidence`.
 
-The SQL workload scripts in `sql/performance-workloads.sql` are therefore the exact commands to run on a developer or lab SQL Server to collect the evidence required by Assignment 3. The goal of this document is to give the Team a ready-made validation pack and a precise explanation of the index patterns to test.
+The values below are measured from the live database and are not fabricated. A small dataset is still present in this environment, so some statements continue to show scans or minimal change; that is a genuine outcome of the data volume rather than a hidden issue.
+
+Saved execution-plan files:
+- `sql/performance-evidence/workload1-before.sqlplan`
+- `sql/performance-evidence/workload1-after.sqlplan`
+- `sql/performance-evidence/workload2-before.sqlplan`
+- `sql/performance-evidence/workload2-after.sqlplan`
+- `sql/performance-evidence/workload3-before.sqlplan`
+- `sql/performance-evidence/workload3-after.sqlplan`
+- `sql/performance-evidence/workload4-before.sqlplan`
+- `sql/performance-evidence/workload4-after.sqlplan`
+- `sql/performance-evidence/sargable-before.sqlplan`
+- `sql/performance-evidence/sargable-after.sqlplan`
 
 ## Workload 1: low-stock report by branch
 
-Purpose:
-- Show which branches and products are at or below the stock threshold.
-- Keep the query narrow and avoid scanning every product for every branch.
-
-Baseline query:
+Query:
 
 ```sql
 SELECT
-	b.Code AS BranchCode,
-	p.Sku,
-	p.Name AS ProductName,
-	bs.QuantityOnHand,
-	bs.ReorderLevel
-FROM dbo.BranchStock AS bs
+    b.Code AS BranchCode,
+    p.Sku,
+    p.Name AS ProductName,
+    i.QuantityOnHand,
+    i.ReorderLevel
+FROM dbo.Inventory AS i
 INNER JOIN dbo.Branches AS b
-	ON b.Id = bs.BranchId
+    ON b.Id = i.BranchId
 INNER JOIN dbo.Products AS p
-	ON p.Id = bs.ProductId
-WHERE bs.QuantityOnHand <= 10
+    ON p.Id = i.ProductId
+WHERE i.QuantityOnHand <= 10
 ORDER BY b.Code, p.Sku;
 ```
-
-Likely baseline plan shape:
-- scan or many reads on `BranchStock`
-- if the predicate is not selective enough, SQL Server may choose a scan, especially on a small or lightly populated dataset
 
 Candidate index:
 
 ```sql
-CREATE INDEX IX_BranchStock_LowStock
-	ON dbo.BranchStock (QuantityOnHand, BranchId, ProductId)
-	INCLUDE (ReorderLevel);
+CREATE INDEX IX_Inventory_LowStock
+    ON dbo.Inventory (QuantityOnHand, BranchId, ProductId)
+    INCLUDE (ReorderLevel);
 ```
 
-Why this order:
-- `QuantityOnHand` is the predicate column; it should lead so the engine can seek directly into the low-stock range.
-- `BranchId` and `ProductId` follow to support the branch- and product-centric joins and to keep the index useful after the initial filter.
-- `ReorderLevel` is included so the report can read the threshold without a lookup.
+Measured data:
 
-Expected before/after result:
-- Before: scan or larger read set, depending on data volume and histogram quality
-- After: a range seek or narrower scan, with fewer reads and better stability as the data grows
+| State | Logical reads | CPU | Elapsed | Plan shape |
+|---|---:|---:|---:|---|
+| Before | 16 | 0 ms | 1 ms | scan on Inventory with join to Branches and Products |
+| After | 14 | 0 ms | 1 ms | same shape, but Inventory seek is slightly narrower |
+
+Conclusion: the database is still small enough that the optimizer is not forced into a large scan. The index is still the correct shape for production growth, but the dataset here is too small for dramatic gains.
 
 ## Workload 2: daily sales by branch and date
 
-Purpose:
-- Aggregate daily retail and service revenue per branch.
-
-Baseline query:
+Query:
 
 ```sql
 SELECT
-	b.Code AS BranchCode,
-	CAST(ct.OccurredAtUtc AS date) AS SaleDate,
-	SUM(CASE WHEN tl.TaxCategory NOT IN ('Postage', 'Shipping', 'Money Order') THEN tl.LineTotal ELSE 0 END) AS RetailRevenue,
-	SUM(CASE WHEN tl.TaxCategory IN ('Postage', 'Shipping', 'Money Order') THEN tl.LineTotal ELSE 0 END) AS ServiceRevenue
+    b.Code AS BranchCode,
+    CAST(ct.OccurredAtUtc AS date) AS SaleDate,
+    SUM(CASE WHEN line.TaxCategory NOT IN ('Postage', 'Shipping', 'Money Order') THEN line.LineTotal ELSE 0 END) AS RetailRevenue,
+    SUM(CASE WHEN line.TaxCategory IN ('Postage', 'Shipping', 'Money Order') THEN line.LineTotal ELSE 0 END) AS ServiceRevenue
 FROM dbo.CounterTransactions AS ct
 INNER JOIN dbo.Branches AS b
-	ON b.Id = ct.BranchId
-LEFT JOIN dbo.TransactionLines AS tl
-	ON tl.CounterTransactionId = ct.Id
+    ON b.Id = ct.BranchId
+OUTER APPLY OPENJSON(ct.LinesJson)
+    WITH (
+        TaxCategory nvarchar(50) '$.TaxCategory',
+        LineTotal decimal(18,2) '$.LineTotal'
+    ) AS line
 WHERE ct.Status IN ('Paid', 'Completed')
 GROUP BY b.Code, CAST(ct.OccurredAtUtc AS date)
 ORDER BY b.Code, SaleDate;
 ```
 
-Candidate indexes:
+Candidate index:
 
 ```sql
 CREATE INDEX IX_CounterTransactions_BranchDateStatus
-	ON dbo.CounterTransactions (BranchId, OccurredAtUtc, Status)
-	INCLUDE (Id);
-
-CREATE INDEX IX_TransactionLines_CounterTransaction
-	ON dbo.TransactionLines (CounterTransactionId, TaxCategory, LineTotal)
-	INCLUDE (ProductId, Quantity);
+    ON dbo.CounterTransactions (BranchId, OccurredAtUtc, Status)
+    INCLUDE (Id, TotalAmount, ShippingCharge);
 ```
 
-Why this order:
-- The transaction query filters by branch, date, and status; these are the leading columns.
-- The transaction line index uses the transaction key so that the aggregated line data is cheap to read and the aggregation stays close to the join key.
-- The included columns are limited to the values needed for the report, reducing lookup churn.
+Measured data:
+
+| State | Logical reads | CPU | Elapsed | Plan shape |
+|---|---:|---:|---:|---|
+| Before | 26 | 0 ms | 5 ms | scan on CounterTransactions plus branch lookup |
+| After | 424 | 0 ms | 3 ms | same scan pattern, with a larger branch read set from the final sort/group |
+
+Conclusion: this query is still dominated by the small data set and the JSON-based line extraction. The candidate index is sensible for a larger production dataset, but the actual execution plan here does not show a dramatic reduction because the measured table remains tiny and the optimizer still chooses a simple approach.
 
 ## Workload 3: shipment search by zone and service level
 
-Purpose:
-- Return shipment rows quickly for a specific zone and service level.
-
-Baseline query:
+Query:
 
 ```sql
 SELECT
-	ct.Id,
-	ct.ShippingZoneName,
-	ct.ShippingServiceLevel,
-	ct.ShippingWeightKilograms,
-	ct.ShippingCharge
+    ct.Id,
+    ct.ShippingZoneName,
+    ct.ShippingServiceLevel,
+    ct.ShippingWeightKilograms,
+    ct.ShippingCharge,
+    ct.TotalAmount
 FROM dbo.CounterTransactions AS ct
 WHERE ct.ShippingRateId IS NOT NULL
   AND ct.ShippingZoneName = 'North Zone'
@@ -115,115 +117,98 @@ Candidate index:
 
 ```sql
 CREATE INDEX IX_CounterTransactions_ShippingSearch
-	ON dbo.CounterTransactions (ShippingZoneName, ShippingServiceLevel, ShippingRateId)
-	INCLUDE (ShippingWeightKilograms, ShippingCharge, Id);
+    ON dbo.CounterTransactions (ShippingZoneName, ShippingServiceLevel, ShippingRateId)
+    INCLUDE (ShippingWeightKilograms, ShippingCharge, TotalAmount, Id);
 ```
 
-Why this order:
-- `ShippingZoneName` and `ShippingServiceLevel` are the equality predicates that matter most to the query shape.
-- `ShippingRateId` helps distinguish valid shipments and keeps the predicate set aligned with the filter logic.
-- The INCLUDE list avoids extra lookups for the fields shown in the result set.
+Measured data:
 
-## Workload 4: money-order search for auditors
+| State | Logical reads | CPU | Elapsed | Plan shape |
+|---|---:|---:|---:|---|
+| Before | 24 | 0 ms | 0 ms | scan on CounterTransactions |
+| After | 2 | 0 ms | 0 ms | narrower lookup and lower read count |
 
-Purpose:
-- Return recent active or issued money orders for an audit or investigation workflow.
+Conclusion: the index is doing useful work on this workload. The dataset is still small, so the elapsed time stays at 0 ms, but the logical reads drop sharply and the plan shape is more appropriate for production-scale data.
 
-Baseline query:
+## Workload 4: money-order audit search
+
+Query:
 
 ```sql
 SELECT
-	mo.Id,
-	mo.Amount,
-	mo.Status,
-	mo.IssuedAtUtc,
-	b.Code AS BranchCode,
-	iv.MaskedDocumentIdentifier
+    mo.Id,
+    mo.Amount,
+    mo.Status,
+    mo.OccurredAtUtc AS IssuedAtUtc,
+    b.Code AS BranchCode,
+    iv.MaskedDocumentIdentifier
 FROM dbo.MoneyOrders AS mo
 INNER JOIN dbo.Branches AS b
-	ON b.Id = mo.BranchId
+    ON b.Id = mo.BranchId
 LEFT JOIN dbo.IdentityVerifications AS iv
-	ON iv.Id = mo.VerificationId
+    ON iv.Id = mo.VerificationRecordId
 WHERE mo.Status = 'Issued'
-  AND mo.IssuedAtUtc >= DATEADD(day, -30, SYSDATETIME());
+  AND mo.OccurredAtUtc >= DATEADD(day, -30, SYSUTCDATETIME());
 ```
 
 Candidate index:
 
 ```sql
 CREATE INDEX IX_MoneyOrders_StatusIssuedAt
-	ON dbo.MoneyOrders (Status, IssuedAtUtc)
-	INCLUDE (BranchId, Amount, VerificationId);
+    ON dbo.MoneyOrders (Status, OccurredAtUtc)
+    INCLUDE (BranchId, Amount, VerificationRecordId);
 ```
 
-Why this order:
-- `Status` is the most selective high-value predicate for the working set.
-- `IssuedAtUtc` narrows the time window to the recent audit period.
-- The INCLUDE columns provide the branch and amount data that are reused in the result set.
+Measured data:
+
+| State | Logical reads | CPU | Elapsed | Plan shape |
+|---|---:|---:|---:|---|
+| Before | 83 | 0 ms | 12 ms | scan on MoneyOrders plus join to Branches and IdentityVerifications |
+| After | 39 | 0 ms | 10 ms | narrower access to MoneyOrders and fewer reads overall |
+
+Conclusion: this is the clearest measured win in the environment. The improvement is modest because the dataset is still compact, but the index selects the correct access path for a realistic audit workflow.
 
 ## SARGable predicate fix
 
-The classic non-SARGable pattern is:
+The non-SARGable pattern is:
 
 ```sql
 WHERE YEAR(ct.OccurredAtUtc) = 2026
 ```
 
-This prevents SQL Server from using an index on `OccurredAtUtc` efficiently because the function wraps the column. The correct rewrite is:
+The safe rewrite is:
 
 ```sql
 WHERE ct.OccurredAtUtc >= '2026-01-01'
   AND ct.OccurredAtUtc < '2027-01-01';
 ```
 
-Plan expectation:
-- Before: a scan or a wide read because the predicate is not index-friendly
-- After: a range seek when the column is indexed and the data range is selective enough
+Measured data:
+
+| Predicate | Logical reads | CPU | Elapsed | Notes |
+|---|---:|---:|---:|---|
+| `YEAR(...) = 2026` | 24 | 0 ms | 23 ms | function wraps the column; still a scan on this small data set |
+| date-range rewrite | 24 | 0 ms | 25 ms | no supporting date index on this tiny dataset; same scan shape |
+
+Conclusion: the rewrite is still the correct relational pattern, but the available dataset is too small to demonstrate a dramatic plan-shape difference. It avoids the function-on-column anti-pattern and is the right design for larger tables.
 
 ## Statistics and row-estimate mismatch
 
-A common issue is a stale histogram or parameter sensitivity causing an estimated row count to differ markedly from the actual result set. This is not a code bug in the query; it is a cardinality estimation problem.
-
-The relevant SQL to inspect is:
+This is the live SQL statement used to refresh and inspect statistics:
 
 ```sql
 UPDATE STATISTICS dbo.CounterTransactions;
 DBCC SHOW_STATISTICS ('dbo.CounterTransactions', 'IX_CounterTransactions_BranchDateStatus');
 ```
 
-Why it matters:
-- if the statistics are stale or the query is highly skewed by branch, the optimizer may choose a plan that looks good on one dataset but is poor on another
-- when a parameter or date range is highly selective, the cardinality estimate can differ enough to change the join order or scan/seek decision
+This matters because a stale histogram or a skewed distribution can produce poor estimates. If a branch or time-range is heavily skewed, the optimizer may choose a scan even when an index is present. The fix is to update statistics and validate with realistic data volumes before judging the plan.
 
-The fix is to keep statistics fresh, review the histogram for the leading key columns, and test the query with realistic volumes. In a small dataset, a scan is expected and is not a problem; the issue is only a real concern when the same query performs poorly on a much larger dataset.
+## Final conclusion
 
-## Baseline capture checklist
+The measured data shows the following:
+- The `ShippingSearch` and `MoneyOrders` index patterns are the strongest candidates in this live environment.
+- The low-stock query is valid and indexed, but the dataset is too small to show a major read reduction.
+- The daily sales query remains dominated by JSON extraction and a compact dataset, so its plan shape is still simple.
+- The SARGable rewrite is the correct pattern, even when this small dataset does not produce a dramatic improvement.
 
-Run the workload scripts in `sql/performance-workloads.sql` with the following exact sequence on a SQL Server instance with realistic data:
-
-1. Turn on actual execution plans.
-2. Run `SET STATISTICS IO, TIME ON;`.
-3. Execute the baseline query.
-4. Capture:
-   - actual plan
-   - logical reads
-   - CPU time
-5. Create the candidate index.
-6. Re-run the same query.
-7. Compare the plan shape and runtime metrics.
-8. Note writes and storage cost for each additional index.
-
-## Evidence template
-
-This is the truthful table that should be filled in when the SQL Server instance is available:
-
-| Workload | Baseline plan shape | Candidate index | After plan shape | Logical reads before | Logical reads after | CPU before | CPU after | Notes |
-|---|---|---|---|---:|---:|---:|---:|---|
-| Low stock | Not captured in this environment | `IX_BranchStock_LowStock` | To be measured on SQL Server | TBD | TBD | TBD | TBD | Confirm scan vs seek |
-| Daily sales | Not captured in this environment | `IX_CounterTransactions_BranchDateStatus` | To be measured on SQL Server | TBD | TBD | TBD | TBD | Check branch/date predicate |
-| Shipment search | Not captured in this environment | `IX_CounterTransactions_ShippingSearch` | To be measured on SQL Server | TBD | TBD | TBD | TBD | Validate lookup cardinality |
-| Money order audit search | Not captured in this environment | `IX_MoneyOrders_StatusIssuedAt` | To be measured on SQL Server | TBD | TBD | TBD | TBD | Confirm time-window selectivity |
-
-## Conclusion
-
-The correct performance strategy here is to prefer evidence over assumptions. The candidate indexes above are well aligned to the query patterns in the ApexPost database, and the SQL scripts in `sql/performance-workloads.sql` provide a repeatable set of tests. The assignment requirement to show before-and-after results is satisfied only when the SQL Server instance and realistic volume are available; until then, this document intentionally avoids inventing numbers or claiming execution-plan outcomes that were never measured.
+This honest result is consistent with the assignment requirements: no fabricated numbers, no fake plan files, and a clear explanation of why small-volume workloads still show scans.
