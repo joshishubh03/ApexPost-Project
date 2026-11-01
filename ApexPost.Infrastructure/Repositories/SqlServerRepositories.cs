@@ -28,6 +28,7 @@ public static class SqlServerInfrastructureExtensions
         services.AddScoped<IIdentityVerificationRepository, SqlServerIdentityVerificationRepository>();
         services.AddScoped<IAuditLogRepository, SqlServerAuditLogRepository>();
         services.AddScoped<INotificationRepository, SqlServerNotificationRepository>();
+        services.AddScoped<IStoredProcedureService, SqlServerStoredProcedureService>();
         return services;
     }
 }
