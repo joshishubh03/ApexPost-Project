@@ -1,0 +1,12 @@
+@model ApexPost.Web.Models.ConflictViewModel
+@{
+    ViewData["Title"] = "Change not saved";
+}
+
+<section class="page-section">
+    <h1>Change not saved</h1>
+    <div class="alert alert-warning" role="alert">
+        <strong>409 Conflict.</strong> @Model.Message
+    </div>
+    <a class="btn btn-primary" href="@Model.ReturnUrl">Reload and try again</a>
+</section>

@@ -8,16 +8,8 @@ namespace ApexPost.Application.Services;
 public sealed class ShippingRateService(
     IShippingZoneRepository zoneRepository,
     IShippingRateRepository rateRepository,
-    IApplicationMutationCoordinator mutationCoordinator,
-    IUnitOfWork unitOfWork)
+    IApplicationMutationCoordinator mutationCoordinator)
 {
-    public ShippingRateService(
-        IShippingZoneRepository zoneRepository,
-        IShippingRateRepository rateRepository,
-        IApplicationMutationCoordinator mutationCoordinator)
-        : this(zoneRepository, rateRepository, mutationCoordinator, new NoOpUnitOfWork())
-    {
-    }
 
     public async Task<IReadOnlyList<ShippingSchedule>> GetScheduleAsync(
         bool includeInactive,
@@ -51,7 +43,6 @@ public sealed class ShippingRateService(
 
             zones.Add(zone);
             await zoneRepository.SaveAllAsync(zones, cancellationToken);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
         }, cancellationToken);
 
     public Task CreateRateAsync(
@@ -78,7 +69,6 @@ public sealed class ShippingRateService(
             rates.Add(new ShippingRate(
                 Guid.NewGuid(), zoneId, serviceLevel, basePrice, pricePerKilogram, maximumWeightKilograms, isActive: true));
             await rateRepository.SaveAllAsync(rates, cancellationToken);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
         }, cancellationToken);
 
     public async Task<ShippingQuote> QuoteAsync(

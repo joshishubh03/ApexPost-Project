@@ -83,6 +83,11 @@ public sealed record MoneyOrder
             throw new ArgumentException("Verified money orders must link to their identity verification record.");
         }
 
+        if (maskedDocumentIdentifier is not null)
+        {
+            IdentityDocumentMask.EnsureMasked(maskedDocumentIdentifier, nameof(maskedDocumentIdentifier));
+        }
+
         if (verificationStatus == IdentityVerificationStatus.NotRequired &&
             (verificationRecordId is not null || documentType is not null || maskedDocumentIdentifier is not null))
         {

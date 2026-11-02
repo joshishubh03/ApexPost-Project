@@ -29,6 +29,7 @@
                             @if (User.IsInRole("Administrator") || User.IsInRole("BranchManager") || User.IsInRole("Auditor"))
                             {
                                 <li class="nav-item"><a asp-controller="Reports" asp-action="Index" class="nav-link">Reports</a></li>
+                                <li class="nav-item"><a asp-controller="Reports" asp-action="Operations" class="nav-link">Operations reports</a></li>
                             }
                             @if (User.IsInRole("Auditor"))
                             {

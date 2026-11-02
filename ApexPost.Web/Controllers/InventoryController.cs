@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using ApexPost.Application.Abstractions;
+using ApexPost.Application.Exceptions;
 using ApexPost.Application.Models;
 using ApexPost.Application.Services;
 using ApexPost.Domain.Enums;
@@ -13,7 +14,8 @@ namespace ApexPost.Web.Controllers;
 [Authorize]
 public sealed class InventoryController(
     InventoryManagementService inventoryService,
-    IBranchRepository branchRepository) : Controller
+    IBranchRepository branchRepository,
+    IStockAdjustmentCommand? stockAdjustmentCommand = null) : Controller
 {
     [HttpGet]
     [Authorize(Policy = "SameBranchOnly")]
@@ -75,20 +77,43 @@ public sealed class InventoryController(
 
         try
         {
-            await inventoryService.ChangeStockAsync(
-                branchId.Value,
-                input.ProductId,
-                input.QuantityChange,
-                input.ReorderLevel,
-                input.Reason,
-                currentStaffId,
-                CorrelationIdMiddleware.GetCorrelationId(HttpContext),
-                cancellationToken);
-            TempData["StatusMessage"] = "Inventory updated.";
+            if (stockAdjustmentCommand is not null)
+            {
+                // SQL Server: dbo.usp_AdjustStock + ExecuteUpdate + SaveChanges in one explicit transaction.
+                var result = await stockAdjustmentCommand.AdjustAsync(
+                    branchId.Value,
+                    input.ProductId,
+                    input.QuantityChange,
+                    input.ReorderLevel,
+                    input.Reason,
+                    currentStaffId,
+                    CorrelationIdMiddleware.GetCorrelationId(HttpContext),
+                    cancellationToken);
+                TempData["StatusMessage"] = $"Inventory updated. Quantity on hand is now {result.QuantityOnHand}.";
+            }
+            else
+            {
+                await inventoryService.ChangeStockAsync(
+                    branchId.Value,
+                    input.ProductId,
+                    input.QuantityChange,
+                    input.ReorderLevel,
+                    input.Reason,
+                    currentStaffId,
+                    CorrelationIdMiddleware.GetCorrelationId(HttpContext),
+                    cancellationToken);
+                TempData["StatusMessage"] = "Inventory updated.";
+            }
         }
         catch (InvalidOperationException exception)
         {
             TempData["ErrorMessage"] = exception.Message;
+        }
+        catch (ConcurrencyConflictException exception)
+        {
+            Response.StatusCode = StatusCodes.Status409Conflict;
+            return View("~/Views/Shared/Conflict.cshtml", new ConflictViewModel(
+                exception.Message, Url.Action(nameof(Index), new { branchId }) ?? "/Inventory"));
         }
         catch (KeyNotFoundException)
         {

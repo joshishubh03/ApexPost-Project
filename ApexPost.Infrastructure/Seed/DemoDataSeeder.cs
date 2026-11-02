@@ -19,8 +19,14 @@ public sealed class DemoDataSeeder(
     IStaffPasswordService passwordService,
     MoneyOrderPolicy moneyOrderPolicy,
     string demoPassword,
-    IApplicationMutationCoordinator mutationCoordinator)
+    IApplicationMutationCoordinator mutationCoordinator,
+    IUnitOfWork? unitOfWork = null)
 {
+    private readonly IUnitOfWork stageCommitter = unitOfWork ?? new NoOpUnitOfWork();
+
+    /// <summary>Number of historical counter transactions seeded so indexes and reports are meaningful.</summary>
+    public const int HistoricalTransactionCount = 240;
+
     public Task SeedAsync(CancellationToken cancellationToken = default) =>
         mutationCoordinator.RunAsync(() => SeedCoreAsync(cancellationToken), cancellationToken);
 
@@ -38,6 +44,7 @@ public sealed class DemoDataSeeder(
                     isOpen: true))
                 .ToArray();
             await branchRepository.SaveAllAsync(branches, cancellationToken);
+            await stageCommitter.SaveChangesAsync(cancellationToken);
         }
 
         var terminals = await terminalRepository.GetAllAsync(cancellationToken);
@@ -46,6 +53,7 @@ public sealed class DemoDataSeeder(
             terminals = branches.SelectMany(branch => Enumerable.Range(1, 2).Select(number => new CounterTerminal(
                 StableGuid($"terminal-{branch.Code}-{number}"), branch.Id, $"T-{number:00}", $"Counter {number}"))).ToArray();
             await terminalRepository.SaveAllAsync(terminals, cancellationToken);
+            await stageCommitter.SaveChangesAsync(cancellationToken);
         }
 
         var products = await productRepository.GetAllAsync(cancellationToken);
@@ -88,6 +96,7 @@ public sealed class DemoDataSeeder(
                 Guid.Parse($"20000000-0000-0000-0000-{index + 1:000000000000}"),
                 seed.Sku, seed.Name, seed.Description, seed.Category, seed.Price, isActive: true)).ToArray();
             await productRepository.SaveAllAsync(seededProducts, cancellationToken);
+            await stageCommitter.SaveChangesAsync(cancellationToken);
             products = seededProducts;
         }
 
@@ -111,6 +120,7 @@ public sealed class DemoDataSeeder(
                 Guid.Parse($"30000000-0000-0000-0000-{index + 1:000000000000}"),
                 seed.Code, seed.Name, seed.Destination, isActive: true)).ToArray();
             await shippingZoneRepository.SaveAllAsync(zones, cancellationToken);
+            await stageCommitter.SaveChangesAsync(cancellationToken);
         }
 
         var rates = await shippingRateRepository.GetAllAsync(cancellationToken);
@@ -136,6 +146,7 @@ public sealed class DemoDataSeeder(
                     isActive: true)
             });
             await shippingRateRepository.SaveAllAsync(seededRates, cancellationToken);
+            await stageCommitter.SaveChangesAsync(cancellationToken);
             rates = seededRates.ToArray();
         }
 
@@ -171,6 +182,7 @@ public sealed class DemoDataSeeder(
         if (missingRegisteredRates.Length > 0)
         {
             await shippingRateRepository.SaveAllAsync(rates.Concat(missingRegisteredRates), cancellationToken);
+            await stageCommitter.SaveChangesAsync(cancellationToken);
         }
 
         var staff = await staffRepository.GetAllAsync(cancellationToken);
@@ -239,6 +251,7 @@ public sealed class DemoDataSeeder(
             demoPassword));
 
             await staffRepository.SaveAllAsync(seededStaff, cancellationToken);
+            await stageCommitter.SaveChangesAsync(cancellationToken);
             staff = seededStaff;
         }
 
@@ -277,28 +290,34 @@ public sealed class DemoDataSeeder(
                 return;
             }
 
-            foreach (var product in activeProducts)
+            foreach (var (product, productIndex) in activeProducts.Select((value, position) => (value, position)))
             {
+                // Every tenth product starts close to its reorder level so the low-stock report has real rows.
+                var openingStock = productIndex % 10 == 0 ? 12 : 100;
+                var reorderLevel = productIndex % 10 == 0 ? 10 : 5;
                 inventory.Add(new InventoryItem(
                     branch.Id,
                     product.Id,
-                    100,
-                    5,
-                    [new InventoryMovement(manager.Id, 100, "Opening demo stock", DateTimeOffset.UtcNow.AddDays(-45))]));
+                    openingStock,
+                    reorderLevel,
+                    [new InventoryMovement(manager.Id, openingStock, "Opening demo stock", DateTimeOffset.UtcNow.AddDays(-90))]));
             }
         }
 
-        var seededTransactions = new List<CounterTransaction>(40);
+        var seededTransactions = new List<CounterTransaction>(HistoricalTransactionCount);
         var stableBranches = branches.OrderBy(branch => branch.Code).ToArray();
         var now = DateTimeOffset.UtcNow;
-        for (var index = 0; index < 40; index++)
+        for (var index = 0; index < HistoricalTransactionCount; index++)
         {
             var branch = stableBranches[index % stableBranches.Length];
-            var clerk = staff.First(person => person.Role == StaffRole.CounterClerk && person.BranchId == branch.Id);
-            var product = activeProducts[index % activeProducts.Length];
+            var branchClerks = staff.Where(person => person.Role == StaffRole.CounterClerk && person.BranchId == branch.Id).ToArray();
+            var clerk = branchClerks[index / stableBranches.Length % branchClerks.Length];
+            var product = activeProducts[(index / stableBranches.Length * 7) % activeProducts.Length];
             var quantity = 1 + index % 3;
             var itemIndex = inventory.FindIndex(item => item.BranchId == branch.Id && item.ProductId == product.Id);
-            var occurredAt = now.AddDays(-40 + index).AddHours(index % 9);
+            // ~4 sales per day over the last 60 days, spread over opening hours (UTC).
+            var occurredAt = new DateTimeOffset(now.UtcDateTime.Date, TimeSpan.Zero)
+                .AddDays(-60 + index / 4).AddHours(4 + index % 9).AddMinutes(index % 60);
             var id = StableGuid($"historical-transaction-{index + 1:000}");
             var number = $"APT-{occurredAt:yyyyMMdd}-DEMO{index + 1:0000}";
             var manager = staff.First(person => person.Role == StaffRole.BranchManager && person.BranchId == branch.Id);
@@ -381,7 +400,9 @@ public sealed class DemoDataSeeder(
         }
 
         await inventoryRepository.SaveAllAsync(inventory, cancellationToken);
+        await stageCommitter.SaveChangesAsync(cancellationToken);
         await transactionRepository.SaveAllAsync(seededTransactions, cancellationToken);
+        await stageCommitter.SaveChangesAsync(cancellationToken);
     }
 
     private async Task SeedAuditorHistoryAsync(
@@ -473,8 +494,10 @@ public sealed class DemoDataSeeder(
 
         if (changedVerifications)
             await verificationRepository.SaveAllAsync(verifications, cancellationToken);
+            await stageCommitter.SaveChangesAsync(cancellationToken);
         if (changedOrders)
             await moneyOrderRepository.SaveAllAsync(orders, cancellationToken);
+            await stageCommitter.SaveChangesAsync(cancellationToken);
     }
 
     private static Guid StableGuid(string value)

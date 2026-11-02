@@ -34,8 +34,13 @@ public sealed class RequestTimingActionFilter(ILogger<RequestTimingActionFilter>
     }
 }
 
+/// <summary>
+/// Writes one AuditEntries row per audited MVC action through <see cref="IAuditStore"/>. The store uses its
+/// own short transaction, so the audit write happens after the business unit of work has committed or rolled
+/// back and an audit failure is logged instead of breaking the business transaction (ADR 0047).
+/// </summary>
 public sealed class MvcAuditActionFilter(
-    IAuditLogRepository auditLogRepository,
+    IAuditStore auditStore,
     ILogger<MvcAuditActionFilter> logger) : IAsyncActionFilter
 {
     private static readonly HashSet<(string Controller, string Action)> AuditedActions =
@@ -49,6 +54,7 @@ public sealed class MvcAuditActionFilter(
         ("Administration", "SetStaffActive"),
         ("Catalog", "Create"),
         ("Catalog", "SetActive"),
+        ("Catalog", "RevisePrices"),
         ("Inventory", "Adjust"),
         ("Shipping", "CreateZone"),
         ("Shipping", "CreateRate"),
@@ -118,7 +124,7 @@ public sealed class MvcAuditActionFilter(
     {
         try
         {
-            await auditLogRepository.AppendAsync(record, CancellationToken.None);
+            await auditStore.AppendAsync(record, CancellationToken.None);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {

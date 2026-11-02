@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using ApexPost.Application.Abstractions;
+using ApexPost.Application.Exceptions;
 using ApexPost.Application.Services;
 using ApexPost.Domain.Enums;
 using ApexPost.Web.Models;
@@ -115,6 +116,14 @@ public sealed class CounterTransactionsController(
         {
             return Forbid();
         }
+        catch (ConcurrencyConflictException exception)
+        {
+            // DbUpdateConcurrencyException translated by the unit of work: answer 409 with a clear message.
+            Response.StatusCode = StatusCodes.Status409Conflict;
+            return View("~/Views/Shared/Conflict.cshtml", new ConflictViewModel(
+                exception.Message,
+                Url.Action(nameof(Index), new { branchId }) ?? "/CounterTransactions"));
+        }
         catch (ArgumentException exception)
         {
             TempData["ErrorMessage"] = exception.Message;
@@ -184,6 +193,14 @@ public sealed class CounterTransactionsController(
         catch (UnauthorizedAccessException)
         {
             return Forbid();
+        }
+        catch (ConcurrencyConflictException exception)
+        {
+            // DbUpdateConcurrencyException translated by the unit of work: answer 409 with a clear message.
+            Response.StatusCode = StatusCodes.Status409Conflict;
+            return View("~/Views/Shared/Conflict.cshtml", new ConflictViewModel(
+                exception.Message,
+                Url.Action(nameof(Index), new { branchId }) ?? "/CounterTransactions"));
         }
         catch (InvalidOperationException exception)
         {

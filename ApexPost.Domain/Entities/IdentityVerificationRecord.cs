@@ -1,4 +1,5 @@
 using ApexPost.Domain.Enums;
+using ApexPost.Domain.ValueObjects;
 
 namespace ApexPost.Domain.Entities;
 
@@ -36,6 +37,7 @@ public sealed record IdentityVerificationRecord
         }
 
         ArgumentException.ThrowIfNullOrWhiteSpace(maskedDocumentIdentifier);
+        IdentityDocumentMask.EnsureMasked(maskedDocumentIdentifier, nameof(maskedDocumentIdentifier));
         ArgumentException.ThrowIfNullOrWhiteSpace(correlationId);
         if (moneyOrderAmount <= 0 || decimal.Round(moneyOrderAmount, 2) != moneyOrderAmount)
         {

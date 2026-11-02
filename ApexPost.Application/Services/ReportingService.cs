@@ -26,20 +26,21 @@ public sealed class ReportingService(
         Guid branchId,
         CancellationToken cancellationToken = default)
     {
-        var branchTask = branchRepository.GetByIdAsync(branchId, cancellationToken);
-        var transactionsTask = transactionRepository.GetAllAsync(cancellationToken);
-        var inventoryTask = inventoryRepository.GetAllAsync(cancellationToken);
-        var productsTask = productRepository.GetAllAsync(cancellationToken);
+        // Sequential awaits: the SQL Server repositories share one scoped DbContext per request and a
+        // DbContext must never run two queries concurrently (Task.WhenAll would throw at runtime).
+        var branch = await branchRepository.GetByIdAsync(branchId, cancellationToken)
+            ?? throw new KeyNotFoundException("The branch could not be found.");
+        var transactions = (await transactionRepository.GetAllAsync(cancellationToken)).Where(item => item.BranchId == branchId).ToArray();
+        var inventory = (await inventoryRepository.GetForBranchAsync(branchId, cancellationToken)).ToArray();
+        var products = (await productRepository.GetAllAsync(cancellationToken)).ToDictionary(product => product.Id);
         var moneyOrdersTask = moneyOrderRepository.GetAllAsync(cancellationToken);
+        await moneyOrdersTask;
         var verificationsTask = verificationRepository.GetAllAsync(cancellationToken);
+        await verificationsTask;
         var auditTask = auditLogRepository.GetAllAsync(cancellationToken);
+        await auditTask;
         var notificationsTask = notificationRepository.GetForBranchAsync(branchId, 20, cancellationToken);
-        await Task.WhenAll(branchTask, transactionsTask, inventoryTask, productsTask, moneyOrdersTask, verificationsTask, auditTask, notificationsTask);
-
-        var branch = await branchTask ?? throw new KeyNotFoundException("The branch could not be found.");
-        var transactions = (await transactionsTask).Where(item => item.BranchId == branchId).ToArray();
-        var products = (await productsTask).ToDictionary(product => product.Id);
-        var inventory = (await inventoryTask).Where(item => item.BranchId == branchId).ToArray();
+        await notificationsTask;
         var lowStock = inventory.Where(item => lowStockRule.IsLowStock(item.QuantityOnHand, item.ReorderLevel))
             .Select(item => products.TryGetValue(item.ProductId, out var product) && product.IsActive
                 ? new ProductInventorySummary(

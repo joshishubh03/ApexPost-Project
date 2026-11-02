@@ -8,13 +8,22 @@ using ApexPost.Infrastructure.Persistence.Repositories;
 using ApexPost.Infrastructure.Repositories;
 using ApexPost.Infrastructure.Security;
 using ApexPost.Infrastructure.Seed;
+using ApexPost.Application.Queries;
+using ApexPost.Infrastructure.Persistence.Commands;
+using ApexPost.Infrastructure.Persistence.Queries;
+using ApexPost.Infrastructure.Persistence.StoredProcedures;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ApexPost.Infrastructure;
 
 public static class DependencyInjection
 {
+    /// <summary>
+    /// SQL Server composition: one scoped DbContext per request, shared by the scoped repositories, the unit of
+    /// work, the query services and the commands. Nothing here is a singleton except the stateless interceptor.
+    /// </summary>
     public static IServiceCollection AddApexPostSqlServer(
         this IServiceCollection services,
         string connectionString,
@@ -26,15 +35,19 @@ public static class DependencyInjection
             throw new ArgumentOutOfRangeException(nameof(commandTimeoutSeconds));
         }
 
-        services.AddDbContext<ApexPostDbContext>(options => options.UseSqlServer(
-            connectionString,
-            sql => sql
-                .CommandTimeout(commandTimeoutSeconds)
-                .EnableRetryOnFailure(3, TimeSpan.FromSeconds(5), null)
-                .MigrationsAssembly(typeof(ApexPostDbContext).Assembly.GetName().Name)));
+        services.AddSingleton<ISaveChangesInterceptor, AuditColumnsInterceptor>();
+        services.AddDbContext<ApexPostDbContext>((provider, options) => options
+            .UseSqlServer(
+                connectionString,
+                sql => sql
+                    .CommandTimeout(commandTimeoutSeconds)
+                    // Transient faults (including deadlock victim 1205) retry the whole unit of work.
+                    .EnableRetryOnFailure(3, TimeSpan.FromSeconds(5), null)
+                    .MigrationsAssembly(typeof(ApexPostDbContext).Assembly.GetName().Name))
+            .AddInterceptors(provider.GetServices<ISaveChangesInterceptor>()));
 
-        services.AddScoped<IUnitOfWork, Persistence.EfUnitOfWork>();
-        services.AddScoped<IApplicationMutationCoordinator, EfApplicationMutationCoordinator>();
+        services.AddScoped<IUnitOfWork, EfUnitOfWork>();
+        services.AddScoped<IApplicationMutationCoordinator, UnitOfWorkMutationCoordinator>();
         services.AddScoped<IBranchRepository, EfBranchRepository>();
         services.AddScoped<ICounterTerminalRepository, EfCounterTerminalRepository>();
         services.AddScoped<IStaffRepository, EfStaffRepository>();
@@ -47,6 +60,12 @@ public static class DependencyInjection
         services.AddScoped<IIdentityVerificationRepository, EfIdentityVerificationRepository>();
         services.AddScoped<IAuditLogRepository, EfAuditLogRepository>();
         services.AddScoped<INotificationRepository, EfNotificationRepository>();
+        services.AddScoped<IAuditStore, EfAuditStore>();
+        services.AddScoped<IStoredProcedureService, SqlServerStoredProcedureService>();
+        services.AddScoped<EfReportingQueries>();
+        services.AddScoped<IReportingQueries>(provider => provider.GetRequiredService<EfReportingQueries>());
+        services.AddScoped<IPriceRevisionService, EfPriceRevisionService>();
+        services.AddScoped<IStockAdjustmentCommand, SqlStockAdjustmentCommand>();
         return services;
     }
 
@@ -59,31 +78,19 @@ public static class DependencyInjection
         string? connectionString = null,
         bool useSqlServer = false)
     {
-        services.AddSingleton<IApplicationMutationCoordinator>(_ => new JsonMutationCoordinator(dataDirectory));
-
-        if (useSqlServer && !string.IsNullOrWhiteSpace(connectionString))
+        if (useSqlServer)
         {
-            services.AddDbContext<ApexPostDbContext>(options =>
-                options.UseSqlServer(
-                    connectionString,
-                    sqlServerOptions => sqlServerOptions.MigrationsAssembly(typeof(ApexPostDbContext).Assembly.FullName)));
-
-            services.AddScoped<IUnitOfWork, Persistence.EfUnitOfWork>();
-            services.AddScoped<IBranchRepository, EfBranchRepository>();
-            services.AddScoped<IStaffRepository, EfStaffRepository>();
-            services.AddScoped<IProductRepository, EfProductRepository>();
-            services.AddScoped<IInventoryRepository, EfInventoryRepository>();
-            services.AddScoped<IShippingZoneRepository, EfShippingZoneRepository>();
-            services.AddScoped<IShippingRateRepository, EfShippingRateRepository>();
-            services.AddScoped<ICounterTransactionRepository, EfCounterTransactionRepository>();
-            services.AddScoped<ICounterTerminalRepository, EfCounterTerminalRepository>();
-            services.AddScoped<IMoneyOrderRepository, EfMoneyOrderRepository>();
-            services.AddScoped<IIdentityVerificationRepository, EfIdentityVerificationRepository>();
-            services.AddScoped<IAuditLogRepository, EfAuditLogRepository>();
-            services.AddSingleton<INotificationRepository>(_ => new JsonNotificationRepository(dataDirectory));
+            // SQL Server registrations are intentionally centralized in AddApexPostSqlServer.
+            // Do not register a second DbContext or SQL repositories here.
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                throw new InvalidOperationException(
+                    "SQL Server persistence is enabled, but no connection string was supplied.");
+            }
         }
         else
         {
+            services.AddSingleton<IApplicationMutationCoordinator>(_ => new JsonMutationCoordinator(dataDirectory));
             services.AddSingleton<IBranchRepository>(_ => new JsonBranchRepository(dataDirectory));
             services.AddSingleton<IStaffRepository>(_ => new JsonStaffRepository(dataDirectory));
             services.AddSingleton<IProductRepository>(_ => new JsonProductRepository(dataDirectory));
@@ -96,6 +103,7 @@ public static class DependencyInjection
             services.AddSingleton<IIdentityVerificationRepository>(_ => new JsonIdentityVerificationRepository(dataDirectory));
             services.AddSingleton<IAuditLogRepository>(_ => new JsonAuditLogRepository(dataDirectory));
             services.AddSingleton<INotificationRepository>(_ => new JsonNotificationRepository(dataDirectory));
+            services.AddScoped<IAuditStore, RepositoryAuditStore>();
         }
 
         if (enableSimulatedIdentityVerification)
@@ -130,7 +138,8 @@ public static class DependencyInjection
             serviceProvider.GetRequiredService<IStaffPasswordService>(),
             moneyOrderPolicy,
             demoPassword,
-            serviceProvider.GetRequiredService<IApplicationMutationCoordinator>()));
+            serviceProvider.GetRequiredService<IApplicationMutationCoordinator>(),
+            serviceProvider.GetService<IUnitOfWork>() ?? new NoOpUnitOfWork()));
 
         return services;
     }

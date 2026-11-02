@@ -1,0 +1,412 @@
+﻿{
+    "Server":  "Microsoft SQL Server 2025 (RTM) - 17.0.1000.7 (X64) \n\tOct 21 2025 12:05:57 \n\tCopyright (C) 2025 Microsoft Corporation\n\tEnterprise Evaluation Edition (64-bit) on Windows 10 Pro 10.0 \u003cX64\u003e (Build 22000: ) (Hypervisor)\n",
+    "MeasuredAtUtc":  "2026-11-02T23:06:04.6516861Z",
+    "Rows":  {
+                 "Products":  300,
+                 "Branches":  200,
+                 "BranchStock":  60000,
+                 "TransactionLines":  600000,
+                 "MoneyOrders":  28800,
+                 "CounterTransactions":  300000,
+                 "Shipments":  90000
+             },
+    "Workloads":  [
+                      {
+                          "Id":  "workload1",
+                          "Name":  "Low-stock report across all branches",
+                          "Index":  "CREATE NONCLUSTERED INDEX IX_BranchStock_QuantityOnHand ON dbo.BranchStock (QuantityOnHand) INCLUDE (ReorderLevel);",
+                          "Before":  {
+                                         "LogicalReads":  910,
+                                         "CpuMs":  31,
+                                         "ElapsedMs":  37,
+                                         "Tables":  "Worktable=0, Workfile=0, BranchStock=894, Products=12, Branches=4",
+                                         "PlanShape":  "Index Scan Branches.IX_Branches_Code | Clustered Index Scan Products.PK_Products | Clustered Index Scan BranchStock.PK_BranchStock",
+                                         "Operators":  [
+                                                           {
+                                                               "Operator":  "Index Scan Branches.IX_Branches_Code",
+                                                               "EstimatedRows":  200,
+                                                               "ActualRows":  200
+                                                           },
+                                                           {
+                                                               "Operator":  "Clustered Index Scan Products.PK_Products",
+                                                               "EstimatedRows":  294,
+                                                               "ActualRows":  294
+                                                           },
+                                                           {
+                                                               "Operator":  "Clustered Index Scan BranchStock.PK_BranchStock",
+                                                               "EstimatedRows":  1863,
+                                                               "ActualRows":  1863
+                                                           }
+                                                       ]
+                                     },
+                          "After":  {
+                                        "LogicalReads":  30,
+                                        "CpuMs":  16,
+                                        "ElapsedMs":  8,
+                                        "Tables":  "Worktable=0, Workfile=0, BranchStock=14, Products=12, Branches=4",
+                                        "PlanShape":  "Index Scan Branches.IX_Branches_Code | Clustered Index Scan Products.PK_Products | Index Seek BranchStock.IX_BranchStock_QuantityOnHand",
+                                        "Operators":  [
+                                                          {
+                                                              "Operator":  "Index Scan Branches.IX_Branches_Code",
+                                                              "EstimatedRows":  200,
+                                                              "ActualRows":  200
+                                                          },
+                                                          {
+                                                              "Operator":  "Clustered Index Scan Products.PK_Products",
+                                                              "EstimatedRows":  294,
+                                                              "ActualRows":  294
+                                                          },
+                                                          {
+                                                              "Operator":  "Index Seek BranchStock.IX_BranchStock_QuantityOnHand",
+                                                              "EstimatedRows":  1863,
+                                                              "ActualRows":  1863
+                                                          }
+                                                      ]
+                                    },
+                          "WriteBefore":  {
+                                              "LogicalReads":  111251,
+                                              "CpuMs":  375,
+                                              "ElapsedMs":  378,
+                                              "Tables":  "BranchStock=90847, Worktable=20404",
+                                              "PlanShape":  "Index Scan BranchStock.IX_BranchStock_BranchId_QuantityOnHand",
+                                              "Operators":  [
+                                                                {
+                                                                    "Operator":  "Index Scan BranchStock.IX_BranchStock_BranchId_QuantityOnHand",
+                                                                    "EstimatedRows":  10000,
+                                                                    "ActualRows":  10000
+                                                                }
+                                                            ]
+                                          },
+                          "WriteAfter":  {
+                                             "LogicalReads":  171298,
+                                             "CpuMs":  485,
+                                             "ElapsedMs":  509,
+                                             "Tables":  "BranchStock=150894, Worktable=20404",
+                                             "PlanShape":  "Index Scan BranchStock.IX_BranchStock_QuantityOnHand",
+                                             "Operators":  [
+                                                               {
+                                                                   "Operator":  "Index Scan BranchStock.IX_BranchStock_QuantityOnHand",
+                                                                   "EstimatedRows":  10000,
+                                                                   "ActualRows":  10000
+                                                               }
+                                                           ]
+                                         },
+                          "IndexSizeKb":  4440
+                      },
+                      {
+                          "Id":  "workload2",
+                          "Name":  "Daily sales for one branch and day",
+                          "Index":  "CREATE NONCLUSTERED INDEX IX_CounterTransactions_Branch_OccurredAt_Covering ON dbo.CounterTransactions (BranchId, OccurredAt) INCLUDE (Status, TotalAmount, ShippingCharge, ShippingTaxAmount, MoneyOrderAmount, MoneyOrderFee);",
+                          "Before":  {
+                                         "LogicalReads":  24,
+                                         "CpuMs":  0,
+                                         "ElapsedMs":  1,
+                                         "Tables":  "Branches=2, CounterTransactions=22",
+                                         "PlanShape":  "Index Seek CounterTransactions.IX_CounterTransactions_BranchId_OccurredAt | Clustered Index Seek CounterTransactions.PK_CounterTransactions",
+                                         "Operators":  [
+                                                           {
+                                                               "Operator":  "Index Seek CounterTransactions.IX_CounterTransactions_BranchId_OccurredAt",
+                                                               "EstimatedRows":  65.0075,
+                                                               "ActualRows":  5
+                                                           },
+                                                           {
+                                                               "Operator":  "Clustered Index Seek CounterTransactions.PK_CounterTransactions",
+                                                               "EstimatedRows":  0.993691,
+                                                               "ActualRows":  5
+                                                           }
+                                                       ]
+                                     },
+                          "After":  {
+                                        "LogicalReads":  5,
+                                        "CpuMs":  0,
+                                        "ElapsedMs":  1,
+                                        "Tables":  "Branches=2, CounterTransactions=3",
+                                        "PlanShape":  "Index Seek CounterTransactions.IX_CounterTransactions_Branch_OccurredAt_Covering",
+                                        "Operators":  [
+                                                          {
+                                                              "Operator":  "Index Seek CounterTransactions.IX_CounterTransactions_Branch_OccurredAt_Covering",
+                                                              "EstimatedRows":  64.5973,
+                                                              "ActualRows":  5
+                                                          }
+                                                      ]
+                                    },
+                          "WriteBefore":  {
+                                              "LogicalReads":  457,
+                                              "CpuMs":  63,
+                                              "ElapsedMs":  77,
+                                              "Tables":  "CounterTransactions=457",
+                                              "PlanShape":  "Clustered Index Scan CounterTransactions.PK_CounterTransactions",
+                                              "Operators":  [
+                                                                {
+                                                                    "Operator":  "Clustered Index Scan CounterTransactions.PK_CounterTransactions",
+                                                                    "EstimatedRows":  10000,
+                                                                    "ActualRows":  10000
+                                                                }
+                                                            ]
+                                          },
+                          "WriteAfter":  {
+                                             "LogicalReads":  30457,
+                                             "CpuMs":  250,
+                                             "ElapsedMs":  304,
+                                             "Tables":  "CounterTransactions=30457",
+                                             "PlanShape":  "Clustered Index Scan CounterTransactions.PK_CounterTransactions",
+                                             "Operators":  [
+                                                               {
+                                                                   "Operator":  "Clustered Index Scan CounterTransactions.PK_CounterTransactions",
+                                                                   "EstimatedRows":  10000,
+                                                                   "ActualRows":  10000
+                                                               }
+                                                           ]
+                                         },
+                          "IndexSizeKb":  52720
+                      },
+                      {
+                          "Id":  "workload3",
+                          "Name":  "Shipment search by zone and service level",
+                          "Index":  "CREATE NONCLUSTERED INDEX IX_Shipments_ShippingRateId_Status ON dbo.Shipments (ShippingRateId, Status) INCLUDE (CounterTransactionId, WeightKilograms) WITH (DROP_EXISTING = ON);",
+                          "Before":  {
+                                         "LogicalReads":  7439,
+                                         "CpuMs":  64,
+                                         "ElapsedMs":  19,
+                                         "Tables":  "ShippingRates=2, ShippingZones=2, CounterTransactions=4627, Workfile=0, Worktable=0, Shipments=2808, Worktable=0",
+                                         "PlanShape":  "Index Seek ShippingZones.IX_ShippingZones_Code | Index Seek ShippingRates.IX_ShippingRates_ZoneId_ServiceLevel | Clustered Index Scan Shipments.PK_Shipments | Clustered Index Seek CounterTransactions.PK_CounterTransactions",
+                                         "Operators":  [
+                                                           {
+                                                               "Operator":  "Index Seek ShippingZones.IX_ShippingZones_Code",
+                                                               "EstimatedRows":  1,
+                                                               "ActualRows":  1
+                                                           },
+                                                           {
+                                                               "Operator":  "Index Seek ShippingRates.IX_ShippingRates_ZoneId_ServiceLevel",
+                                                               "EstimatedRows":  1,
+                                                               "ActualRows":  1
+                                                           },
+                                                           {
+                                                               "Operator":  "Clustered Index Scan Shipments.PK_Shipments",
+                                                               "EstimatedRows":  83317.1,
+                                                               "ActualRows":  1500
+                                                           },
+                                                           {
+                                                               "Operator":  "Clustered Index Seek CounterTransactions.PK_CounterTransactions",
+                                                               "EstimatedRows":  1,
+                                                               "ActualRows":  129
+                                                           }
+                                                       ]
+                                     },
+                          "After":  {
+                                        "LogicalReads":  4623,
+                                        "CpuMs":  15,
+                                        "ElapsedMs":  9,
+                                        "Tables":  "CounterTransactions=4602, Shipments=17, ShippingRates=2, ShippingZones=2",
+                                        "PlanShape":  "Index Seek ShippingZones.IX_ShippingZones_Code | Index Seek ShippingRates.IX_ShippingRates_ZoneId_ServiceLevel | Index Seek Shipments.IX_Shipments_ShippingRateId_Status | Clustered Index Seek CounterTransactions.PK_CounterTransactions",
+                                        "Operators":  [
+                                                          {
+                                                              "Operator":  "Index Seek ShippingZones.IX_ShippingZones_Code",
+                                                              "EstimatedRows":  1,
+                                                              "ActualRows":  1
+                                                          },
+                                                          {
+                                                              "Operator":  "Index Seek ShippingRates.IX_ShippingRates_ZoneId_ServiceLevel",
+                                                              "EstimatedRows":  1,
+                                                              "ActualRows":  1
+                                                          },
+                                                          {
+                                                              "Operator":  "Index Seek Shipments.IX_Shipments_ShippingRateId_Status",
+                                                              "EstimatedRows":  1396.26,
+                                                              "ActualRows":  1500
+                                                          },
+                                                          {
+                                                              "Operator":  "Clustered Index Seek CounterTransactions.PK_CounterTransactions",
+                                                              "EstimatedRows":  1,
+                                                              "ActualRows":  129
+                                                          }
+                                                      ]
+                                    },
+                          "WriteBefore":  {
+                                              "LogicalReads":  111203,
+                                              "CpuMs":  593,
+                                              "ElapsedMs":  636,
+                                              "Tables":  "Shipments=90847, Worktable=20356",
+                                              "PlanShape":  "Index Scan Shipments.IX_Shipments_ShippingRateId_Status",
+                                              "Operators":  [
+                                                                {
+                                                                    "Operator":  "Index Scan Shipments.IX_Shipments_ShippingRateId_Status",
+                                                                    "EstimatedRows":  10000,
+                                                                    "ActualRows":  10000
+                                                                }
+                                                            ]
+                                          },
+                          "WriteAfter":  {
+                                             "LogicalReads":  111281,
+                                             "CpuMs":  438,
+                                             "ElapsedMs":  529,
+                                             "Tables":  "Shipments=90925, Worktable=20356",
+                                             "PlanShape":  "Index Scan Shipments.IX_Shipments_ShippingRateId_Status",
+                                             "Operators":  [
+                                                               {
+                                                                   "Operator":  "Index Scan Shipments.IX_Shipments_ShippingRateId_Status",
+                                                                   "EstimatedRows":  10000,
+                                                                   "ActualRows":  10000
+                                                               }
+                                                           ]
+                                         },
+                          "IndexSizeKb":  7968
+                      },
+                      {
+                          "Id":  "workload4",
+                          "Name":  "Money-order search for auditors (verified, last 90 days)",
+                          "Index":  "CREATE NONCLUSTERED INDEX IX_MoneyOrders_Verified_OccurredAt ON dbo.MoneyOrders (OccurredAt) INCLUDE (MoneyOrderNumber, Amount, MaskedDocumentIdentifier, BranchId, Status) WHERE VerificationStatus = \u0027Verified\u0027;",
+                          "Before":  {
+                                         "LogicalReads":  1187,
+                                         "CpuMs":  16,
+                                         "ElapsedMs":  11,
+                                         "Tables":  "MoneyOrders=1187",
+                                         "PlanShape":  "Clustered Index Scan MoneyOrders.PK_MoneyOrders",
+                                         "Operators":  [
+                                                           {
+                                                               "Operator":  "Clustered Index Scan MoneyOrders.PK_MoneyOrders",
+                                                               "EstimatedRows":  2402.82,
+                                                               "ActualRows":  1016
+                                                           }
+                                                       ]
+                                     },
+                          "After":  {
+                                        "LogicalReads":  17,
+                                        "CpuMs":  0,
+                                        "ElapsedMs":  2,
+                                        "Tables":  "MoneyOrders=17",
+                                        "PlanShape":  "Constant Scan  | Index Seek MoneyOrders.IX_MoneyOrders_Verified_OccurredAt",
+                                        "Operators":  [
+                                                          {
+                                                              "Operator":  "Constant Scan ",
+                                                              "EstimatedRows":  1,
+                                                              "ActualRows":  1
+                                                          },
+                                                          {
+                                                              "Operator":  "Index Seek MoneyOrders.IX_MoneyOrders_Verified_OccurredAt",
+                                                              "EstimatedRows":  1185.7,
+                                                              "ActualRows":  1016
+                                                          }
+                                                      ]
+                                    },
+                          "WriteBefore":  {
+                                              "LogicalReads":  1187,
+                                              "CpuMs":  47,
+                                              "ElapsedMs":  62,
+                                              "Tables":  "MoneyOrders=1187",
+                                              "PlanShape":  "Clustered Index Scan MoneyOrders.PK_MoneyOrders",
+                                              "Operators":  [
+                                                                {
+                                                                    "Operator":  "Clustered Index Scan MoneyOrders.PK_MoneyOrders",
+                                                                    "EstimatedRows":  4800,
+                                                                    "ActualRows":  4800
+                                                                }
+                                                            ]
+                                          },
+                          "WriteAfter":  {
+                                             "LogicalReads":  34022,
+                                             "CpuMs":  110,
+                                             "ElapsedMs":  134,
+                                             "Tables":  "MoneyOrders=34022",
+                                             "PlanShape":  "Index Scan MoneyOrders.IX_MoneyOrders_Verified_OccurredAt",
+                                             "Operators":  [
+                                                               {
+                                                                   "Operator":  "Index Scan MoneyOrders.IX_MoneyOrders_Verified_OccurredAt",
+                                                                   "EstimatedRows":  4800,
+                                                                   "ActualRows":  4800
+                                                               }
+                                                           ]
+                                         },
+                          "IndexSizeKb":  904
+                      }
+                  ],
+    "Sargable":  {
+                     "Before":  {
+                                    "LogicalReads":  1948,
+                                    "CpuMs":  79,
+                                    "ElapsedMs":  80,
+                                    "Tables":  "CounterTransactions=1948",
+                                    "PlanShape":  "Index Seek CounterTransactions.IX_CounterTransactions_Status_OccurredAt",
+                                    "Operators":  [
+                                                      {
+                                                          "Operator":  "Index Seek CounterTransactions.IX_CounterTransactions_Status_OccurredAt",
+                                                          "EstimatedRows":  3545.31,
+                                                          "ActualRows":  6490
+                                                      }
+                                                  ]
+                                },
+                     "After":  {
+                                   "LogicalReads":  41,
+                                   "CpuMs":  0,
+                                   "ElapsedMs":  3,
+                                   "Tables":  "CounterTransactions=41",
+                                   "PlanShape":  "Index Seek CounterTransactions.IX_CounterTransactions_Status_OccurredAt",
+                                   "Operators":  [
+                                                     {
+                                                         "Operator":  "Index Seek CounterTransactions.IX_CounterTransactions_Status_OccurredAt",
+                                                         "EstimatedRows":  2605.4,
+                                                         "ActualRows":  5674
+                                                     }
+                                                 ]
+                               }
+                 },
+    "Statistics":  {
+                       "Fresh":  {
+                                     "LogicalReads":  26,
+                                     "CpuMs":  0,
+                                     "ElapsedMs":  1,
+                                     "Tables":  "Branches=2, CounterTransactions=24",
+                                     "PlanShape":  "Constant Scan  | Index Seek CounterTransactions.IX_CounterTransactions_Branch_OccurredAt_Covering",
+                                     "Operators":  [
+                                                       {
+                                                           "Operator":  "Constant Scan ",
+                                                           "EstimatedRows":  1,
+                                                           "ActualRows":  1
+                                                       },
+                                                       {
+                                                           "Operator":  "Index Seek CounterTransactions.IX_CounterTransactions_Branch_OccurredAt_Covering",
+                                                           "EstimatedRows":  1500,
+                                                           "ActualRows":  1500
+                                                       }
+                                                   ]
+                                 },
+                       "Stale":  {
+                                     "LogicalReads":  1351,
+                                     "CpuMs":  31,
+                                     "ElapsedMs":  35,
+                                     "Tables":  "Branches=2, CounterTransactions=1349",
+                                     "PlanShape":  "Constant Scan  | Index Seek CounterTransactions.IX_CounterTransactions_Branch_OccurredAt_Covering",
+                                     "Operators":  [
+                                                       {
+                                                           "Operator":  "Constant Scan ",
+                                                           "EstimatedRows":  1,
+                                                           "ActualRows":  1
+                                                       },
+                                                       {
+                                                           "Operator":  "Index Seek CounterTransactions.IX_CounterTransactions_Branch_OccurredAt_Covering",
+                                                           "EstimatedRows":  1500,
+                                                           "ActualRows":  61500
+                                                       }
+                                                   ]
+                                 },
+                       "Updated":  {
+                                       "LogicalReads":  1351,
+                                       "CpuMs":  31,
+                                       "ElapsedMs":  31,
+                                       "Tables":  "Branches=2, CounterTransactions=1349",
+                                       "PlanShape":  "Constant Scan  | Index Seek CounterTransactions.IX_CounterTransactions_Branch_OccurredAt_Covering",
+                                       "Operators":  [
+                                                         {
+                                                             "Operator":  "Constant Scan ",
+                                                             "EstimatedRows":  1,
+                                                             "ActualRows":  1
+                                                         },
+                                                         {
+                                                             "Operator":  "Index Seek CounterTransactions.IX_CounterTransactions_Branch_OccurredAt_Covering",
+                                                             "EstimatedRows":  61500,
+                                                             "ActualRows":  61500
+                                                         }
+                                                     ]
+                                   }
+                   }
+}

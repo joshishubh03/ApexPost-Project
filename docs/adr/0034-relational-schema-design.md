@@ -1,6 +1,6 @@
 ﻿# 0034: Relational schema design and 3NF normalization
 
-- Status: Accepted
+- Status: Superseded by 0041
 - Date: 2026-11-01
 
 ## Context

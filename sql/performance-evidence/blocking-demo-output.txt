@@ -1,0 +1,51 @@
+﻿Isolation level: READ COMMITTED for both readers (database settings below)
+Run at: 2026-11-03T04:27:23.9137655+05:30
+
+name is_read_committed_snapshot_on snapshot_isolation_state_desc is_accelerated_database_recovery_on is_optimized_locking_on product_version
+---- ----------------------------- ----------------------------- ----------------------------------- ----------------------- ---------------
+ApexPostDb 1 OFF 0 0 17.0.4025.3
+
+--- Session 1 (writer) ---
+writer_locked_at writer_spid
+---------------- -----------
+2026-11-03 04:27:03.866 84
+writer_released_at
+------------------
+2026-11-03 04:27:23.882
+
+--- Session 3 (observer, while the reader is blocked) ---
+session_id blocking_session_id wait_type wait_ms wait_resource
+---------- ------------------- --------- ------- -------------
+87 84 LCK_M_S 2020 KEY: 5:72057594048806912 (6f5b67fe6cb0)
+request_session_id resource_type request_mode request_status table_name index_name
+------------------ ------------- ------------ -------------- ---------- ----------
+84 KEY X GRANT BranchStock IX_BranchStock_BranchId_QuantityOnHand
+84 OBJECT IX GRANT NULL NULL
+84 KEY X GRANT BranchStock IX_BranchStock_BranchId_QuantityOnHand
+84 KEY X GRANT BranchStock PK_BranchStock
+87 OBJECT Sch-S GRANT NULL NULL
+87 OBJECT Sch-S GRANT NULL NULL
+87 OBJECT IS GRANT NULL NULL
+87 KEY S WAIT BranchStock IX_BranchStock_BranchId_QuantityOnHand
+
+--- Session 2a (reader, default READ COMMITTED - uses row versions when RCSI is ON) ---
+reader_started_at
+-----------------
+2026-11-03 04:27:04.086
+QuantityOnHand
+--------------
+97
+reader_spid reader_finished_at reader_waited_ms
+----------- ------------------ ----------------
+86 2026-11-03 04:27:04.086 0
+
+--- Session 2b (reader, WITH (READCOMMITTEDLOCK) - classic locking read) ---
+reader_started_at
+-----------------
+2026-11-03 04:27:04.086
+QuantityOnHand
+--------------
+97
+reader_spid reader_finished_at reader_waited_ms
+----------- ------------------ ----------------
+87 2026-11-03 04:27:23.882 19796

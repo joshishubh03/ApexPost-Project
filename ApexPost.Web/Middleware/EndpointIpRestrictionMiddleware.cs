@@ -11,6 +11,7 @@ public sealed class EndpointIpRestrictionMiddleware(RequestDelegate next, IConfi
             (HttpMethods.IsPost(context.Request.Method) &&
                 (path.StartsWithSegments("/Catalog/Create") ||
                  path.StartsWithSegments("/Catalog/SetActive") ||
+                 path.StartsWithSegments("/Catalog/RevisePrices") ||
                  path.StartsWithSegments("/Inventory/Adjust") ||
                  path.StartsWithSegments("/Shipping/CreateZone") ||
                  path.StartsWithSegments("/Shipping/CreateRate")));

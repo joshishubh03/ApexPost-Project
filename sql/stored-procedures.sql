@@ -1,180 +1,198 @@
-USE ApexPostDb;
-GO
-
-SET NOCOUNT ON;
-GO
+/*
+    ApexPost stored procedures (SQL Server). Created by the EF Core migration
+    20261102223854_Week3SchemaCompliance (migrationBuilder.Sql) and kept here for review / SSMS use.
+    Every procedure: CREATE OR ALTER, SET NOCOUNT ON, parameter validation, THROW with meaningful messages.
+    Error numbers: 50001-50003 missing/invalid input, 50004 unknown branch (mapped to HTTP 404 by the app),
+    50005-50013 business-rule violations.
+*/
 
 CREATE OR ALTER PROCEDURE dbo.usp_DailyBranchSales
-	@BranchCode varchar(20),
-	@Date date
+    @BranchCode varchar(12),
+    @Date date
 AS
 BEGIN
-	SET NOCOUNT ON;
-	SET XACT_ABORT ON;
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
 
-	IF @BranchCode IS NULL OR LTRIM(RTRIM(@BranchCode)) = ''
-		THROW 50001, 'Branch code is required.', 1;
+    IF @BranchCode IS NULL OR LTRIM(RTRIM(@BranchCode)) = ''
+        THROW 50001, N'@BranchCode is required.', 1;
+    IF @Date IS NULL
+        THROW 50002, N'@Date is required.', 1;
+    IF @Date > CAST(SYSUTCDATETIME() AS date)
+        THROW 50003, N'@Date cannot be in the future.', 1;
 
-	IF @Date IS NULL
-		THROW 50002, 'Sales date is required.', 1;
+    DECLARE @BranchId uniqueidentifier = (SELECT b.Id FROM dbo.Branches AS b WHERE b.Code = @BranchCode);
+    IF @BranchId IS NULL
+    BEGIN
+        DECLARE @Missing nvarchar(200) = CONCAT(N'Branch code not found: ', @BranchCode);
+        THROW 50004, @Missing, 1;
+    END;
 
-	SELECT
-		b.Code AS BranchCode,
-		CAST(ct.OccurredAtUtc AS date) AS SaleDate,
-		SUM(CASE
-				WHEN line.TaxCategory IN ('Postage', 'Shipping', 'Money Order') THEN line.LineTotal
-				ELSE 0
-			END) AS ServiceRevenue,
-		SUM(CASE
-				WHEN line.TaxCategory NOT IN ('Postage', 'Shipping', 'Money Order') THEN line.LineTotal
-				ELSE 0
-			END) AS RetailRevenue
-	FROM dbo.Branches AS b
-	INNER JOIN dbo.CounterTransactions AS ct
-		ON ct.BranchId = b.Id
-	OUTER APPLY OPENJSON(ct.LinesJson)
-		WITH (
-			TaxCategory nvarchar(50) '$.TaxCategory',
-			LineTotal decimal(18,2) '$.LineTotal'
-		) AS line
-	WHERE b.Code = @BranchCode
-	  AND CAST(ct.OccurredAtUtc AS date) = @Date
-	  AND ct.Status IN ('Paid', 'Completed')
-	GROUP BY b.Code, CAST(ct.OccurredAtUtc AS date)
-	ORDER BY SaleDate;
-END;
+    -- SARGable UTC day window on the indexed (BranchId, OccurredAt) key - never CAST(OccurredAt AS date).
+    DECLARE @From datetimeoffset(3) = TODATETIMEOFFSET(CAST(@Date AS datetime2(3)), 0);
+    DECLARE @To datetimeoffset(3) = DATEADD(day, 1, @From);
+
+    WITH Sales AS
+    (
+        SELECT ct.Id, ct.ShippingCharge, ct.ShippingTaxAmount, ct.MoneyOrderAmount, ct.MoneyOrderFee
+        FROM dbo.CounterTransactions AS ct
+        WHERE ct.BranchId = @BranchId
+          AND ct.OccurredAt >= @From
+          AND ct.OccurredAt < @To
+          AND ct.Status IN ('Paid', 'Completed')
+    ),
+    LineTotals AS
+    (
+        SELECT s.Id,
+               SUM(CASE WHEN p.Category IN (N'Postage', N'Shipping', N'Money Order') THEN 0 ELSE tl.LineTotal + tl.TaxAmount END) AS Retail,
+               SUM(CASE WHEN p.Category IN (N'Postage', N'Shipping', N'Money Order') THEN tl.LineTotal + tl.TaxAmount ELSE 0 END) AS ServiceLines
+        FROM Sales AS s
+        INNER JOIN dbo.TransactionLines AS tl ON tl.CounterTransactionId = s.Id
+        INNER JOIN dbo.Products AS p ON p.Id = tl.ProductId
+        GROUP BY s.Id
+    )
+    SELECT
+        CAST(@BranchCode AS varchar(12)) AS BranchCode,
+        @Date AS SaleDate,
+        COUNT(s.Id) AS TransactionCount,
+        CAST(ISNULL(SUM(lt.Retail), 0) AS decimal(18, 2)) AS RetailRevenue,
+        CAST(ISNULL(SUM(ISNULL(lt.ServiceLines, 0) + s.ShippingCharge + s.ShippingTaxAmount + s.MoneyOrderAmount + s.MoneyOrderFee), 0) AS decimal(18, 2)) AS ServiceRevenue
+    FROM Sales AS s
+    LEFT JOIN LineTotals AS lt ON lt.Id = s.Id;
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.usp_LowStockReport
-	@BranchCode varchar(20) = NULL,
-	@Threshold int
+    @BranchCode varchar(12) = NULL,
+    @Threshold int
 AS
 BEGIN
-	SET NOCOUNT ON;
-	SET XACT_ABORT ON;
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
 
-	IF @Threshold IS NULL OR @Threshold < 0
-		THROW 50003, 'Threshold must be a non-negative integer.', 1;
+    IF @Threshold IS NULL OR @Threshold < 0 OR @Threshold > 1000
+        THROW 50005, N'@Threshold must be between 0 and 1000.', 1;
 
-	SELECT
-		b.Code AS BranchCode,
-		p.Sku,
-		p.Name AS ProductName,
-		i.QuantityOnHand,
-		i.ReorderLevel,
-		(i.QuantityOnHand - i.ReorderLevel) AS BelowReorderLevel
-	FROM dbo.Inventory AS i
-	INNER JOIN dbo.Branches AS b
-		ON b.Id = i.BranchId
-	INNER JOIN dbo.Products AS p
-		ON p.Id = i.ProductId
-	WHERE i.QuantityOnHand <= @Threshold
-	  AND (@BranchCode IS NULL OR b.Code = @BranchCode)
-	ORDER BY b.Code, p.Sku
-	OPTION (RECOMPILE);
-END;
+    IF @BranchCode IS NOT NULL AND NOT EXISTS (SELECT 1 FROM dbo.Branches WHERE Code = @BranchCode)
+    BEGIN
+        DECLARE @Missing nvarchar(200) = CONCAT(N'Branch code not found: ', @BranchCode);
+        THROW 50004, @Missing, 1;
+    END;
+
+    -- Optional parameter: OPTION (RECOMPILE) compiles a plan for the actual values, so one branch
+    -- seeks IX_BranchStock_BranchId_QuantityOnHand and "all branches" scans once. See ADR 0043.
+    SELECT
+        b.Code AS BranchCode,
+        p.Sku,
+        p.Name AS ProductName,
+        bs.QuantityOnHand,
+        bs.ReorderLevel,
+        CASE WHEN bs.ReorderLevel > bs.QuantityOnHand THEN bs.ReorderLevel - bs.QuantityOnHand ELSE 0 END AS Shortfall
+    FROM dbo.BranchStock AS bs
+    INNER JOIN dbo.Branches AS b ON b.Id = bs.BranchId
+    INNER JOIN dbo.Products AS p ON p.Id = bs.ProductId
+    WHERE bs.QuantityOnHand <= @Threshold
+      AND p.IsActive = 1
+      AND (@BranchCode IS NULL OR b.Code = @BranchCode)
+    ORDER BY b.Code, bs.QuantityOnHand, p.Sku
+    OPTION (RECOMPILE);
+END
 GO
 
 CREATE OR ALTER PROCEDURE dbo.usp_AdjustStock
-	@BranchCode varchar(20),
-	@Sku varchar(60),
-	@Delta int,
-	@Reason nvarchar(200),
-	@ChangedBy varchar(120)
+    @BranchCode varchar(12),
+    @Sku varchar(32),
+    @Delta int,
+    @Reason nvarchar(250),
+    @ChangedBy varchar(254)
 AS
 BEGIN
-	SET NOCOUNT ON;
-	SET XACT_ABORT ON;
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
 
-	IF @BranchCode IS NULL OR LTRIM(RTRIM(@BranchCode)) = ''
-		THROW 50004, 'Branch code is required.', 1;
+    IF @BranchCode IS NULL OR LTRIM(RTRIM(@BranchCode)) = ''
+        THROW 50001, N'@BranchCode is required.', 1;
+    IF @Sku IS NULL OR LTRIM(RTRIM(@Sku)) = ''
+        THROW 50006, N'@Sku is required.', 1;
+    IF @Delta IS NULL OR @Delta = 0
+        THROW 50007, N'@Delta must be a non-zero number of units.', 1;
+    IF @Reason IS NULL OR LEN(LTRIM(RTRIM(@Reason))) < 3
+        THROW 50008, N'@Reason must contain at least three characters.', 1;
+    IF @ChangedBy IS NULL OR LTRIM(RTRIM(@ChangedBy)) = ''
+        THROW 50009, N'@ChangedBy is required.', 1;
 
-	IF @Sku IS NULL OR LTRIM(RTRIM(@Sku)) = ''
-		THROW 50005, 'Product SKU is required.', 1;
+    DECLARE @BranchId uniqueidentifier = (SELECT Id FROM dbo.Branches WHERE Code = @BranchCode);
+    DECLARE @ProductId uniqueidentifier = (SELECT Id FROM dbo.Products WHERE Sku = UPPER(LTRIM(RTRIM(@Sku))) AND IsActive = 1);
+    DECLARE @StaffId uniqueidentifier = (SELECT Id FROM dbo.Staff WHERE Email = LOWER(LTRIM(RTRIM(@ChangedBy))) AND IsActive = 1);
+    DECLARE @Message nvarchar(300);
 
-	IF @Delta = 0
-		THROW 50006, 'Stock delta cannot be zero.', 1;
+    IF @BranchId IS NULL
+    BEGIN
+        SET @Message = CONCAT(N'Branch code not found: ', @BranchCode);
+        THROW 50004, @Message, 1;
+    END;
+    IF @ProductId IS NULL
+    BEGIN
+        SET @Message = CONCAT(N'Active product SKU not found: ', @Sku);
+        THROW 50010, @Message, 1;
+    END;
+    IF @StaffId IS NULL
+    BEGIN
+        SET @Message = CONCAT(N'@ChangedBy must be the e-mail of an active staff member: ', @ChangedBy);
+        THROW 50011, @Message, 1;
+    END;
 
-	IF @Reason IS NULL OR LTRIM(RTRIM(@Reason)) = ''
-		THROW 50007, 'Adjustment reason is required.', 1;
+    DECLARE @AdjustmentId uniqueidentifier = NEWID();
+    DECLARE @Now datetime2(3) = SYSUTCDATETIME();
+    DECLARE @NewQuantity TABLE (QuantityOnHand int NOT NULL);
+    -- Join an outer transaction (EF Core explicit transaction) instead of committing it.
+    DECLARE @OwnsTransaction bit = CASE WHEN @@TRANCOUNT = 0 THEN 1 ELSE 0 END;
 
-	IF @ChangedBy IS NULL OR LTRIM(RTRIM(@ChangedBy)) = ''
-		THROW 50008, 'ChangedBy is required.', 1;
+    BEGIN TRY
+        IF @OwnsTransaction = 1
+            BEGIN TRANSACTION;
 
-	DECLARE @BranchId uniqueidentifier;
-	DECLARE @ProductId uniqueidentifier;
-	DECLARE @ActorId uniqueidentifier;
-	DECLARE @NewQuantity int;
-	DECLARE @BranchNotFoundMessage nvarchar(200);
-	DECLARE @ProductNotFoundMessage nvarchar(200);
-	DECLARE @MissingActorMessage nvarchar(200);
+        -- Same table order as the counter sale (BranchStock, then history): avoids lock-order deadlocks.
+        -- The guarded UPDATE is atomic: the row is updated only if it stays >= 0, no read-then-write race.
+        UPDATE dbo.BranchStock
+        SET QuantityOnHand = QuantityOnHand + @Delta,
+            ModifiedAtUtc = @Now,
+            ModifiedBy = @StaffId
+        OUTPUT inserted.QuantityOnHand INTO @NewQuantity
+        WHERE BranchId = @BranchId
+          AND ProductId = @ProductId
+          AND QuantityOnHand + @Delta >= 0;
 
-	SELECT @BranchId = Id
-	FROM dbo.Branches
-	WHERE Code = @BranchCode;
+        IF NOT EXISTS (SELECT 1 FROM @NewQuantity)
+        BEGIN
+            IF EXISTS (SELECT 1 FROM dbo.BranchStock WHERE BranchId = @BranchId AND ProductId = @ProductId)
+            BEGIN
+                SET @Message = CONCAT(N'Adjustment would make stock negative for ', @Sku, N' at ', @BranchCode, N'.');
+                THROW 50012, @Message, 1;
+            END;
+            IF @Delta < 0
+            BEGIN
+                SET @Message = CONCAT(N'No stock is recorded for ', @Sku, N' at ', @BranchCode, N'.');
+                THROW 50013, @Message, 1;
+            END;
 
-	IF @BranchId IS NULL
-	BEGIN
-		SET @BranchNotFoundMessage = CONCAT('Branch code not found: ', @BranchCode);
-		THROW 50009, @BranchNotFoundMessage, 1;
-	END;
+            INSERT dbo.BranchStock (BranchId, ProductId, QuantityOnHand, ReorderLevel, CreatedAtUtc, CreatedBy)
+            OUTPUT inserted.QuantityOnHand INTO @NewQuantity
+            VALUES (@BranchId, @ProductId, @Delta, 0, @Now, @StaffId);
+        END;
 
-	SELECT @ProductId = Id
-	FROM dbo.Products
-	WHERE Sku = UPPER(LTRIM(RTRIM(@Sku)));
+        INSERT dbo.StockAdjustments (Id, BranchId, ProductId, StaffId, QuantityChange, Reason, OccurredAt, CreatedAtUtc, CreatedBy)
+        VALUES (@AdjustmentId, @BranchId, @ProductId, @StaffId, @Delta, LTRIM(RTRIM(@Reason)), TODATETIMEOFFSET(@Now, 0), @Now, @StaffId);
 
-	IF @ProductId IS NULL
-	BEGIN
-		SET @ProductNotFoundMessage = CONCAT('Product SKU not found: ', @Sku);
-		THROW 50010, @ProductNotFoundMessage, 1;
-	END;
+        IF @OwnsTransaction = 1
+            COMMIT TRANSACTION;
 
-	SELECT @ActorId = Id
-	FROM dbo.Staff
-	WHERE Email = @ChangedBy OR FullName = @ChangedBy;
-
-	IF @ActorId IS NULL
-	BEGIN
-		SET @MissingActorMessage = CONCAT('ChangedBy must match a staff email or name: ', @ChangedBy);
-		THROW 50011, @MissingActorMessage, 1;
-	END;
-
-	BEGIN TRY
-		BEGIN TRAN;
-
-		SELECT @NewQuantity = QuantityOnHand
-		FROM dbo.Inventory
-		WHERE BranchId = @BranchId AND ProductId = @ProductId;
-
-		IF @NewQuantity IS NULL
-		BEGIN
-			DECLARE @MissingInventoryMessage nvarchar(200) = CONCAT('No stock row exists for branch ', @BranchCode, ' and product ', @Sku);
-			THROW 50012, @MissingInventoryMessage, 1;
-		END;
-
-		IF (@NewQuantity + @Delta) < 0
-		BEGIN
-			DECLARE @NegativeStockMessage nvarchar(200) = CONCAT('Adjustment would reduce stock below zero for ', @Sku, ' at ', @BranchCode);
-			THROW 50013, @NegativeStockMessage, 1;
-		END;
-
-		UPDATE dbo.Inventory
-		SET QuantityOnHand = QuantityOnHand + @Delta
-		WHERE BranchId = @BranchId
-		  AND ProductId = @ProductId;
-
-		INSERT INTO dbo.OperationalNotifications
-			(Id, Type, Message, BranchId, ActorId, OccurredAtUtc, CorrelationId, ReferenceId)
-		VALUES
-			(NEWID(), 'StockAdjustment', CONCAT('Adjusted stock for ', @Sku, ' by ', @Delta, ': ', @Reason), @BranchId, @ActorId, SYSUTCDATETIME(), NEWID(), @Sku);
-
-		COMMIT TRAN;
-	END TRY
-	BEGIN CATCH
-		IF XACT_STATE() <> 0
-			ROLLBACK TRAN;
-
-		THROW;
-	END CATCH;
-END;
+        SELECT @AdjustmentId AS StockAdjustmentId, QuantityOnHand FROM @NewQuantity;
+    END TRY
+    BEGIN CATCH
+        IF @OwnsTransaction = 1 AND XACT_STATE() <> 0
+            ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH;
+END
 GO

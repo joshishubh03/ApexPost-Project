@@ -10,18 +10,8 @@ public sealed class InventoryManagementService(
     IProductRepository productRepository,
     IBranchRepository branchRepository,
     IApplicationEventPublisher eventPublisher,
-    IApplicationMutationCoordinator mutationCoordinator,
-    IUnitOfWork unitOfWork)
+    IApplicationMutationCoordinator mutationCoordinator)
 {
-    public InventoryManagementService(
-        IInventoryRepository inventoryRepository,
-        IProductRepository productRepository,
-        IBranchRepository branchRepository,
-        IApplicationEventPublisher eventPublisher,
-        IApplicationMutationCoordinator mutationCoordinator)
-        : this(inventoryRepository, productRepository, branchRepository, eventPublisher, mutationCoordinator, new NoOpUnitOfWork())
-    {
-    }
 
     public async Task<IReadOnlyList<ProductInventorySummary>> GetBranchInventoryAsync(
         Guid branchId,
@@ -33,9 +23,8 @@ public sealed class InventoryManagementService(
         }
 
         var products = await productRepository.GetAllAsync(cancellationToken);
-        var inventory = await inventoryRepository.GetAllAsync(cancellationToken);
-        var branchInventory = inventory.Where(item => item.BranchId == branchId)
-            .ToDictionary(item => item.ProductId);
+        var inventory = await inventoryRepository.GetForBranchAsync(branchId, cancellationToken);
+        var branchInventory = inventory.ToDictionary(item => item.ProductId);
 
         return products.Where(product => product.IsActive)
             .OrderBy(product => product.Category)
@@ -97,11 +86,11 @@ public sealed class InventoryManagementService(
             throw new InvalidOperationException("Select an active catalogue product.");
         }
 
-        var allItems = (await inventoryRepository.GetAllAsync(cancellationToken)).ToList();
-        var index = allItems.FindIndex(item => item.BranchId == branchId && item.ProductId == productId);
+        var branchItems = (await inventoryRepository.GetForBranchAsync(branchId, cancellationToken)).ToList();
+        var index = branchItems.FindIndex(item => item.ProductId == productId);
         var item = index < 0
             ? InventoryItem.Empty(branchId, productId, reorderLevel)
-            : allItems[index];
+            : branchItems[index];
 
         var wasBelowReorderLevel = index >= 0 && item.IsBelowReorderLevel;
         var occurredAt = DateTimeOffset.UtcNow;
@@ -112,17 +101,8 @@ public sealed class InventoryManagementService(
             staffId,
             occurredAt);
 
-        if (index < 0)
-        {
-            allItems.Add(changed);
-        }
-        else
-        {
-            allItems[index] = changed;
-        }
-
-        await inventoryRepository.SaveAllAsync(allItems, cancellationToken);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        // Stage only the changed stock row; the unit of work commits once at the end of the use case.
+        await inventoryRepository.UpdateAsync([changed], cancellationToken);
 
         if (changed.IsBelowReorderLevel && !wasBelowReorderLevel)
         {

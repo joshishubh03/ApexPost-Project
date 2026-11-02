@@ -1,6 +1,6 @@
 ﻿# 0033: SQL Server persistence for the Assignment 3 data layer
 
-- Status: Accepted
+- Status: Accepted - still in force for "SQL Server is the system of record"; details superseded by 0041-0048
 - Date: 2026-11-01
 
 ## Context

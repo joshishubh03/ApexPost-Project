@@ -1,32 +1,27 @@
 using ApexPost.Domain.Enums;
+using ApexPost.Domain.ValueObjects;
 
 namespace ApexPost.Infrastructure.Persistence.Entities;
 
-/// <summary>Audit values are owned by each row and flattened into that table by EF Core.</summary>
-public sealed class AuditColumns
-{
-    public DateTime CreatedAtUtc { get; set; }
-    public DateTime? UpdatedAtUtc { get; set; }
-    public Guid? CreatedByStaffId { get; set; }
-    public Guid? UpdatedByStaffId { get; set; }
-    public string? CorrelationId { get; set; }
-}
+// Persistence model (relational write model). These rows are never exposed outside Infrastructure:
+// repositories map them to and from the immutable domain records. Audit columns (CreatedAtUtc, CreatedBy,
+// ModifiedAtUtc, ModifiedBy) and RowVersion are EF Core SHADOW properties configured in
+// Configurations/*, so neither the rows nor the domain carry them. See ADR 0045.
 
-public interface IAuditedRow
-{
-    AuditColumns Audit { get; set; }
-}
+/// <summary>Marker for rows that receive the shadow audit columns.</summary>
+public interface IAuditedRow;
 
 public sealed class BranchRow : IAuditedRow
 {
     public Guid Id { get; set; }
-    public string Code { get; set; } = string.Empty;
+    public BranchCode Code { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Region { get; set; } = string.Empty;
     public bool IsOpen { get; set; }
     public TimeOnly OpeningTime { get; set; }
     public TimeOnly ClosingTime { get; set; }
-    public AuditColumns Audit { get; set; } = new();
+    public List<CounterTerminalRow> Terminals { get; set; } = [];
+    public List<StaffRow> Staff { get; set; } = [];
 }
 
 public sealed class CounterTerminalRow : IAuditedRow
@@ -36,7 +31,6 @@ public sealed class CounterTerminalRow : IAuditedRow
     public string Code { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public bool IsActive { get; set; }
-    public AuditColumns Audit { get; set; } = new();
 }
 
 public sealed class StaffRow : IAuditedRow
@@ -48,42 +42,36 @@ public sealed class StaffRow : IAuditedRow
     public string Role { get; set; } = string.Empty;
     public bool IsActive { get; set; }
     public string PasswordHash { get; set; } = string.Empty;
-    public AuditColumns Audit { get; set; } = new();
 }
 
 public sealed class StaffRoleRow : IAuditedRow
 {
     public string Code { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
-    public AuditColumns Audit { get; set; } = new();
 }
 
 public sealed class ProductCategoryRow : IAuditedRow
 {
     public string Code { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
-    public AuditColumns Audit { get; set; } = new();
 }
 
 public sealed class TaxCategoryRow : IAuditedRow
 {
     public string Code { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
-    public AuditColumns Audit { get; set; } = new();
 }
 
 public sealed class ProductRow : IAuditedRow
 {
     public Guid Id { get; set; }
-    public string Sku { get; set; } = string.Empty;
+    public Sku Sku { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string Category { get; set; } = string.Empty;
     public string TaxCategory { get; set; } = string.Empty;
     public decimal Price { get; set; }
     public bool IsActive { get; set; }
-    public byte[] RowVersion { get; set; } = [];
-    public AuditColumns Audit { get; set; } = new();
 }
 
 public sealed class BranchStockRow : IAuditedRow
@@ -92,8 +80,6 @@ public sealed class BranchStockRow : IAuditedRow
     public Guid ProductId { get; set; }
     public int QuantityOnHand { get; set; }
     public int ReorderLevel { get; set; }
-    public byte[] RowVersion { get; set; } = [];
-    public AuditColumns Audit { get; set; } = new();
 }
 
 public sealed class StockAdjustmentRow : IAuditedRow
@@ -105,7 +91,6 @@ public sealed class StockAdjustmentRow : IAuditedRow
     public int QuantityChange { get; set; }
     public string Reason { get; set; } = string.Empty;
     public DateTimeOffset OccurredAt { get; set; }
-    public AuditColumns Audit { get; set; } = new();
 }
 
 public sealed class ShippingZoneRow : IAuditedRow
@@ -115,7 +100,6 @@ public sealed class ShippingZoneRow : IAuditedRow
     public string Name { get; set; } = string.Empty;
     public string Destination { get; set; } = string.Empty;
     public bool IsActive { get; set; }
-    public AuditColumns Audit { get; set; } = new();
 }
 
 public sealed class ShippingRateRow : IAuditedRow
@@ -123,13 +107,16 @@ public sealed class ShippingRateRow : IAuditedRow
     public Guid Id { get; set; }
     public Guid ZoneId { get; set; }
     public ShippingServiceLevel ServiceLevel { get; set; }
-    public decimal BasePrice { get; set; }
-    public decimal PricePerKilogram { get; set; }
-    public decimal MaximumWeightKilograms { get; set; }
+    public Money BasePrice { get; set; }
+    public Money PricePerKilogram { get; set; }
+    public Weight MaximumWeight { get; set; }
     public bool IsActive { get; set; }
-    public AuditColumns Audit { get; set; } = new();
 }
 
+/// <summary>
+/// Separate persistence entity for the IdentityVerification aggregate: it only has a masked identifier
+/// column (varchar(16)) - there is no property that could ever hold a full document number. See ADR 0045.
+/// </summary>
 public sealed class IdentityVerificationRow : IAuditedRow
 {
     public Guid Id { get; set; }
@@ -141,7 +128,6 @@ public sealed class IdentityVerificationRow : IAuditedRow
     public decimal MoneyOrderAmount { get; set; }
     public IdentityVerificationStatus Status { get; set; }
     public string CorrelationId { get; set; } = string.Empty;
-    public AuditColumns Audit { get; set; } = new();
 }
 
 public sealed class MoneyOrderRow : IAuditedRow
@@ -164,7 +150,6 @@ public sealed class MoneyOrderRow : IAuditedRow
     public DateTimeOffset? RefundedAt { get; set; }
     public Guid? RefundedByStaffId { get; set; }
     public string? RefundReason { get; set; }
-    public AuditColumns Audit { get; set; } = new();
 }
 
 public sealed class CounterTransactionRow : IAuditedRow
@@ -175,11 +160,6 @@ public sealed class CounterTransactionRow : IAuditedRow
     public Guid StaffId { get; set; }
     public Guid? TerminalId { get; set; }
     public Guid? MoneyOrderId { get; set; }
-    public Guid? ShippingRateId { get; set; }
-    public string? ShippingZoneName { get; set; }
-    public ShippingServiceLevel? ShippingServiceLevel { get; set; }
-    public ShipmentType? ShipmentType { get; set; }
-    public decimal? ShippingWeightKilograms { get; set; }
     public decimal Subtotal { get; set; }
     public decimal TaxTotal { get; set; }
     public decimal ShippingCharge { get; set; }
@@ -193,13 +173,9 @@ public sealed class CounterTransactionRow : IAuditedRow
     public DateTimeOffset? ResolvedAt { get; set; }
     public Guid? ResolvedByStaffId { get; set; }
     public string? ResolutionReason { get; set; }
-    public string? ShippingRecipientName { get; set; }
-    public string? ShippingAddress { get; set; }
-    public decimal? ParcelLengthCentimeters { get; set; }
-    public decimal? ParcelWidthCentimeters { get; set; }
-    public decimal? ParcelHeightCentimeters { get; set; }
-    public byte[] RowVersion { get; set; } = [];
-    public AuditColumns Audit { get; set; } = new();
+    public List<TransactionLineRow> Lines { get; set; } = [];
+    public PaymentRow? Payment { get; set; }
+    public ShipmentRow? Shipment { get; set; }
 }
 
 public sealed class TransactionLineRow
@@ -208,7 +184,7 @@ public sealed class TransactionLineRow
     public Guid CounterTransactionId { get; set; }
     public int LineNumber { get; set; }
     public Guid ProductId { get; set; }
-    public string Sku { get; set; } = string.Empty;
+    public Sku Sku { get; set; }
     public string ProductName { get; set; } = string.Empty;
     public int Quantity { get; set; }
     public decimal UnitPrice { get; set; }
@@ -225,7 +201,40 @@ public sealed class PaymentRow : IAuditedRow
     public PaymentMethod Method { get; set; }
     public decimal Amount { get; set; }
     public DateTimeOffset PaidAt { get; set; }
-    public AuditColumns Audit { get; set; } = new();
+}
+
+public enum ShipmentStatus
+{
+    Booked,
+    Cancelled
+}
+
+/// <summary>Owned type: parcel dimensions (all three or none; letters have none).</summary>
+public sealed class ParcelDimensions
+{
+    public decimal LengthCentimeters { get; set; }
+    public decimal WidthCentimeters { get; set; }
+    public decimal HeightCentimeters { get; set; }
+}
+
+/// <summary>Owned type: who and where a shipment is addressed to.</summary>
+public sealed class ShippingAddress
+{
+    public string RecipientName { get; set; } = string.Empty;
+    public string AddressLine { get; set; } = string.Empty;
+}
+
+/// <summary>Shipment booked as part of a counter transaction (0..1 per transaction).</summary>
+public sealed class ShipmentRow : IAuditedRow
+{
+    public Guid Id { get; set; }
+    public Guid CounterTransactionId { get; set; }
+    public Guid ShippingRateId { get; set; }
+    public ShipmentType? ShipmentType { get; set; }
+    public Weight Weight { get; set; }
+    public ParcelDimensions? Dimensions { get; set; }
+    public ShippingAddress? Destination { get; set; }
+    public ShipmentStatus Status { get; set; }
 }
 
 public sealed class AuditEntryRow

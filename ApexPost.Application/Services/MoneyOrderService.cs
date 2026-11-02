@@ -15,34 +15,12 @@ public sealed class MoneyOrderService(
     IIdentityVerificationService identityVerificationService,
     IApplicationEventPublisher eventPublisher,
     MoneyOrderPolicy policy,
-    IApplicationMutationCoordinator mutationCoordinator,
-    IUnitOfWork unitOfWork)
+    IApplicationMutationCoordinator mutationCoordinator)
 {
-    public MoneyOrderService(
-        IBranchRepository branchRepository,
-        IStaffRepository staffRepository,
-        IMoneyOrderRepository moneyOrderRepository,
-        ICounterTransactionRepository transactionRepository,
-        IIdentityVerificationRepository verificationRepository,
-        IIdentityVerificationService identityVerificationService,
-        IApplicationEventPublisher eventPublisher,
-        MoneyOrderPolicy policy,
-        IApplicationMutationCoordinator mutationCoordinator)
-        : this(branchRepository, staffRepository, moneyOrderRepository, transactionRepository,
-            verificationRepository, identityVerificationService, eventPublisher, policy, mutationCoordinator, new NoOpUnitOfWork())
-    {
-    }
-
-    public async Task<IReadOnlyList<MoneyOrder>> GetForBranchAsync(
+    public Task<IReadOnlyList<MoneyOrder>> GetForBranchAsync(
         Guid branchId,
-        CancellationToken cancellationToken = default)
-    {
-        var allOrders = await moneyOrderRepository.GetAllAsync(cancellationToken);
-        return allOrders.Where(order => order.BranchId == branchId)
-            .OrderByDescending(order => order.OccurredAt)
-            .Take(50)
-            .ToArray();
-    }
+        CancellationToken cancellationToken = default) =>
+        moneyOrderRepository.GetRecentForBranchAsync(branchId, 50, cancellationToken);
 
     public Task<MoneyOrder> IssueAsync(
         Guid branchId,
@@ -81,8 +59,7 @@ public sealed class MoneyOrderService(
             throw new InvalidOperationException("A money order cannot be issued at a closed branch.");
         }
 
-        var staff = (await staffRepository.GetAllAsync(cancellationToken))
-            .FirstOrDefault(candidate => candidate.Id == staffId)
+        var staff = await staffRepository.GetByIdAsync(staffId, cancellationToken)
             ?? throw new UnauthorizedAccessException("The staff account could not be found.");
         if (!staff.IsActive ||
             staff.Role is not (StaffRole.Administrator or StaffRole.BranchManager or StaffRole.CounterClerk) ||
@@ -127,10 +104,7 @@ public sealed class MoneyOrderService(
                 amount,
                 verificationStatus,
                 correlationId);
-            var verifications = (await verificationRepository.GetAllAsync(cancellationToken)).ToList();
-            verifications.Add(verification);
-            await verificationRepository.SaveAllAsync(verifications, cancellationToken);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
+            await verificationRepository.AddAsync(verification, cancellationToken);
             verificationRecordId = verification.Id;
             await eventPublisher.PublishAsync(new IdentityVerificationRecordedEvent(
                 verification.Id,
@@ -166,10 +140,7 @@ public sealed class MoneyOrderService(
             recordedDocumentType,
             maskedIdentifier);
 
-        var orders = (await moneyOrderRepository.GetAllAsync(cancellationToken)).ToList();
-        orders.Add(order);
-        await moneyOrderRepository.SaveAllAsync(orders, cancellationToken);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        await moneyOrderRepository.AddAsync(order, cancellationToken);
 
         await eventPublisher.PublishAsync(new MoneyOrderIssuedEvent(
             order.Id,
@@ -222,28 +193,24 @@ public sealed class MoneyOrderService(
         if (!branch.IsOpen)
             throw new InvalidOperationException("A money order cannot be refunded at a closed branch.");
 
-        var manager = (await staffRepository.GetAllAsync(cancellationToken))
-            .FirstOrDefault(candidate => candidate.Id == managerId);
+        var manager = await staffRepository.GetByIdAsync(managerId, cancellationToken);
         if (manager is null || !manager.IsActive || manager.Role != StaffRole.BranchManager || manager.BranchId != branchId)
             throw new UnauthorizedAccessException("Only an active Branch Manager assigned to this branch can refund a money order.");
 
-        var orders = (await moneyOrderRepository.GetAllAsync(cancellationToken)).ToList();
-        var index = orders.FindIndex(order => order.Id == moneyOrderId && order.BranchId == branchId);
-        if (index < 0)
+        var existing = await moneyOrderRepository.GetByIdAsync(moneyOrderId, cancellationToken);
+        if (existing is null || existing.BranchId != branchId)
             throw new KeyNotFoundException("The money order could not be found for this branch.");
 
         if (!fromCounterTransaction && (await transactionRepository.GetAllAsync(cancellationToken))
             .Any(transaction => transaction.MoneyOrderId == moneyOrderId))
             throw new InvalidOperationException("Refund this money order through its originating counter receipt.");
 
-        if (orders[index].Status == MoneyOrderStatus.Refunded && fromCounterTransaction)
-            return orders[index];
+        if (existing.Status == MoneyOrderStatus.Refunded && fromCounterTransaction)
+            return existing;
 
         var now = DateTimeOffset.UtcNow;
-        var refunded = orders[index].Refund(managerId, reason, now);
-        orders[index] = refunded;
-        await moneyOrderRepository.SaveAllAsync(orders, cancellationToken);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        var refunded = existing.Refund(managerId, reason, now);
+        await moneyOrderRepository.UpdateAsync(refunded, cancellationToken);
         await eventPublisher.PublishAsync(new MoneyOrderRefundedEvent(
             refunded.Id, refunded.MoneyOrderNumber, branchId, managerId, now, refunded.TotalAmount,
             refunded.RefundReason!, correlationId, fromCounterTransaction), CancellationToken.None);
@@ -268,10 +235,6 @@ public sealed class MoneyOrderService(
         }
     }
 
-    private static string MaskDocumentIdentifier(string identifier)
-    {
-        var normalized = identifier.Trim();
-        var visibleCharacters = Math.Min(4, normalized.Length);
-        return new string('*', Math.Max(4, normalized.Length - visibleCharacters)) + normalized[^visibleCharacters..];
-    }
+    private static string MaskDocumentIdentifier(string identifier) =>
+        ApexPost.Domain.ValueObjects.IdentityDocumentMask.Mask(identifier);
 }

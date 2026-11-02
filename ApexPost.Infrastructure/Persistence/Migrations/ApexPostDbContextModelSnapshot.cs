@@ -58,7 +58,9 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .HasColumnType("nvarchar(80)");
 
                     b.Property<DateTimeOffset>("OccurredAt")
-                        .HasColumnType("datetimeoffset(3)");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetimeoffset(3)")
+                        .HasDefaultValueSql("SYSDATETIMEOFFSET()");
 
                     b.Property<int>("ResultStatusCode")
                         .HasColumnType("int");
@@ -104,8 +106,22 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .IsUnicode(false)
                         .HasColumnType("varchar(12)");
 
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<bool>("IsOpen")
                         .HasColumnType("bit");
+
+                    b.Property<DateTime?>("ModifiedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -139,6 +155,20 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ProductId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<int>("QuantityOnHand")
                         .HasColumnType("int");
 
@@ -156,6 +186,10 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                     b.HasIndex("ProductId");
 
                     b.HasIndex("BranchId", "QuantityOnHand");
+
+                    b.HasIndex(new[] { "QuantityOnHand" }, "IX_BranchStock_QuantityOnHand");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex(new[] { "QuantityOnHand" }, "IX_BranchStock_QuantityOnHand"), new[] { "ReorderLevel" });
 
                     b.ToTable("BranchStock", null, t =>
                         {
@@ -180,8 +214,22 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .IsUnicode(false)
                         .HasColumnType("varchar(12)");
 
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
+
+                    b.Property<DateTime?>("ModifiedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -205,6 +253,20 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("BranchId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<decimal>("MoneyOrderAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
@@ -218,18 +280,6 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTimeOffset>("OccurredAt")
                         .HasColumnType("datetimeoffset(3)");
-
-                    b.Property<decimal?>("ParcelHeightCentimeters")
-                        .HasPrecision(9, 2)
-                        .HasColumnType("decimal(9,2)");
-
-                    b.Property<decimal?>("ParcelLengthCentimeters")
-                        .HasPrecision(9, 2)
-                        .HasColumnType("decimal(9,2)");
-
-                    b.Property<decimal?>("ParcelWidthCentimeters")
-                        .HasPrecision(9, 2)
-                        .HasColumnType("decimal(9,2)");
 
                     b.Property<string>("ResolutionReason")
                         .HasMaxLength(250)
@@ -247,30 +297,9 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
 
-                    b.Property<string>("ShipmentType")
-                        .HasMaxLength(24)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(24)");
-
-                    b.Property<string>("ShippingAddress")
-                        .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
-
                     b.Property<decimal>("ShippingCharge")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
-
-                    b.Property<Guid?>("ShippingRateId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("ShippingRecipientName")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("ShippingServiceLevel")
-                        .HasMaxLength(24)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(24)");
 
                     b.Property<decimal>("ShippingTaxAmount")
                         .HasPrecision(18, 2)
@@ -279,14 +308,6 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                     b.Property<decimal>("ShippingTaxRatePercent")
                         .HasPrecision(5, 2)
                         .HasColumnType("decimal(5,2)");
-
-                    b.Property<decimal?>("ShippingWeightKilograms")
-                        .HasPrecision(9, 3)
-                        .HasColumnType("decimal(9,3)");
-
-                    b.Property<string>("ShippingZoneName")
-                        .HasMaxLength(80)
-                        .HasColumnType("nvarchar(80)");
 
                     b.Property<Guid>("StaffId")
                         .HasColumnType("uniqueidentifier");
@@ -326,8 +347,6 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ResolvedByStaffId");
 
-                    b.HasIndex("ShippingRateId");
-
                     b.HasIndex("StaffId");
 
                     b.HasIndex("TerminalId");
@@ -342,7 +361,11 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
 
                     b.ToTable("CounterTransactions", null, t =>
                         {
+                            t.HasCheckConstraint("CK_CounterTransactions_MoneyOrder", "[MoneyOrderAmount] >= 0 AND [MoneyOrderFee] >= 0");
+
                             t.HasCheckConstraint("CK_CounterTransactions_Reversal", "([Status] IN ('Voided','Refunded') AND [ResolvedAt] IS NOT NULL AND [ResolvedByStaffId] IS NOT NULL AND [ResolutionReason] IS NOT NULL) OR ([Status] NOT IN ('Voided','Refunded') AND [ResolvedAt] IS NULL AND [ResolvedByStaffId] IS NULL AND [ResolutionReason] IS NULL)");
+
+                            t.HasCheckConstraint("CK_CounterTransactions_Status", "[Status] IN ('Open', 'Paid', 'Completed', 'Voided', 'Refunded')");
 
                             t.HasCheckConstraint("CK_CounterTransactions_Totals", "[Subtotal] >= 0 AND [TaxTotal] >= 0 AND [ShippingCharge] >= 0 AND [TotalAmount] >= 0");
                         });
@@ -363,6 +386,14 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .IsUnicode(false)
                         .HasColumnType("varchar(64)");
 
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("DocumentType")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -374,6 +405,12 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .HasMaxLength(16)
                         .IsUnicode(false)
                         .HasColumnType("varchar(16)");
+
+                    b.Property<DateTime?>("ModifiedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("MoneyOrderAmount")
                         .HasPrecision(18, 2)
@@ -399,7 +436,13 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
 
                     b.ToTable("IdentityVerifications", null, t =>
                         {
-                            t.HasCheckConstraint("CK_IdentityVerifications_MaskedIdentifier", "LEN([MaskedDocumentIdentifier]) <= 16");
+                            t.HasCheckConstraint("CK_IdentityVerifications_Amount", "[MoneyOrderAmount] > 0");
+
+                            t.HasCheckConstraint("CK_IdentityVerifications_DocumentType", "[DocumentType] IN ('NationalId', 'Passport', 'DrivingLicence')");
+
+                            t.HasCheckConstraint("CK_IdentityVerifications_MaskedIdentifier", "LEN([MaskedDocumentIdentifier]) <= 16 AND [MaskedDocumentIdentifier] LIKE '****%' AND LEN(REPLACE([MaskedDocumentIdentifier], '*', '')) <= 4");
+
+                            t.HasCheckConstraint("CK_IdentityVerifications_Status", "[Status] IN ('Verified', 'Failed')");
                         });
                 });
 
@@ -419,6 +462,14 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("CounterTransactionId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("DocumentType")
                         .HasMaxLength(32)
                         .IsUnicode(false)
@@ -435,6 +486,12 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .HasMaxLength(16)
                         .IsUnicode(false)
                         .HasColumnType("varchar(16)");
+
+                    b.Property<DateTime?>("ModifiedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("MoneyOrderNumber")
                         .IsRequired()
@@ -493,11 +550,24 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("BranchId", "OccurredAt");
 
+                    b.HasIndex(new[] { "OccurredAt" }, "IX_MoneyOrders_Verified_OccurredAt")
+                        .HasFilter("[VerificationStatus] = 'Verified'");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex(new[] { "OccurredAt" }, "IX_MoneyOrders_Verified_OccurredAt"), new[] { "MoneyOrderNumber", "Amount", "MaskedDocumentIdentifier", "BranchId", "Status" });
+
                     b.ToTable("MoneyOrders", null, t =>
                         {
                             t.HasCheckConstraint("CK_MoneyOrders_Amounts", "[Amount] > 0 AND [Fee] >= 0");
 
-                            t.HasCheckConstraint("CK_MoneyOrders_MaskedIdentifier", "[MaskedDocumentIdentifier] IS NULL OR LEN([MaskedDocumentIdentifier]) <= 16");
+                            t.HasCheckConstraint("CK_MoneyOrders_DocumentType", "[DocumentType] IS NULL OR [DocumentType] IN ('NationalId', 'Passport', 'DrivingLicence')");
+
+                            t.HasCheckConstraint("CK_MoneyOrders_MaskedIdentifier", "[MaskedDocumentIdentifier] IS NULL OR (LEN([MaskedDocumentIdentifier]) <= 16 AND [MaskedDocumentIdentifier] LIKE '****%' AND LEN(REPLACE([MaskedDocumentIdentifier], '*', '')) <= 4)");
+
+                            t.HasCheckConstraint("CK_MoneyOrders_Refund", "([Status] = 'Refunded' AND [RefundedAt] IS NOT NULL AND [RefundedByStaffId] IS NOT NULL AND [RefundReason] IS NOT NULL) OR ([Status] = 'Issued' AND [RefundedAt] IS NULL AND [RefundedByStaffId] IS NULL AND [RefundReason] IS NULL)");
+
+                            t.HasCheckConstraint("CK_MoneyOrders_Status", "[Status] IN ('Issued', 'Refunded')");
+
+                            t.HasCheckConstraint("CK_MoneyOrders_VerificationStatus", "[VerificationStatus] IN ('NotRequired', 'Verified')");
                         });
                 });
 
@@ -517,7 +587,9 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .HasColumnType("varchar(64)");
 
                     b.Property<bool>("IsAcknowledged")
-                        .HasColumnType("bit");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
                     b.Property<string>("Kind")
                         .IsRequired()
@@ -557,7 +629,9 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("AttemptCount")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<string>("EventType")
                         .IsRequired()
@@ -602,11 +676,25 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("CounterTransactionId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Method")
                         .IsRequired()
                         .HasMaxLength(24)
                         .IsUnicode(false)
                         .HasColumnType("varchar(24)");
+
+                    b.Property<DateTime?>("ModifiedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTimeOffset>("PaidAt")
                         .HasColumnType("datetimeoffset(3)");
@@ -620,6 +708,8 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                     b.ToTable("Payments", null, t =>
                         {
                             t.HasCheckConstraint("CK_Payments_Amount", "[Amount] > 0");
+
+                            t.HasCheckConstraint("CK_Payments_Method", "[Method] IN ('Cash', 'Card', 'DigitalWallet')");
                         });
                 });
 
@@ -628,6 +718,20 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                     b.Property<string>("Code")
                         .HasMaxLength(60)
                         .HasColumnType("nvarchar(60)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -650,6 +754,14 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .HasMaxLength(60)
                         .HasColumnType("nvarchar(60)");
 
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -657,6 +769,12 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
+
+                    b.Property<DateTime?>("ModifiedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -701,6 +819,73 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Entities.ShipmentRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CounterTransactionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ShipmentType")
+                        .HasMaxLength(24)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(24)");
+
+                    b.Property<Guid>("ShippingRateId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(16)")
+                        .HasDefaultValue("Booked");
+
+                    b.Property<decimal>("Weight")
+                        .HasPrecision(9, 3)
+                        .HasColumnType("decimal(9,3)")
+                        .HasColumnName("WeightKilograms");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CounterTransactionId")
+                        .IsUnique();
+
+                    b.HasIndex("ShippingRateId", "Status");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("ShippingRateId", "Status"), new[] { "CounterTransactionId", "Weight" });
+
+                    b.ToTable("Shipments", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Shipments_Dimensions", "([LengthCentimeters] IS NULL AND [WidthCentimeters] IS NULL AND [HeightCentimeters] IS NULL) OR ([LengthCentimeters] > 0 AND [WidthCentimeters] > 0 AND [HeightCentimeters] > 0)");
+
+                            t.HasCheckConstraint("CK_Shipments_LetterHasNoDimensions", "[ShipmentType] IS NULL OR [ShipmentType] <> 'Letter' OR [LengthCentimeters] IS NULL");
+
+                            t.HasCheckConstraint("CK_Shipments_ShipmentType", "[ShipmentType] IS NULL OR [ShipmentType] IN ('Parcel', 'Letter')");
+
+                            t.HasCheckConstraint("CK_Shipments_Status", "[Status] IN ('Booked', 'Cancelled')");
+
+                            t.HasCheckConstraint("CK_Shipments_Weight", "[WeightKilograms] > 0 AND [WeightKilograms] <= 30");
+                        });
+                });
+
             modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Entities.ShippingRateRow", b =>
                 {
                     b.Property<Guid>("Id")
@@ -711,12 +896,27 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
-                    b.Property<decimal>("MaximumWeightKilograms")
+                    b.Property<decimal>("MaximumWeight")
                         .HasPrecision(9, 3)
-                        .HasColumnType("decimal(9,3)");
+                        .HasColumnType("decimal(9,3)")
+                        .HasColumnName("MaximumWeightKilograms");
+
+                    b.Property<DateTime?>("ModifiedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("PricePerKilogram")
                         .HasPrecision(18, 2)
@@ -738,9 +938,11 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
 
                     b.ToTable("ShippingRates", null, t =>
                         {
-                            t.HasCheckConstraint("CK_ShippingRates_MaximumWeight", "[MaximumWeightKilograms] > 0");
+                            t.HasCheckConstraint("CK_ShippingRates_MaximumWeight", "[MaximumWeightKilograms] > 0 AND [MaximumWeightKilograms] <= 30");
 
                             t.HasCheckConstraint("CK_ShippingRates_Prices", "[BasePrice] >= 0 AND [PricePerKilogram] >= 0");
+
+                            t.HasCheckConstraint("CK_ShippingRates_ServiceLevel", "[ServiceLevel] IN ('Standard', 'Express', 'Registered')");
                         });
                 });
 
@@ -756,6 +958,14 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .IsUnicode(false)
                         .HasColumnType("varchar(20)");
 
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Destination")
                         .IsRequired()
                         .HasMaxLength(120)
@@ -763,6 +973,12 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
+
+                    b.Property<DateTime?>("ModifiedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -784,6 +1000,20 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .IsUnicode(false)
                         .HasColumnType("varchar(32)");
 
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(80)
@@ -791,7 +1021,10 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Code");
 
-                    b.ToTable("StaffRoles", (string)null);
+                    b.ToTable("StaffRoles", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_StaffRoles_Code", "[Code] IN ('CounterClerk', 'BranchManager', 'Auditor', 'Administrator')");
+                        });
                 });
 
             modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Entities.StaffRow", b =>
@@ -801,6 +1034,14 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Email")
@@ -816,6 +1057,12 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
+
+                    b.Property<DateTime?>("ModifiedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
@@ -848,6 +1095,20 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("ModifiedBy")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTimeOffset>("OccurredAt")
@@ -886,6 +1147,20 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                     b.Property<string>("Code")
                         .HasMaxLength(60)
                         .HasColumnType("nvarchar(60)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ModifiedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -977,49 +1252,6 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 
-            modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Entities.BranchRow", b =>
-                {
-                    b.OwnsOne("ApexPost.Infrastructure.Persistence.Entities.AuditColumns", "Audit", b1 =>
-                        {
-                            b1.Property<Guid>("BranchRowId")
-                                .HasColumnType("uniqueidentifier");
-
-                            b1.Property<string>("CorrelationId")
-                                .HasMaxLength(64)
-                                .IsUnicode(false)
-                                .HasColumnType("varchar(64)")
-                                .HasColumnName("AuditCorrelationId");
-
-                            b1.Property<DateTime>("CreatedAtUtc")
-                                .ValueGeneratedOnAdd()
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("CreatedAtUtc")
-                                .HasDefaultValueSql("SYSUTCDATETIME()");
-
-                            b1.Property<Guid?>("CreatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("CreatedByStaffId");
-
-                            b1.Property<DateTime?>("UpdatedAtUtc")
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("UpdatedAtUtc");
-
-                            b1.Property<Guid?>("UpdatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("UpdatedByStaffId");
-
-                            b1.HasKey("BranchRowId");
-
-                            b1.ToTable("Branches");
-
-                            b1.WithOwner()
-                                .HasForeignKey("BranchRowId");
-                        });
-
-                    b.Navigation("Audit")
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Entities.BranchStockRow", b =>
                 {
                     b.HasOne("ApexPost.Infrastructure.Persistence.Entities.BranchRow", null)
@@ -1033,97 +1265,14 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.OwnsOne("ApexPost.Infrastructure.Persistence.Entities.AuditColumns", "Audit", b1 =>
-                        {
-                            b1.Property<Guid>("BranchStockRowBranchId")
-                                .HasColumnType("uniqueidentifier");
-
-                            b1.Property<Guid>("BranchStockRowProductId")
-                                .HasColumnType("uniqueidentifier");
-
-                            b1.Property<string>("CorrelationId")
-                                .HasMaxLength(64)
-                                .IsUnicode(false)
-                                .HasColumnType("varchar(64)")
-                                .HasColumnName("AuditCorrelationId");
-
-                            b1.Property<DateTime>("CreatedAtUtc")
-                                .ValueGeneratedOnAdd()
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("CreatedAtUtc")
-                                .HasDefaultValueSql("SYSUTCDATETIME()");
-
-                            b1.Property<Guid?>("CreatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("CreatedByStaffId");
-
-                            b1.Property<DateTime?>("UpdatedAtUtc")
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("UpdatedAtUtc");
-
-                            b1.Property<Guid?>("UpdatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("UpdatedByStaffId");
-
-                            b1.HasKey("BranchStockRowBranchId", "BranchStockRowProductId");
-
-                            b1.ToTable("BranchStock");
-
-                            b1.WithOwner()
-                                .HasForeignKey("BranchStockRowBranchId", "BranchStockRowProductId");
-                        });
-
-                    b.Navigation("Audit")
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Entities.CounterTerminalRow", b =>
                 {
                     b.HasOne("ApexPost.Infrastructure.Persistence.Entities.BranchRow", null)
-                        .WithMany()
+                        .WithMany("Terminals")
                         .HasForeignKey("BranchId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.OwnsOne("ApexPost.Infrastructure.Persistence.Entities.AuditColumns", "Audit", b1 =>
-                        {
-                            b1.Property<Guid>("CounterTerminalRowId")
-                                .HasColumnType("uniqueidentifier");
-
-                            b1.Property<string>("CorrelationId")
-                                .HasMaxLength(64)
-                                .IsUnicode(false)
-                                .HasColumnType("varchar(64)")
-                                .HasColumnName("AuditCorrelationId");
-
-                            b1.Property<DateTime>("CreatedAtUtc")
-                                .ValueGeneratedOnAdd()
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("CreatedAtUtc")
-                                .HasDefaultValueSql("SYSUTCDATETIME()");
-
-                            b1.Property<Guid?>("CreatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("CreatedByStaffId");
-
-                            b1.Property<DateTime?>("UpdatedAtUtc")
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("UpdatedAtUtc");
-
-                            b1.Property<Guid?>("UpdatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("UpdatedByStaffId");
-
-                            b1.HasKey("CounterTerminalRowId");
-
-                            b1.ToTable("CounterTerminals");
-
-                            b1.WithOwner()
-                                .HasForeignKey("CounterTerminalRowId");
-                        });
-
-                    b.Navigation("Audit")
                         .IsRequired();
                 });
 
@@ -1140,11 +1289,6 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .HasForeignKey("ResolvedByStaffId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("ApexPost.Infrastructure.Persistence.Entities.ShippingRateRow", null)
-                        .WithMany()
-                        .HasForeignKey("ShippingRateId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("ApexPost.Infrastructure.Persistence.Entities.StaffRow", null)
                         .WithMany()
                         .HasForeignKey("StaffId")
@@ -1155,46 +1299,6 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("TerminalId")
                         .OnDelete(DeleteBehavior.Restrict);
-
-                    b.OwnsOne("ApexPost.Infrastructure.Persistence.Entities.AuditColumns", "Audit", b1 =>
-                        {
-                            b1.Property<Guid>("CounterTransactionRowId")
-                                .HasColumnType("uniqueidentifier");
-
-                            b1.Property<string>("CorrelationId")
-                                .HasMaxLength(64)
-                                .IsUnicode(false)
-                                .HasColumnType("varchar(64)")
-                                .HasColumnName("AuditCorrelationId");
-
-                            b1.Property<DateTime>("CreatedAtUtc")
-                                .ValueGeneratedOnAdd()
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("CreatedAtUtc")
-                                .HasDefaultValueSql("SYSUTCDATETIME()");
-
-                            b1.Property<Guid?>("CreatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("CreatedByStaffId");
-
-                            b1.Property<DateTime?>("UpdatedAtUtc")
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("UpdatedAtUtc");
-
-                            b1.Property<Guid?>("UpdatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("UpdatedByStaffId");
-
-                            b1.HasKey("CounterTransactionRowId");
-
-                            b1.ToTable("CounterTransactions");
-
-                            b1.WithOwner()
-                                .HasForeignKey("CounterTransactionRowId");
-                        });
-
-                    b.Navigation("Audit")
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Entities.IdentityVerificationRow", b =>
@@ -1209,46 +1313,6 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("StaffId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.OwnsOne("ApexPost.Infrastructure.Persistence.Entities.AuditColumns", "Audit", b1 =>
-                        {
-                            b1.Property<Guid>("IdentityVerificationRowId")
-                                .HasColumnType("uniqueidentifier");
-
-                            b1.Property<string>("CorrelationId")
-                                .HasMaxLength(64)
-                                .IsUnicode(false)
-                                .HasColumnType("varchar(64)")
-                                .HasColumnName("AuditCorrelationId");
-
-                            b1.Property<DateTime>("CreatedAtUtc")
-                                .ValueGeneratedOnAdd()
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("CreatedAtUtc")
-                                .HasDefaultValueSql("SYSUTCDATETIME()");
-
-                            b1.Property<Guid?>("CreatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("CreatedByStaffId");
-
-                            b1.Property<DateTime?>("UpdatedAtUtc")
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("UpdatedAtUtc");
-
-                            b1.Property<Guid?>("UpdatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("UpdatedByStaffId");
-
-                            b1.HasKey("IdentityVerificationRowId");
-
-                            b1.ToTable("IdentityVerifications");
-
-                            b1.WithOwner()
-                                .HasForeignKey("IdentityVerificationRowId");
-                        });
-
-                    b.Navigation("Audit")
                         .IsRequired();
                 });
 
@@ -1275,46 +1339,6 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .HasForeignKey("StaffId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.OwnsOne("ApexPost.Infrastructure.Persistence.Entities.AuditColumns", "Audit", b1 =>
-                        {
-                            b1.Property<Guid>("MoneyOrderRowId")
-                                .HasColumnType("uniqueidentifier");
-
-                            b1.Property<string>("CorrelationId")
-                                .HasMaxLength(64)
-                                .IsUnicode(false)
-                                .HasColumnType("varchar(64)")
-                                .HasColumnName("AuditCorrelationId");
-
-                            b1.Property<DateTime>("CreatedAtUtc")
-                                .ValueGeneratedOnAdd()
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("CreatedAtUtc")
-                                .HasDefaultValueSql("SYSUTCDATETIME()");
-
-                            b1.Property<Guid?>("CreatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("CreatedByStaffId");
-
-                            b1.Property<DateTime?>("UpdatedAtUtc")
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("UpdatedAtUtc");
-
-                            b1.Property<Guid?>("UpdatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("UpdatedByStaffId");
-
-                            b1.HasKey("MoneyOrderRowId");
-
-                            b1.ToTable("MoneyOrders");
-
-                            b1.WithOwner()
-                                .HasForeignKey("MoneyOrderRowId");
-                        });
-
-                    b.Navigation("Audit")
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Entities.OperationalNotificationRow", b =>
@@ -1333,92 +1357,9 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Entities.PaymentRow", b =>
                 {
                     b.HasOne("ApexPost.Infrastructure.Persistence.Entities.CounterTransactionRow", null)
-                        .WithOne()
+                        .WithOne("Payment")
                         .HasForeignKey("ApexPost.Infrastructure.Persistence.Entities.PaymentRow", "CounterTransactionId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.OwnsOne("ApexPost.Infrastructure.Persistence.Entities.AuditColumns", "Audit", b1 =>
-                        {
-                            b1.Property<Guid>("PaymentRowId")
-                                .HasColumnType("uniqueidentifier");
-
-                            b1.Property<string>("CorrelationId")
-                                .HasMaxLength(64)
-                                .IsUnicode(false)
-                                .HasColumnType("varchar(64)")
-                                .HasColumnName("AuditCorrelationId");
-
-                            b1.Property<DateTime>("CreatedAtUtc")
-                                .ValueGeneratedOnAdd()
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("CreatedAtUtc")
-                                .HasDefaultValueSql("SYSUTCDATETIME()");
-
-                            b1.Property<Guid?>("CreatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("CreatedByStaffId");
-
-                            b1.Property<DateTime?>("UpdatedAtUtc")
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("UpdatedAtUtc");
-
-                            b1.Property<Guid?>("UpdatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("UpdatedByStaffId");
-
-                            b1.HasKey("PaymentRowId");
-
-                            b1.ToTable("Payments");
-
-                            b1.WithOwner()
-                                .HasForeignKey("PaymentRowId");
-                        });
-
-                    b.Navigation("Audit")
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Entities.ProductCategoryRow", b =>
-                {
-                    b.OwnsOne("ApexPost.Infrastructure.Persistence.Entities.AuditColumns", "Audit", b1 =>
-                        {
-                            b1.Property<string>("ProductCategoryRowCode")
-                                .HasColumnType("nvarchar(60)");
-
-                            b1.Property<string>("CorrelationId")
-                                .HasMaxLength(64)
-                                .IsUnicode(false)
-                                .HasColumnType("varchar(64)")
-                                .HasColumnName("AuditCorrelationId");
-
-                            b1.Property<DateTime>("CreatedAtUtc")
-                                .ValueGeneratedOnAdd()
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("CreatedAtUtc")
-                                .HasDefaultValueSql("SYSUTCDATETIME()");
-
-                            b1.Property<Guid?>("CreatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("CreatedByStaffId");
-
-                            b1.Property<DateTime?>("UpdatedAtUtc")
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("UpdatedAtUtc");
-
-                            b1.Property<Guid?>("UpdatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("UpdatedByStaffId");
-
-                            b1.HasKey("ProductCategoryRowCode");
-
-                            b1.ToTable("ProductCategories");
-
-                            b1.WithOwner()
-                                .HasForeignKey("ProductCategoryRowCode");
-                        });
-
-                    b.Navigation("Audit")
                         .IsRequired();
                 });
 
@@ -1435,46 +1376,78 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .HasForeignKey("TaxCategory")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
 
-                    b.OwnsOne("ApexPost.Infrastructure.Persistence.Entities.AuditColumns", "Audit", b1 =>
+            modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Entities.ShipmentRow", b =>
+                {
+                    b.HasOne("ApexPost.Infrastructure.Persistence.Entities.CounterTransactionRow", null)
+                        .WithOne("Shipment")
+                        .HasForeignKey("ApexPost.Infrastructure.Persistence.Entities.ShipmentRow", "CounterTransactionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ApexPost.Infrastructure.Persistence.Entities.ShippingRateRow", null)
+                        .WithMany()
+                        .HasForeignKey("ShippingRateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.OwnsOne("ApexPost.Infrastructure.Persistence.Entities.ParcelDimensions", "Dimensions", b1 =>
                         {
-                            b1.Property<Guid>("ProductRowId")
+                            b1.Property<Guid>("ShipmentRowId")
                                 .HasColumnType("uniqueidentifier");
 
-                            b1.Property<string>("CorrelationId")
-                                .HasMaxLength(64)
-                                .IsUnicode(false)
-                                .HasColumnType("varchar(64)")
-                                .HasColumnName("AuditCorrelationId");
+                            b1.Property<decimal>("HeightCentimeters")
+                                .HasPrecision(9, 2)
+                                .HasColumnType("decimal(9,2)")
+                                .HasColumnName("HeightCentimeters");
 
-                            b1.Property<DateTime>("CreatedAtUtc")
-                                .ValueGeneratedOnAdd()
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("CreatedAtUtc")
-                                .HasDefaultValueSql("SYSUTCDATETIME()");
+                            b1.Property<decimal>("LengthCentimeters")
+                                .HasPrecision(9, 2)
+                                .HasColumnType("decimal(9,2)")
+                                .HasColumnName("LengthCentimeters");
 
-                            b1.Property<Guid?>("CreatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("CreatedByStaffId");
+                            b1.Property<decimal>("WidthCentimeters")
+                                .HasPrecision(9, 2)
+                                .HasColumnType("decimal(9,2)")
+                                .HasColumnName("WidthCentimeters");
 
-                            b1.Property<DateTime?>("UpdatedAtUtc")
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("UpdatedAtUtc");
+                            b1.HasKey("ShipmentRowId");
 
-                            b1.Property<Guid?>("UpdatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("UpdatedByStaffId");
-
-                            b1.HasKey("ProductRowId");
-
-                            b1.ToTable("Products");
+                            b1.ToTable("Shipments");
 
                             b1.WithOwner()
-                                .HasForeignKey("ProductRowId");
+                                .HasForeignKey("ShipmentRowId");
                         });
 
-                    b.Navigation("Audit")
-                        .IsRequired();
+                    b.OwnsOne("ApexPost.Infrastructure.Persistence.Entities.ShippingAddress", "Destination", b1 =>
+                        {
+                            b1.Property<Guid>("ShipmentRowId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<string>("AddressLine")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("nvarchar(300)")
+                                .HasColumnName("AddressLine");
+
+                            b1.Property<string>("RecipientName")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("nvarchar(100)")
+                                .HasColumnName("RecipientName");
+
+                            b1.HasKey("ShipmentRowId");
+
+                            b1.ToTable("Shipments");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ShipmentRowId");
+                        });
+
+                    b.Navigation("Destination");
+
+                    b.Navigation("Dimensions");
                 });
 
             modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Entities.ShippingRateRow", b =>
@@ -1484,138 +1457,12 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .HasForeignKey("ZoneId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.OwnsOne("ApexPost.Infrastructure.Persistence.Entities.AuditColumns", "Audit", b1 =>
-                        {
-                            b1.Property<Guid>("ShippingRateRowId")
-                                .HasColumnType("uniqueidentifier");
-
-                            b1.Property<string>("CorrelationId")
-                                .HasMaxLength(64)
-                                .IsUnicode(false)
-                                .HasColumnType("varchar(64)")
-                                .HasColumnName("AuditCorrelationId");
-
-                            b1.Property<DateTime>("CreatedAtUtc")
-                                .ValueGeneratedOnAdd()
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("CreatedAtUtc")
-                                .HasDefaultValueSql("SYSUTCDATETIME()");
-
-                            b1.Property<Guid?>("CreatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("CreatedByStaffId");
-
-                            b1.Property<DateTime?>("UpdatedAtUtc")
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("UpdatedAtUtc");
-
-                            b1.Property<Guid?>("UpdatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("UpdatedByStaffId");
-
-                            b1.HasKey("ShippingRateRowId");
-
-                            b1.ToTable("ShippingRates");
-
-                            b1.WithOwner()
-                                .HasForeignKey("ShippingRateRowId");
-                        });
-
-                    b.Navigation("Audit")
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Entities.ShippingZoneRow", b =>
-                {
-                    b.OwnsOne("ApexPost.Infrastructure.Persistence.Entities.AuditColumns", "Audit", b1 =>
-                        {
-                            b1.Property<Guid>("ShippingZoneRowId")
-                                .HasColumnType("uniqueidentifier");
-
-                            b1.Property<string>("CorrelationId")
-                                .HasMaxLength(64)
-                                .IsUnicode(false)
-                                .HasColumnType("varchar(64)")
-                                .HasColumnName("AuditCorrelationId");
-
-                            b1.Property<DateTime>("CreatedAtUtc")
-                                .ValueGeneratedOnAdd()
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("CreatedAtUtc")
-                                .HasDefaultValueSql("SYSUTCDATETIME()");
-
-                            b1.Property<Guid?>("CreatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("CreatedByStaffId");
-
-                            b1.Property<DateTime?>("UpdatedAtUtc")
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("UpdatedAtUtc");
-
-                            b1.Property<Guid?>("UpdatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("UpdatedByStaffId");
-
-                            b1.HasKey("ShippingZoneRowId");
-
-                            b1.ToTable("ShippingZones");
-
-                            b1.WithOwner()
-                                .HasForeignKey("ShippingZoneRowId");
-                        });
-
-                    b.Navigation("Audit")
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Entities.StaffRoleRow", b =>
-                {
-                    b.OwnsOne("ApexPost.Infrastructure.Persistence.Entities.AuditColumns", "Audit", b1 =>
-                        {
-                            b1.Property<string>("StaffRoleRowCode")
-                                .HasColumnType("varchar(32)");
-
-                            b1.Property<string>("CorrelationId")
-                                .HasMaxLength(64)
-                                .IsUnicode(false)
-                                .HasColumnType("varchar(64)")
-                                .HasColumnName("AuditCorrelationId");
-
-                            b1.Property<DateTime>("CreatedAtUtc")
-                                .ValueGeneratedOnAdd()
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("CreatedAtUtc")
-                                .HasDefaultValueSql("SYSUTCDATETIME()");
-
-                            b1.Property<Guid?>("CreatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("CreatedByStaffId");
-
-                            b1.Property<DateTime?>("UpdatedAtUtc")
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("UpdatedAtUtc");
-
-                            b1.Property<Guid?>("UpdatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("UpdatedByStaffId");
-
-                            b1.HasKey("StaffRoleRowCode");
-
-                            b1.ToTable("StaffRoles");
-
-                            b1.WithOwner()
-                                .HasForeignKey("StaffRoleRowCode");
-                        });
-
-                    b.Navigation("Audit")
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Entities.StaffRow", b =>
                 {
                     b.HasOne("ApexPost.Infrastructure.Persistence.Entities.BranchRow", null)
-                        .WithMany()
+                        .WithMany("Staff")
                         .HasForeignKey("BranchId")
                         .OnDelete(DeleteBehavior.Restrict);
 
@@ -1623,46 +1470,6 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("Role")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.OwnsOne("ApexPost.Infrastructure.Persistence.Entities.AuditColumns", "Audit", b1 =>
-                        {
-                            b1.Property<Guid>("StaffRowId")
-                                .HasColumnType("uniqueidentifier");
-
-                            b1.Property<string>("CorrelationId")
-                                .HasMaxLength(64)
-                                .IsUnicode(false)
-                                .HasColumnType("varchar(64)")
-                                .HasColumnName("AuditCorrelationId");
-
-                            b1.Property<DateTime>("CreatedAtUtc")
-                                .ValueGeneratedOnAdd()
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("CreatedAtUtc")
-                                .HasDefaultValueSql("SYSUTCDATETIME()");
-
-                            b1.Property<Guid?>("CreatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("CreatedByStaffId");
-
-                            b1.Property<DateTime?>("UpdatedAtUtc")
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("UpdatedAtUtc");
-
-                            b1.Property<Guid?>("UpdatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("UpdatedByStaffId");
-
-                            b1.HasKey("StaffRowId");
-
-                            b1.ToTable("Staff");
-
-                            b1.WithOwner()
-                                .HasForeignKey("StaffRowId");
-                        });
-
-                    b.Navigation("Audit")
                         .IsRequired();
                 });
 
@@ -1685,95 +1492,12 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .HasForeignKey("StaffId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.OwnsOne("ApexPost.Infrastructure.Persistence.Entities.AuditColumns", "Audit", b1 =>
-                        {
-                            b1.Property<Guid>("StockAdjustmentRowId")
-                                .HasColumnType("uniqueidentifier");
-
-                            b1.Property<string>("CorrelationId")
-                                .HasMaxLength(64)
-                                .IsUnicode(false)
-                                .HasColumnType("varchar(64)")
-                                .HasColumnName("AuditCorrelationId");
-
-                            b1.Property<DateTime>("CreatedAtUtc")
-                                .ValueGeneratedOnAdd()
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("CreatedAtUtc")
-                                .HasDefaultValueSql("SYSUTCDATETIME()");
-
-                            b1.Property<Guid?>("CreatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("CreatedByStaffId");
-
-                            b1.Property<DateTime?>("UpdatedAtUtc")
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("UpdatedAtUtc");
-
-                            b1.Property<Guid?>("UpdatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("UpdatedByStaffId");
-
-                            b1.HasKey("StockAdjustmentRowId");
-
-                            b1.ToTable("StockAdjustments");
-
-                            b1.WithOwner()
-                                .HasForeignKey("StockAdjustmentRowId");
-                        });
-
-                    b.Navigation("Audit")
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Entities.TaxCategoryRow", b =>
-                {
-                    b.OwnsOne("ApexPost.Infrastructure.Persistence.Entities.AuditColumns", "Audit", b1 =>
-                        {
-                            b1.Property<string>("TaxCategoryRowCode")
-                                .HasColumnType("nvarchar(60)");
-
-                            b1.Property<string>("CorrelationId")
-                                .HasMaxLength(64)
-                                .IsUnicode(false)
-                                .HasColumnType("varchar(64)")
-                                .HasColumnName("AuditCorrelationId");
-
-                            b1.Property<DateTime>("CreatedAtUtc")
-                                .ValueGeneratedOnAdd()
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("CreatedAtUtc")
-                                .HasDefaultValueSql("SYSUTCDATETIME()");
-
-                            b1.Property<Guid?>("CreatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("CreatedByStaffId");
-
-                            b1.Property<DateTime?>("UpdatedAtUtc")
-                                .HasColumnType("datetime2(3)")
-                                .HasColumnName("UpdatedAtUtc");
-
-                            b1.Property<Guid?>("UpdatedByStaffId")
-                                .HasColumnType("uniqueidentifier")
-                                .HasColumnName("UpdatedByStaffId");
-
-                            b1.HasKey("TaxCategoryRowCode");
-
-                            b1.ToTable("TaxCategories");
-
-                            b1.WithOwner()
-                                .HasForeignKey("TaxCategoryRowCode");
-                        });
-
-                    b.Navigation("Audit")
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Entities.TransactionLineRow", b =>
                 {
                     b.HasOne("ApexPost.Infrastructure.Persistence.Entities.CounterTransactionRow", null)
-                        .WithMany()
+                        .WithMany("Lines")
                         .HasForeignKey("CounterTransactionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1789,6 +1513,22 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         .HasForeignKey("TaxCategory")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Entities.BranchRow", b =>
+                {
+                    b.Navigation("Staff");
+
+                    b.Navigation("Terminals");
+                });
+
+            modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Entities.CounterTransactionRow", b =>
+                {
+                    b.Navigation("Lines");
+
+                    b.Navigation("Payment");
+
+                    b.Navigation("Shipment");
                 });
 #pragma warning restore 612, 618
         }

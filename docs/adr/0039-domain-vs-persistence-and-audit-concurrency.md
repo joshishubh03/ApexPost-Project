@@ -1,6 +1,6 @@
 # 0039: Domain vs persistence models, audit strategy, and stock concurrency
 
-- Status: Accepted
+- Status: Superseded by 0045 (models), 0046 (concurrency) and 0047 (audit)
 - Date: 2026-11-01
 
 ## Context

@@ -124,7 +124,7 @@ public sealed class JsonPersistenceReliabilityTests
             var secondRunCounts = await ReadCountsAsync(
                 branches, staff, products, inventory, transactions, moneyOrders, verifications, zones, rates, terminals);
 
-            Assert.Equal(new[] { 5, 20, 30, 150, 40, 10, 5, 10, 30, 10 }, firstRunCounts);
+            Assert.Equal(new[] { 5, 20, 30, 150, DemoDataSeeder.HistoricalTransactionCount, 10, 5, 10, 30, 10 }, firstRunCounts);
             Assert.Equal(firstRunCounts, secondRunCounts);
             Assert.Contains(TransactionStatus.Voided, (await transactions.GetAllAsync()).Select(item => item.Status));
             Assert.Contains(TransactionStatus.Refunded, (await transactions.GetAllAsync()).Select(item => item.Status));

@@ -9,18 +9,8 @@ public sealed class StaffManagementService(
     IStaffRepository staffRepository,
     IStaffPasswordService passwordService,
     ICounterTerminalRepository terminalRepository,
-    IApplicationMutationCoordinator mutationCoordinator,
-    IUnitOfWork unitOfWork)
+    IApplicationMutationCoordinator mutationCoordinator)
 {
-    public StaffManagementService(
-        IBranchRepository branchRepository,
-        IStaffRepository staffRepository,
-        IStaffPasswordService passwordService,
-        ICounterTerminalRepository terminalRepository,
-        IApplicationMutationCoordinator mutationCoordinator)
-        : this(branchRepository, staffRepository, passwordService, terminalRepository, mutationCoordinator, new NoOpUnitOfWork())
-    {
-    }
 
     public Task<IReadOnlyList<Branch>> GetBranchesAsync(CancellationToken cancellationToken = default) =>
         branchRepository.GetAllAsync(cancellationToken);
@@ -47,7 +37,6 @@ public sealed class StaffManagementService(
 
             branches.Add(branch);
             await branchRepository.SaveAllAsync(branches, cancellationToken);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
         }, cancellationToken);
 
     public async Task<IReadOnlyList<CounterTerminal>> GetTerminalsAsync(CancellationToken cancellationToken = default) =>
@@ -67,7 +56,6 @@ public sealed class StaffManagementService(
 
             terminals.Add(terminal);
             await terminalRepository.SaveAllAsync(terminals, cancellationToken);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
         }, cancellationToken);
 
     public Task SetTerminalActiveAsync(Guid id, bool isActive, CancellationToken cancellationToken = default) =>
@@ -79,7 +67,6 @@ public sealed class StaffManagementService(
                 throw new KeyNotFoundException("The counter terminal could not be found.");
             terminals[index] = terminals[index].WithActiveStatus(isActive);
             await terminalRepository.SaveAllAsync(terminals, cancellationToken);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
         }, cancellationToken);
 
     public Task SetBranchOpenStatusAsync(Guid id, bool isOpen, CancellationToken cancellationToken = default) =>
@@ -91,7 +78,6 @@ public sealed class StaffManagementService(
                 throw new KeyNotFoundException("The branch could not be found.");
             branches[index] = branches[index].WithOpenStatus(isOpen);
             await branchRepository.SaveAllAsync(branches, cancellationToken);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
         }, cancellationToken);
 
     public Task CreateStaffAsync(
@@ -126,7 +112,6 @@ public sealed class StaffManagementService(
             passwordService.Hash(initialPassword));
         staff.Add(member);
         await staffRepository.SaveAllAsync(staff, cancellationToken);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
     }, cancellationToken);
 
     public Task SetStaffActiveAsync(
@@ -150,7 +135,6 @@ public sealed class StaffManagementService(
 
         staff[index] = target.WithActiveStatus(isActive);
         await staffRepository.SaveAllAsync(staff, cancellationToken);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
     }, cancellationToken);
 
     public Task UpdateStaffAsync(
@@ -203,6 +187,5 @@ public sealed class StaffManagementService(
 
         staff[index] = target.WithProfile(normalizedEmail, fullName, role, branchId);
         await staffRepository.SaveAllAsync(staff, cancellationToken);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
     }, cancellationToken);
 }

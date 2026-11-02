@@ -1,6 +1,6 @@
 # 0038: Repository and Unit of Work boundaries
 
-- Status: Accepted
+- Status: Superseded by 0044
 - Date: 2026-11-01
 
 ## Context

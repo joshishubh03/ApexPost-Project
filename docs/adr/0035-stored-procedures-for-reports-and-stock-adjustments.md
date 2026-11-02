@@ -1,6 +1,6 @@
 # 0035: Stored procedures for reports and transactional stock adjustments
 
-- Status: Accepted
+- Status: Superseded by 0043
 - Date: 2026-11-01
 
 ## Context

@@ -14,6 +14,21 @@
     <a asp-controller="CounterTransactions" asp-action="Index" class="btn btn-primary">Open counter</a>
 </section>
 
+@if (Model.Summary is { } summary)
+{
+    <section class="mb-4" aria-labelledby="today-heading">
+        <h2 id="today-heading" class="h5">Today (UTC) from SQL Server</h2>
+        <div class="row g-3" id="dashboard-summary">
+            <div class="col-6 col-md-2"><div class="card card-body"><span class="text-muted small">Branches</span><strong>@summary.BranchCount</strong></div></div>
+            <div class="col-6 col-md-2"><div class="card card-body"><span class="text-muted small">Active products</span><strong>@summary.ActiveProductCount</strong></div></div>
+            <div class="col-6 col-md-2"><div class="card card-body"><span class="text-muted small">Sales today</span><strong>@summary.TransactionsToday</strong></div></div>
+            <div class="col-6 col-md-2"><div class="card card-body"><span class="text-muted small">Revenue today</span><strong>@summary.RevenueToday.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("en-IN"))</strong></div></div>
+            <div class="col-6 col-md-2"><div class="card card-body"><span class="text-muted small">Low-stock items</span><strong>@summary.LowStockItems</strong></div></div>
+            <div class="col-6 col-md-2"><div class="card card-body"><span class="text-muted small">Money orders today</span><strong>@summary.MoneyOrdersToday</strong></div></div>
+        </div>
+    </section>
+}
+
 @if (Model.Reports.Count > 0)
 {
     if (isAdministrator)
@@ -21,7 +36,7 @@
         <section class="mb-4" aria-labelledby="live-summary-heading">
             <div class="section-heading">
                 <h2 id="live-summary-heading" class="h5 mb-0">Live network summary</h2>
-                <span class="text-muted small">Current JSON-backed branch data</span>
+                <span class="text-muted small">Current branch data</span>
             </div>
             <div class="row g-3 mb-3">
                 <div class="col-sm-6 col-xl-3"><div class="card card-body h-100"><span class="text-muted">Branches reporting</span><strong class="fs-4">@Model.Reports.Count</strong></div></div>

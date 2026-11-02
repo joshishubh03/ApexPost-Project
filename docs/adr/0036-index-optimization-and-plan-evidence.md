@@ -1,6 +1,6 @@
 # 0036: Index design and execution-plan evidence
 
-- Status: Accepted
+- Status: Superseded by 0042 (measured evidence in PERFORMANCE.md)
 - Date: 2026-11-01
 
 ## Context

@@ -1,0 +1,123 @@
+@model OperationsReportPageModel
+@{
+    ViewData["Title"] = "Operations reports";
+    var inr = System.Globalization.CultureInfo.GetCultureInfo("en-IN");
+}
+
+<h1>Operations reports</h1>
+<p class="text-muted">
+    Head-office and auditor reports read from SQL Server through the query service:
+    daily sales and low stock run stored procedures; the other tables are AsNoTracking projections.
+</p>
+
+@if (!Model.IsAvailable)
+{
+    <div class="alert alert-info">These reports need the SQL Server persistence provider.</div>
+    return;
+}
+
+<div asp-validation-summary="All" class="text-danger"></div>
+
+<form asp-action="Operations" method="get" class="row g-2 mb-4">
+    <div class="col-md-3">
+        <label class="form-label" for="BranchCode">Branch</label>
+        <select class="form-select" id="BranchCode" name="BranchCode">
+            @foreach (var branch in Model.Branches)
+            {
+                <option value="@branch.Code" selected="@(branch.Code == Model.Query.BranchCode)">@branch.Code — @branch.Name</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label" for="Date">Sales date (UTC)</label>
+        <input class="form-control" type="date" id="Date" name="Date" value="@Model.Query.Date?.ToString("yyyy-MM-dd")" />
+    </div>
+    <div class="col-md-2">
+        <label class="form-label" for="From">From</label>
+        <input class="form-control" type="date" id="From" name="From" value="@Model.Query.From?.ToString("yyyy-MM-dd")" />
+    </div>
+    <div class="col-md-2">
+        <label class="form-label" for="To">To</label>
+        <input class="form-control" type="date" id="To" name="To" value="@Model.Query.To?.ToString("yyyy-MM-dd")" />
+    </div>
+    <div class="col-md-1">
+        <label class="form-label" for="Threshold">Low stock ≤</label>
+        <input class="form-control" type="number" min="0" max="1000" id="Threshold" name="Threshold" value="@Model.Query.Threshold" />
+    </div>
+    <div class="col-md-2 align-self-end">
+        @if (!User.IsInRole("BranchManager"))
+        {
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="AllBranches" name="AllBranches" value="true" checked="@Model.Query.AllBranches" />
+                <label class="form-check-label" for="AllBranches">Low stock: all branches</label>
+            </div>
+        }
+        <button class="btn btn-outline-primary" type="submit">Run reports</button>
+    </div>
+</form>
+
+<h2 class="h4">Daily branch sales <small class="text-muted">(usp_DailyBranchSales)</small></h2>
+<table class="table table-sm" id="daily-sales">
+    <thead><tr><th>Branch</th><th>Date</th><th class="text-end">Transactions</th><th class="text-end">Retail</th><th class="text-end">Services</th><th class="text-end">Total</th></tr></thead>
+    <tbody>
+    @foreach (var row in Model.DailySales)
+    {
+        <tr>
+            <td>@row.BranchCode</td>
+            <td>@row.SaleDate.ToString("yyyy-MM-dd")</td>
+            <td class="text-end">@row.TransactionCount</td>
+            <td class="text-end">@row.RetailRevenue.ToString("C2", inr)</td>
+            <td class="text-end">@row.ServiceRevenue.ToString("C2", inr)</td>
+            <td class="text-end fw-semibold">@row.TotalRevenue.ToString("C2", inr)</td>
+        </tr>
+    }
+    </tbody>
+</table>
+
+<h2 class="h4">Branches with no sales on @Model.Query.Date?.ToString("yyyy-MM-dd")</h2>
+@if (Model.BranchesWithoutSales.Count == 0)
+{
+    <p>Every branch in scope recorded at least one settled sale.</p>
+}
+else
+{
+    <ul id="no-sales">
+        @foreach (var row in Model.BranchesWithoutSales)
+        {
+            <li>@row.BranchCode — @row.BranchName (@row.Region)</li>
+        }
+    </ul>
+}
+
+<h2 class="h4">Low stock <small class="text-muted">(usp_LowStockReport)</small></h2>
+<table class="table table-sm" id="low-stock">
+    <thead><tr><th>Branch</th><th>SKU</th><th>Product</th><th class="text-end">On hand</th><th class="text-end">Reorder level</th><th class="text-end">Shortfall</th></tr></thead>
+    <tbody>
+    @foreach (var row in Model.LowStock)
+    {
+        <tr><td>@row.BranchCode</td><td>@row.Sku</td><td>@row.ProductName</td><td class="text-end">@row.QuantityOnHand</td><td class="text-end">@row.ReorderLevel</td><td class="text-end">@row.Shortfall</td></tr>
+    }
+    </tbody>
+</table>
+
+<h2 class="h4">Shipping volume by zone and service level</h2>
+<table class="table table-sm" id="shipping-volume">
+    <thead><tr><th>Zone</th><th>Service level</th><th class="text-end">Shipments</th><th class="text-end">Shipping revenue</th></tr></thead>
+    <tbody>
+    @foreach (var row in Model.ShippingVolume)
+    {
+        <tr><td>@row.ZoneCode — @row.ZoneName</td><td>@row.ServiceLevel</td><td class="text-end">@row.ShipmentCount</td><td class="text-end">@row.ShippingRevenue.ToString("C2", inr)</td></tr>
+    }
+    </tbody>
+</table>
+
+<h2 class="h4">Money orders and identity verifications per branch</h2>
+<table class="table table-sm" id="money-orders">
+    <thead><tr><th>Branch</th><th class="text-end">Issued</th><th class="text-end">Refunded</th><th class="text-end">Value</th><th class="text-end">ID verified</th><th class="text-end">ID failed</th></tr></thead>
+    <tbody>
+    @foreach (var row in Model.MoneyOrders)
+    {
+        <tr><td>@row.BranchCode — @row.BranchName</td><td class="text-end">@row.MoneyOrdersIssued</td><td class="text-end">@row.MoneyOrdersRefunded</td><td class="text-end">@row.MoneyOrderValue.ToString("C2", inr)</td><td class="text-end">@row.VerificationsPassed</td><td class="text-end">@row.VerificationsFailed</td></tr>
+    }
+    </tbody>
+</table>

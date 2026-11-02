@@ -1,10 +1,17 @@
 using ApexPost.Application.Abstractions;
 using ApexPost.Domain.Entities;
 using ApexPost.Domain.Enums;
+using ApexPost.Domain.ValueObjects;
 using ApexPost.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace ApexPost.Infrastructure.Persistence.Repositories;
+
+// Repository rules (ADR 0044):
+//  * Repositories STAGE changes on the scoped DbContext. They never call SaveChanges - EfUnitOfWork commits.
+//  * Reads that feed screens use AsNoTracking and map to immutable domain records; no IQueryable leaves a repository.
+//  * Rows loaded for update are tracked; rows already staged in this unit of work (DbSet.Local) are reused so a
+//    second call in the same use case never adds a duplicate.
 
 internal static class PersistenceMapping
 {
@@ -14,11 +21,24 @@ internal static class PersistenceMapping
             ? parsed
             : throw new InvalidDataException($"The stored value '{value}' is not a valid {typeof(TEnum).Name}.");
 
-    public static AuditColumns NewAudit() => new() { CreatedAtUtc = DateTime.UtcNow };
-
-    public static void Touch(AuditColumns audit)
+    /// <summary>Adds rows that are staged (Added) in this unit of work but not yet in the database.</summary>
+    public static Dictionary<TKey, TRow> WithLocal<TKey, TRow>(
+        this Dictionary<TKey, TRow> loaded,
+        IEnumerable<TRow> local,
+        Func<TRow, TKey> key,
+        IReadOnlySet<TKey> wanted)
+        where TKey : notnull
     {
-        audit.UpdatedAtUtc = DateTime.UtcNow;
+        foreach (var row in local)
+        {
+            var rowKey = key(row);
+            if (wanted.Contains(rowKey))
+            {
+                loaded.TryAdd(rowKey, row);
+            }
+        }
+
+        return loaded;
     }
 }
 
@@ -32,7 +52,8 @@ public sealed class EfBranchRepository(ApexPostDbContext context) : IBranchRepos
 
     public async Task<Branch?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var row = await context.Branches.AsNoTracking().SingleOrDefaultAsync(row => row.Id == id, cancellationToken);
+        var row = await context.Branches.AsNoTracking().SingleOrDefaultAsync(row => row.Id == id, cancellationToken)
+            ?? context.Branches.Local.FirstOrDefault(row => row.Id == id);
         return row is null ? null : ToDomain(row);
     }
 
@@ -40,44 +61,45 @@ public sealed class EfBranchRepository(ApexPostDbContext context) : IBranchRepos
     {
         var values = branches.ToArray();
         var ids = values.Select(value => value.Id).Distinct().ToArray();
-        var rows = await context.Branches.Where(row => ids.Contains(row.Id)).ToDictionaryAsync(row => row.Id, cancellationToken);
+        var wanted = ids.ToHashSet();
+        var rows = (await context.Branches.Where(row => ids.Contains(row.Id)).ToDictionaryAsync(row => row.Id, cancellationToken))
+            .WithLocal(context.Branches.Local, row => row.Id, wanted);
         foreach (var value in values)
         {
+            var code = new BranchCode(value.Code);
             if (rows.TryGetValue(value.Id, out var row))
             {
-                if (row.Code == value.Code && row.Name == value.Name && row.Region == value.Region &&
+                if (row.Code == code && row.Name == value.Name && row.Region == value.Region &&
                     row.IsOpen == value.IsOpen && row.OpeningTime == value.OpeningTime && row.ClosingTime == value.ClosingTime)
                     continue;
 
-                row.Code = value.Code;
+                row.Code = code;
                 row.Name = value.Name;
                 row.Region = value.Region;
                 row.IsOpen = value.IsOpen;
                 row.OpeningTime = value.OpeningTime;
                 row.ClosingTime = value.ClosingTime;
-                PersistenceMapping.Touch(row.Audit);
             }
             else
             {
-                context.Branches.Add(new BranchRow
+                var added = new BranchRow
                 {
                     Id = value.Id,
-                    Code = value.Code,
+                    Code = code,
                     Name = value.Name,
                     Region = value.Region,
                     IsOpen = value.IsOpen,
                     OpeningTime = value.OpeningTime,
-                    ClosingTime = value.ClosingTime,
-                    Audit = PersistenceMapping.NewAudit()
-                });
+                    ClosingTime = value.ClosingTime
+                };
+                context.Branches.Add(added);
+                rows[value.Id] = added;
             }
         }
-
-        await context.SaveChangesAsync(cancellationToken);
     }
 
     private static Branch ToDomain(BranchRow row) =>
-        new(row.Id, row.Code, row.Name, row.Region, row.IsOpen, row.OpeningTime, row.ClosingTime);
+        new(row.Id, row.Code.Value, row.Name, row.Region, row.IsOpen, row.OpeningTime, row.ClosingTime);
 }
 
 public sealed class EfCounterTerminalRepository(ApexPostDbContext context) : ICounterTerminalRepository
@@ -92,7 +114,9 @@ public sealed class EfCounterTerminalRepository(ApexPostDbContext context) : ICo
     {
         var values = terminals.ToArray();
         var ids = values.Select(value => value.Id).Distinct().ToArray();
-        var rows = await context.CounterTerminals.Where(row => ids.Contains(row.Id)).ToDictionaryAsync(row => row.Id, cancellationToken);
+        var wanted = ids.ToHashSet();
+        var rows = (await context.CounterTerminals.Where(row => ids.Contains(row.Id)).ToDictionaryAsync(row => row.Id, cancellationToken))
+            .WithLocal(context.CounterTerminals.Local, row => row.Id, wanted);
         foreach (var value in values)
         {
             if (rows.TryGetValue(value.Id, out var row))
@@ -103,22 +127,21 @@ public sealed class EfCounterTerminalRepository(ApexPostDbContext context) : ICo
                 row.Code = value.Code;
                 row.Name = value.Name;
                 row.IsActive = value.IsActive;
-                PersistenceMapping.Touch(row.Audit);
             }
             else
             {
-                context.CounterTerminals.Add(new CounterTerminalRow
+                var added = new CounterTerminalRow
                 {
                     Id = value.Id,
                     BranchId = value.BranchId,
                     Code = value.Code,
                     Name = value.Name,
-                    IsActive = value.IsActive,
-                    Audit = PersistenceMapping.NewAudit()
-                });
+                    IsActive = value.IsActive
+                };
+                context.CounterTerminals.Add(added);
+                rows[value.Id] = added;
             }
         }
-        await context.SaveChangesAsync(cancellationToken);
     }
 }
 
@@ -128,6 +151,13 @@ public sealed class EfStaffRepository(ApexPostDbContext context) : IStaffReposit
     {
         var rows = await context.Staff.AsNoTracking().OrderBy(row => row.Email).ToListAsync(cancellationToken);
         return rows.Select(ToDomain).ToArray();
+    }
+
+    public async Task<StaffMember?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var row = await context.Staff.AsNoTracking().SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken)
+            ?? context.Staff.Local.FirstOrDefault(candidate => candidate.Id == id);
+        return row is null ? null : ToDomain(row);
     }
 
     public async Task<StaffMember?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
@@ -143,10 +173,13 @@ public sealed class EfStaffRepository(ApexPostDbContext context) : IStaffReposit
     {
         var values = staff.ToArray();
         var ids = values.Select(value => value.Id).Distinct().ToArray();
-        var rows = await context.Staff.Where(row => ids.Contains(row.Id)).ToDictionaryAsync(row => row.Id, cancellationToken);
-        var roleCodes = Enum.GetValues<StaffRole>().Select(role => role.ToString()).ToArray();
-        var existingRoles = await context.StaffRoles.Select(row => row.Code).ToListAsync(cancellationToken);
-        foreach (var role in roleCodes.Except(existingRoles, StringComparer.Ordinal))
+        var wanted = ids.ToHashSet();
+        var rows = (await context.Staff.Where(row => ids.Contains(row.Id)).ToDictionaryAsync(row => row.Id, cancellationToken))
+            .WithLocal(context.Staff.Local, row => row.Id, wanted);
+        var existingRoles = (await context.StaffRoles.Select(row => row.Code).ToListAsync(cancellationToken))
+            .Concat(context.StaffRoles.Local.Select(row => row.Code))
+            .ToHashSet(StringComparer.Ordinal);
+        foreach (var role in Enum.GetNames<StaffRole>().Where(role => !existingRoles.Contains(role)))
         {
             context.StaffRoles.Add(new StaffRoleRow
             {
@@ -156,8 +189,7 @@ public sealed class EfStaffRepository(ApexPostDbContext context) : IStaffReposit
                     nameof(StaffRole.CounterClerk) => "Counter Clerk",
                     nameof(StaffRole.BranchManager) => "Branch Manager",
                     _ => role
-                },
-                Audit = PersistenceMapping.NewAudit()
+                }
             });
         }
 
@@ -174,11 +206,10 @@ public sealed class EfStaffRepository(ApexPostDbContext context) : IStaffReposit
                 row.Role = value.Role.ToString();
                 row.IsActive = value.IsActive;
                 row.PasswordHash = value.PasswordHash;
-                PersistenceMapping.Touch(row.Audit);
             }
             else
             {
-                context.Staff.Add(new StaffRow
+                var added = new StaffRow
                 {
                     Id = value.Id,
                     BranchId = value.BranchId,
@@ -186,12 +217,12 @@ public sealed class EfStaffRepository(ApexPostDbContext context) : IStaffReposit
                     FullName = value.FullName,
                     Role = value.Role.ToString(),
                     IsActive = value.IsActive,
-                    PasswordHash = value.PasswordHash,
-                    Audit = PersistenceMapping.NewAudit()
-                });
+                    PasswordHash = value.PasswordHash
+                };
+                context.Staff.Add(added);
+                rows[value.Id] = added;
             }
         }
-        await context.SaveChangesAsync(cancellationToken);
     }
 
     private static StaffMember ToDomain(StaffRow row) =>
@@ -203,7 +234,7 @@ public sealed class EfProductRepository(ApexPostDbContext context) : IProductRep
     public async Task<IReadOnlyList<Product>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         var rows = await context.Products.AsNoTracking().OrderBy(row => row.Sku).ToListAsync(cancellationToken);
-        return rows.Select(row => new Product(row.Id, row.Sku, row.Name, row.Description, row.Category, row.Price, row.IsActive, row.TaxCategory)).ToArray();
+        return rows.Select(row => new Product(row.Id, row.Sku.Value, row.Name, row.Description, row.Category, row.Price, row.IsActive, row.TaxCategory)).ToArray();
     }
 
     public async Task SaveAllAsync(IEnumerable<Product> products, CancellationToken cancellationToken = default)
@@ -211,40 +242,42 @@ public sealed class EfProductRepository(ApexPostDbContext context) : IProductRep
         var values = products.ToArray();
         await EnsureLookupRowsAsync(values, cancellationToken);
         var ids = values.Select(value => value.Id).Distinct().ToArray();
-        var rows = await context.Products.Where(row => ids.Contains(row.Id)).ToDictionaryAsync(row => row.Id, cancellationToken);
+        var wanted = ids.ToHashSet();
+        var rows = (await context.Products.Where(row => ids.Contains(row.Id)).ToDictionaryAsync(row => row.Id, cancellationToken))
+            .WithLocal(context.Products.Local, row => row.Id, wanted);
         foreach (var value in values)
         {
+            var sku = new Sku(value.Sku);
             if (rows.TryGetValue(value.Id, out var row))
             {
-                if (row.Sku == value.Sku && row.Name == value.Name && row.Description == value.Description &&
+                if (row.Sku == sku && row.Name == value.Name && row.Description == value.Description &&
                     row.Category == value.Category && row.TaxCategory == value.TaxCategory && row.Price == value.Price && row.IsActive == value.IsActive)
                     continue;
-                row.Sku = value.Sku;
+                row.Sku = sku;
                 row.Name = value.Name;
                 row.Description = value.Description;
                 row.Category = value.Category;
                 row.TaxCategory = value.TaxCategory;
                 row.Price = value.Price;
                 row.IsActive = value.IsActive;
-                PersistenceMapping.Touch(row.Audit);
             }
             else
             {
-                context.Products.Add(new ProductRow
+                var added = new ProductRow
                 {
                     Id = value.Id,
-                    Sku = value.Sku,
+                    Sku = sku,
                     Name = value.Name,
                     Description = value.Description,
                     Category = value.Category,
                     TaxCategory = value.TaxCategory,
                     Price = value.Price,
-                    IsActive = value.IsActive,
-                    Audit = PersistenceMapping.NewAudit()
-                });
+                    IsActive = value.IsActive
+                };
+                context.Products.Add(added);
+                rows[value.Id] = added;
             }
         }
-        await context.SaveChangesAsync(cancellationToken);
     }
 
     public ValueTask<string> GetVersionAsync(CancellationToken cancellationToken = default) =>
@@ -253,8 +286,8 @@ public sealed class EfProductRepository(ApexPostDbContext context) : IProductRep
     private async Task<string> GetVersionCoreAsync(CancellationToken cancellationToken)
     {
         var latestVersion = await context.Products.AsNoTracking()
-            .OrderByDescending(row => row.RowVersion)
-            .Select(row => row.RowVersion)
+            .OrderByDescending(row => EF.Property<byte[]>(row, AuditShadowProperties.RowVersion))
+            .Select(row => EF.Property<byte[]>(row, AuditShadowProperties.RowVersion))
             .FirstOrDefaultAsync(cancellationToken);
         return latestVersion is null ? "empty" : Convert.ToHexString(latestVersion);
     }
@@ -263,15 +296,17 @@ public sealed class EfProductRepository(ApexPostDbContext context) : IProductRep
     {
         var categories = products.Select(product => product.Category).Distinct(StringComparer.Ordinal).ToArray();
         var taxCategories = products.Select(product => product.TaxCategory).Distinct(StringComparer.Ordinal).ToArray();
-        var knownCategories = await context.ProductCategories.Select(row => row.Code).ToListAsync(cancellationToken);
-        var knownTaxCategories = await context.TaxCategories.Select(row => row.Code).ToListAsync(cancellationToken);
-        foreach (var code in categories.Except(knownCategories, StringComparer.Ordinal))
+        var knownCategories = (await context.ProductCategories.Select(row => row.Code).ToListAsync(cancellationToken))
+            .Concat(context.ProductCategories.Local.Select(row => row.Code)).ToHashSet(StringComparer.Ordinal);
+        var knownTaxCategories = (await context.TaxCategories.Select(row => row.Code).ToListAsync(cancellationToken))
+            .Concat(context.TaxCategories.Local.Select(row => row.Code)).ToHashSet(StringComparer.Ordinal);
+        foreach (var code in categories.Where(code => !knownCategories.Contains(code)))
         {
-            context.ProductCategories.Add(new ProductCategoryRow { Code = code, Name = code, Audit = PersistenceMapping.NewAudit() });
+            context.ProductCategories.Add(new ProductCategoryRow { Code = code, Name = code });
         }
-        foreach (var code in taxCategories.Except(knownTaxCategories, StringComparer.Ordinal))
+        foreach (var code in taxCategories.Where(code => !knownTaxCategories.Contains(code)))
         {
-            context.TaxCategories.Add(new TaxCategoryRow { Code = code, Name = code, Audit = PersistenceMapping.NewAudit() });
+            context.TaxCategories.Add(new TaxCategoryRow { Code = code, Name = code });
         }
     }
 }
@@ -288,7 +323,9 @@ public sealed class EfShippingZoneRepository(ApexPostDbContext context) : IShipp
     {
         var values = zones.ToArray();
         var ids = values.Select(value => value.Id).Distinct().ToArray();
-        var rows = await context.ShippingZones.Where(row => ids.Contains(row.Id)).ToDictionaryAsync(row => row.Id, cancellationToken);
+        var wanted = ids.ToHashSet();
+        var rows = (await context.ShippingZones.Where(row => ids.Contains(row.Id)).ToDictionaryAsync(row => row.Id, cancellationToken))
+            .WithLocal(context.ShippingZones.Local, row => row.Id, wanted);
         foreach (var value in values)
         {
             if (rows.TryGetValue(value.Id, out var row))
@@ -299,22 +336,21 @@ public sealed class EfShippingZoneRepository(ApexPostDbContext context) : IShipp
                 row.Name = value.Name;
                 row.Destination = value.Destination;
                 row.IsActive = value.IsActive;
-                PersistenceMapping.Touch(row.Audit);
             }
             else
             {
-                context.ShippingZones.Add(new ShippingZoneRow
+                var added = new ShippingZoneRow
                 {
                     Id = value.Id,
                     Code = value.Code,
                     Name = value.Name,
                     Destination = value.Destination,
-                    IsActive = value.IsActive,
-                    Audit = PersistenceMapping.NewAudit()
-                });
+                    IsActive = value.IsActive
+                };
+                context.ShippingZones.Add(added);
+                rows[value.Id] = added;
             }
         }
-        await context.SaveChangesAsync(cancellationToken);
     }
 }
 
@@ -325,45 +361,49 @@ public sealed class EfShippingRateRepository(ApexPostDbContext context) : IShipp
         var rows = await context.ShippingRates.AsNoTracking().OrderBy(row => row.ZoneId).ThenBy(row => row.ServiceLevel).ToListAsync(cancellationToken);
         return rows.Select(row => new ShippingRate(
             row.Id, row.ZoneId, row.ServiceLevel,
-            row.BasePrice, row.PricePerKilogram, row.MaximumWeightKilograms, row.IsActive)).ToArray();
+            row.BasePrice.Amount, row.PricePerKilogram.Amount, row.MaximumWeight.Kilograms, row.IsActive)).ToArray();
     }
 
     public async Task SaveAllAsync(IEnumerable<ShippingRate> rates, CancellationToken cancellationToken = default)
     {
         var values = rates.ToArray();
         var ids = values.Select(value => value.Id).Distinct().ToArray();
-        var rows = await context.ShippingRates.Where(row => ids.Contains(row.Id)).ToDictionaryAsync(row => row.Id, cancellationToken);
+        var wanted = ids.ToHashSet();
+        var rows = (await context.ShippingRates.Where(row => ids.Contains(row.Id)).ToDictionaryAsync(row => row.Id, cancellationToken))
+            .WithLocal(context.ShippingRates.Local, row => row.Id, wanted);
         foreach (var value in values)
         {
+            var basePrice = new Money(value.BasePrice);
+            var perKilogram = new Money(value.PricePerKilogram);
+            var maximumWeight = new Weight(value.MaximumWeightKilograms);
             if (rows.TryGetValue(value.Id, out var row))
             {
                 if (row.ZoneId == value.ZoneId && row.ServiceLevel == value.ServiceLevel &&
-                    row.BasePrice == value.BasePrice && row.PricePerKilogram == value.PricePerKilogram &&
-                    row.MaximumWeightKilograms == value.MaximumWeightKilograms && row.IsActive == value.IsActive)
+                    row.BasePrice == basePrice && row.PricePerKilogram == perKilogram &&
+                    row.MaximumWeight == maximumWeight && row.IsActive == value.IsActive)
                     continue;
                 row.ZoneId = value.ZoneId;
                 row.ServiceLevel = value.ServiceLevel;
-                row.BasePrice = value.BasePrice;
-                row.PricePerKilogram = value.PricePerKilogram;
-                row.MaximumWeightKilograms = value.MaximumWeightKilograms;
+                row.BasePrice = basePrice;
+                row.PricePerKilogram = perKilogram;
+                row.MaximumWeight = maximumWeight;
                 row.IsActive = value.IsActive;
-                PersistenceMapping.Touch(row.Audit);
             }
             else
             {
-                context.ShippingRates.Add(new ShippingRateRow
+                var added = new ShippingRateRow
                 {
                     Id = value.Id,
                     ZoneId = value.ZoneId,
                     ServiceLevel = value.ServiceLevel,
-                    BasePrice = value.BasePrice,
-                    PricePerKilogram = value.PricePerKilogram,
-                    MaximumWeightKilograms = value.MaximumWeightKilograms,
-                    IsActive = value.IsActive,
-                    Audit = PersistenceMapping.NewAudit()
-                });
+                    BasePrice = basePrice,
+                    PricePerKilogram = perKilogram,
+                    MaximumWeight = maximumWeight,
+                    IsActive = value.IsActive
+                };
+                context.ShippingRates.Add(added);
+                rows[value.Id] = added;
             }
         }
-        await context.SaveChangesAsync(cancellationToken);
     }
 }

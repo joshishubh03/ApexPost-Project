@@ -7,6 +7,7 @@
 <h1>Product catalogue</h1>
 <p class="text-muted">Search postage, packaging, retail items, and counter services.</p>
 @if (TempData["StatusMessage"] is string status) { <div class="alert alert-success">@status</div> }
+@if (TempData["ErrorMessage"] is string error) { <div class="alert alert-danger">@error</div> }
 
 <form asp-action="Index" method="get" class="row g-2 mb-4">
     <div class="col-sm-8"><label for="query" class="visually-hidden">Search products</label><input id="query" name="query" value="@Model.Query" class="form-control" placeholder="Search by SKU, name, category, or description" /></div>
@@ -28,6 +29,19 @@
             <div class="col-md-2"><label asp-for="NewProduct.Price" class="form-label">Price (INR)</label><input asp-for="NewProduct.Price" class="form-control" type="number" min="0" step="0.01" /><span asp-validation-for="NewProduct.Price" class="text-danger"></span></div>
             <div class="col-md-3"><label asp-for="NewProduct.Description" class="form-label"></label><input asp-for="NewProduct.Description" class="form-control" /><span asp-validation-for="NewProduct.Description" class="text-danger"></span></div>
             <div class="col-12"><button class="btn btn-primary" type="submit">Create product</button></div>
+        </form>
+    </div>
+}
+
+@if (canManage)
+{
+    <div class="card card-body mb-4">
+        <h2 class="h5">Revise prices for a category</h2>
+        <p class="text-muted small mb-2">Runs one set-based UPDATE (ExecuteUpdateAsync) plus an audit entry in a single transaction.</p>
+        <form asp-action="RevisePrices" method="post" class="row g-2">
+            <div class="col-md-4"><label for="Category" class="form-label">Category</label><input id="Category" name="Category" class="form-control" required maxlength="60" placeholder="e.g. Packaging" /></div>
+            <div class="col-md-3"><label for="PercentChange" class="form-label">Change (%)</label><input id="PercentChange" name="PercentChange" class="form-control" type="number" min="-50" max="100" step="0.01" required /></div>
+            <div class="col-md-3 align-self-end"><button class="btn btn-outline-primary" type="submit">Apply revision</button></div>
         </form>
     </div>
 }

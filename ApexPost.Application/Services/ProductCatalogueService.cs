@@ -5,15 +5,8 @@ namespace ApexPost.Application.Services;
 
 public sealed class ProductCatalogueService(
     IProductRepository productRepository,
-    IApplicationMutationCoordinator mutationCoordinator,
-    IUnitOfWork unitOfWork)
+    IApplicationMutationCoordinator mutationCoordinator)
 {
-    public ProductCatalogueService(
-        IProductRepository productRepository,
-        IApplicationMutationCoordinator mutationCoordinator)
-        : this(productRepository, mutationCoordinator, new NoOpUnitOfWork())
-    {
-    }
 
     private IReadOnlyList<Product>? cachedProducts;
     private string? cachedVersion;
@@ -75,7 +68,6 @@ public sealed class ProductCatalogueService(
 
             products.Add(product);
             await productRepository.SaveAllAsync(products, cancellationToken);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
         }, cancellationToken);
         InvalidateCache();
     }
@@ -93,7 +85,6 @@ public sealed class ProductCatalogueService(
 
             products[index] = products[index].WithActiveStatus(isActive);
             await productRepository.SaveAllAsync(products, cancellationToken);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
         }, cancellationToken);
         InvalidateCache();
     }
@@ -128,7 +119,7 @@ public sealed class ProductCatalogueService(
             return products;
         }, cancellationToken);
 
-    private void InvalidateCache()
+    public void InvalidateCache()
     {
         Volatile.Write(ref cachedVersion, null);
         Volatile.Write(ref cachedProducts, null);

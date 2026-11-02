@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Security.Claims;
 using ApexPost.Application.Abstractions;
 using ApexPost.Application.Models;
+using ApexPost.Application.Queries;
 using ApexPost.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,7 +13,8 @@ namespace ApexPost.Web.Controllers;
 [Authorize]
 public sealed class HomeController(
     IBranchRepository branchRepository,
-    ReportingService reportingService) : Controller
+    ReportingService reportingService,
+    IReportingQueries? reportingQueries = null) : Controller
 {
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
@@ -26,8 +28,14 @@ public sealed class HomeController(
             var branches = (await branchRepository.GetAllAsync(cancellationToken))
                 .OrderBy(branch => branch.Code)
                 .ToArray();
-            reports = await Task.WhenAll(branches.Select(branch =>
-                reportingService.GetBranchReportAsync(branch.Id, cancellationToken)));
+            // One scoped DbContext per request: build the branch reports one after another.
+            var branchReports = new List<BranchOperationsReport>(branches.Length);
+            foreach (var branch in branches)
+            {
+                branchReports.Add(await reportingService.GetBranchReportAsync(branch.Id, cancellationToken));
+            }
+
+            reports = branchReports;
         }
         else if (Guid.TryParse(User.FindFirstValue("branch_id"), out var branchId))
         {
@@ -36,7 +44,11 @@ public sealed class HomeController(
             branchName = report.Branch.Name;
         }
 
-        return View(new HomeDashboardViewModel(branchName, role, isAdministrator, reports));
+        Guid? summaryBranch = isAdministrator ? null : Guid.TryParse(User.FindFirstValue("branch_id"), out var ownBranch) ? ownBranch : null;
+        var summary = reportingQueries is null
+            ? null
+            : await reportingQueries.GetDashboardAsync(summaryBranch, cancellationToken);
+        return View(new HomeDashboardViewModel(branchName, role, isAdministrator, reports, summary));
     }
 
     public IActionResult Privacy()

@@ -1,6 +1,6 @@
 # 0040: Final assignment-compliance evidence and repository state
 
-- Status: Accepted
+- Status: Superseded - evidence now lives in README.md, DESIGN.md, PERFORMANCE.md and docs/sql-transactions-and-concurrency.md
 - Date: 2026-11-01
 
 ## Context

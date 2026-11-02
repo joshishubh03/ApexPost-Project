@@ -1,6 +1,6 @@
 # 0037: Local SQL Server runtime validation
 
-- Status: Accepted
+- Status: Superseded - runtime validation is now the SQL Server integration test suite (README, section 4)
 - Date: 2026-11-01
 
 ## Context
