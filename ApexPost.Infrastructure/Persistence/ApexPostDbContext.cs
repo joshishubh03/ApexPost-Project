@@ -54,8 +54,8 @@ public sealed class ApexPostDbContext(DbContextOptions<ApexPostDbContext> option
 
     private static void ConfigureBranches(EntityTypeBuilder<BranchRow> entity)
     {
-        entity.ToTable("Branches", table => table.HasCheckConstraint(
-            "CK_Branches_OpeningHours", "[OpeningTime] < [ClosingTime]"));
+        //entity.ToTable("Branches", table => table.HasCheckConstraint(
+        //    "CK_Branches_OpeningHours", "[OpeningTime] < [ClosingTime]"));
         entity.HasKey(x => x.Id);
         entity.Property(x => x.Code).HasMaxLength(12).IsUnicode(false).IsRequired();
         entity.Property(x => x.Name).HasMaxLength(120).IsRequired();

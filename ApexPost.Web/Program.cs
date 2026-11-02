@@ -14,6 +14,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using ApexPost.Application.Validation;
+using ApexPost.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 var forwardedHeadersConfiguration = builder.Configuration.GetSection("Security:ForwardedHeaders");
@@ -193,7 +195,7 @@ builder.Services.AddApexPostInfrastructure(
 if (useSqlServer)
 {
     builder.Services.AddApexPostSqlServer(
-        sqlServerConnectionString,
+        sqlServerConnectionString!,
         builder.Configuration.GetValue("Persistence:CommandTimeoutSeconds", 30));
 }
 

@@ -2,8 +2,9 @@ using ApexPost.Application.Abstractions;
 using ApexPost.Application.Events;
 using ApexPost.Application.Models;
 using ApexPost.Application.Services;
-using ApexPost.Infrastructure.Data;
+using ApexPost.Infrastructure.Persistence;
 using ApexPost.Infrastructure.Events;
+using ApexPost.Infrastructure.Persistence.Repositories;
 using ApexPost.Infrastructure.Repositories;
 using ApexPost.Infrastructure.Security;
 using ApexPost.Infrastructure.Seed;
@@ -32,7 +33,7 @@ public static class DependencyInjection
                 .EnableRetryOnFailure(3, TimeSpan.FromSeconds(5), null)
                 .MigrationsAssembly(typeof(ApexPostDbContext).Assembly.GetName().Name)));
 
-        services.AddScoped<IUnitOfWork, EfUnitOfWork>();
+        services.AddScoped<IUnitOfWork, Persistence.EfUnitOfWork>();
         services.AddScoped<IApplicationMutationCoordinator, EfApplicationMutationCoordinator>();
         services.AddScoped<IBranchRepository, EfBranchRepository>();
         services.AddScoped<ICounterTerminalRepository, EfCounterTerminalRepository>();
@@ -67,7 +68,7 @@ public static class DependencyInjection
                     connectionString,
                     sqlServerOptions => sqlServerOptions.MigrationsAssembly(typeof(ApexPostDbContext).Assembly.FullName)));
 
-            services.AddScoped<IUnitOfWork, EfUnitOfWork>();
+            services.AddScoped<IUnitOfWork, Persistence.EfUnitOfWork>();
             services.AddScoped<IBranchRepository, EfBranchRepository>();
             services.AddScoped<IStaffRepository, EfStaffRepository>();
             services.AddScoped<IProductRepository, EfProductRepository>();
