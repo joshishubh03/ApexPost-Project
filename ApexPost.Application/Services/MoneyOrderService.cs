@@ -15,8 +15,24 @@ public sealed class MoneyOrderService(
     IIdentityVerificationService identityVerificationService,
     IApplicationEventPublisher eventPublisher,
     MoneyOrderPolicy policy,
-    IApplicationMutationCoordinator mutationCoordinator)
+    IApplicationMutationCoordinator mutationCoordinator,
+    IUnitOfWork unitOfWork)
 {
+    public MoneyOrderService(
+        IBranchRepository branchRepository,
+        IStaffRepository staffRepository,
+        IMoneyOrderRepository moneyOrderRepository,
+        ICounterTransactionRepository transactionRepository,
+        IIdentityVerificationRepository verificationRepository,
+        IIdentityVerificationService identityVerificationService,
+        IApplicationEventPublisher eventPublisher,
+        MoneyOrderPolicy policy,
+        IApplicationMutationCoordinator mutationCoordinator)
+        : this(branchRepository, staffRepository, moneyOrderRepository, transactionRepository,
+            verificationRepository, identityVerificationService, eventPublisher, policy, mutationCoordinator, new NoOpUnitOfWork())
+    {
+    }
+
     public async Task<IReadOnlyList<MoneyOrder>> GetForBranchAsync(
         Guid branchId,
         CancellationToken cancellationToken = default)
@@ -114,6 +130,7 @@ public sealed class MoneyOrderService(
             var verifications = (await verificationRepository.GetAllAsync(cancellationToken)).ToList();
             verifications.Add(verification);
             await verificationRepository.SaveAllAsync(verifications, cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
             verificationRecordId = verification.Id;
             await eventPublisher.PublishAsync(new IdentityVerificationRecordedEvent(
                 verification.Id,
@@ -152,6 +169,7 @@ public sealed class MoneyOrderService(
         var orders = (await moneyOrderRepository.GetAllAsync(cancellationToken)).ToList();
         orders.Add(order);
         await moneyOrderRepository.SaveAllAsync(orders, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         await eventPublisher.PublishAsync(new MoneyOrderIssuedEvent(
             order.Id,
@@ -225,6 +243,7 @@ public sealed class MoneyOrderService(
         var refunded = orders[index].Refund(managerId, reason, now);
         orders[index] = refunded;
         await moneyOrderRepository.SaveAllAsync(orders, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         await eventPublisher.PublishAsync(new MoneyOrderRefundedEvent(
             refunded.Id, refunded.MoneyOrderNumber, branchId, managerId, now, refunded.TotalAmount,
             refunded.RefundReason!, correlationId, fromCounterTransaction), CancellationToken.None);

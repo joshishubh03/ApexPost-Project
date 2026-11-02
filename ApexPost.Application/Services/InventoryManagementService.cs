@@ -10,8 +10,19 @@ public sealed class InventoryManagementService(
     IProductRepository productRepository,
     IBranchRepository branchRepository,
     IApplicationEventPublisher eventPublisher,
-    IApplicationMutationCoordinator mutationCoordinator)
+    IApplicationMutationCoordinator mutationCoordinator,
+    IUnitOfWork unitOfWork)
 {
+    public InventoryManagementService(
+        IInventoryRepository inventoryRepository,
+        IProductRepository productRepository,
+        IBranchRepository branchRepository,
+        IApplicationEventPublisher eventPublisher,
+        IApplicationMutationCoordinator mutationCoordinator)
+        : this(inventoryRepository, productRepository, branchRepository, eventPublisher, mutationCoordinator, new NoOpUnitOfWork())
+    {
+    }
+
     public async Task<IReadOnlyList<ProductInventorySummary>> GetBranchInventoryAsync(
         Guid branchId,
         CancellationToken cancellationToken = default)
@@ -111,6 +122,7 @@ public sealed class InventoryManagementService(
         }
 
         await inventoryRepository.SaveAllAsync(allItems, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         if (changed.IsBelowReorderLevel && !wasBelowReorderLevel)
         {

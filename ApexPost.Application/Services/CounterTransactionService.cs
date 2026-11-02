@@ -19,8 +19,29 @@ public sealed class CounterTransactionService(
     ICounterTerminalRepository terminalRepository,
     MoneyOrderService moneyOrderService,
     MoneyOrderPolicy moneyOrderPolicy,
-    IApplicationMutationCoordinator mutationCoordinator)
+    IApplicationMutationCoordinator mutationCoordinator,
+    IUnitOfWork unitOfWork)
 {
+    public CounterTransactionService(
+        IBranchRepository branchRepository,
+        IProductRepository productRepository,
+        IInventoryRepository inventoryRepository,
+        ICounterTransactionRepository transactionRepository,
+        IStaffRepository staffRepository,
+        IApplicationEventPublisher eventPublisher,
+        InventoryManagementService inventoryManagementService,
+        ShippingRateService shippingRateService,
+        TaxPolicy taxPolicy,
+        ICounterTerminalRepository terminalRepository,
+        MoneyOrderService moneyOrderService,
+        MoneyOrderPolicy moneyOrderPolicy,
+        IApplicationMutationCoordinator mutationCoordinator)
+        : this(branchRepository, productRepository, inventoryRepository, transactionRepository, staffRepository,
+            eventPublisher, inventoryManagementService, shippingRateService, taxPolicy, terminalRepository,
+            moneyOrderService, moneyOrderPolicy, mutationCoordinator, new NoOpUnitOfWork())
+    {
+    }
+
     public async Task<CounterRegisterContext> GetRegisterContextAsync(
         Guid branchId,
         CancellationToken cancellationToken = default)
@@ -250,10 +271,14 @@ public sealed class CounterTransactionService(
         var originalTransactions = transactions.ToList();
         transactions.Add(transaction);
         if (inventoryChanges.Count > 0)
+        {
             await inventoryRepository.SaveAllAsync(inventory, cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+        }
         try
         {
             await transactionRepository.SaveAllAsync(transactions, CancellationToken.None);
+            await unitOfWork.SaveChangesAsync(CancellationToken.None);
             if (moneyOrderId is not null)
             {
                 await moneyOrderService.IssueAsync(branchId, staffId,
@@ -267,8 +292,12 @@ public sealed class CounterTransactionService(
             try
             {
                 await transactionRepository.SaveAllAsync(originalTransactions, CancellationToken.None);
+                await unitOfWork.SaveChangesAsync(CancellationToken.None);
                 if (inventoryChanges.Count > 0)
+                {
                     await inventoryRepository.SaveAllAsync(originalInventory, CancellationToken.None);
+                    await unitOfWork.SaveChangesAsync(CancellationToken.None);
+                }
             }
             catch (Exception compensationException) when (compensationException is not OperationCanceledException)
             {
@@ -395,9 +424,11 @@ public sealed class CounterTransactionService(
         // Mark the receipt resolved before returning stock so a retry cannot
         // restock it twice. Compensate if the inventory collection write fails.
         await transactionRepository.SaveAllAsync(transactions, CancellationToken.None);
+        await unitOfWork.SaveChangesAsync(CancellationToken.None);
         try
         {
             await inventoryRepository.SaveAllAsync(inventory, CancellationToken.None);
+            await unitOfWork.SaveChangesAsync(CancellationToken.None);
         }
 
         catch (Exception inventoryException) when (inventoryException is not OperationCanceledException)
@@ -406,6 +437,7 @@ public sealed class CounterTransactionService(
             {
                 transactions[transactionIndex] = original;
                 await transactionRepository.SaveAllAsync(transactions, CancellationToken.None);
+                await unitOfWork.SaveChangesAsync(CancellationToken.None);
             }
             catch (Exception compensationException) when (compensationException is not OperationCanceledException)
             {

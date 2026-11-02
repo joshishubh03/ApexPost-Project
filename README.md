@@ -18,6 +18,34 @@ This repository implements the SQL Server persistence work for the ApexPost Logi
 - SQL Server LocalDB or a local SQL Server instance
 - Local workstation access to the database instance
 
+## SQL Server setup for Assignment 3
+
+The repository includes an EF Core 10 `ApexPostDbContext` and migrations under `ApexPost.Infrastructure/Data/Migrations`. The database is created as `ApexPostDb`.
+
+Use either a local user secret or an environment variable:
+
+```powershell
+dotnet user-secrets set "ConnectionStrings:ApexPostDb" "Server=(localdb)\\MSSQLLocalDB;Database=ApexPostDb;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true" --project ApexPost.Web
+```
+
+or
+
+```powershell
+$env:APEXPOST_DB_CONNECTION = "Server=(localdb)\\MSSQLLocalDB;Database=ApexPostDb;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true"
+```
+
+Then create or update the database:
+
+```powershell
+dotnet ef database update --project ApexPost.Infrastructure --startup-project ApexPost.Web
+```
+
+To inspect or regenerate the schema script:
+
+```powershell
+dotnet ef migrations script --idempotent --project ApexPost.Infrastructure --startup-project ApexPost.Web --output sql/ApexPostDb_schema.sql
+```
+
 ## Local SQL setup
 
 Set the application connection string in user-secrets before running the app:

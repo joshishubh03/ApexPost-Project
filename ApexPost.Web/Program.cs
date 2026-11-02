@@ -4,9 +4,8 @@ using Microsoft.AspNetCore.HttpOverrides;
 using ApexPost.Application.Abstractions;
 using ApexPost.Application.Services;
 using ApexPost.Infrastructure;
-using ApexPost.Infrastructure.Repositories;
-using ApexPost.Infrastructure.Persistence;
 using ApexPost.Infrastructure.Seed;
+using ApexPost.Web.Authorization;
 using ApexPost.Web.Middleware;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
@@ -15,18 +14,18 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
-using ApexPost.Web.Authorization;
-using ApexPost.Application.Validation;
 
 var builder = WebApplication.CreateBuilder(args);
 var forwardedHeadersConfiguration = builder.Configuration.GetSection("Security:ForwardedHeaders");
 var knownProxyAddresses = forwardedHeadersConfiguration.GetSection("KnownProxies").Get<string[]>() ?? [];
+
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
     options.ForwardLimit = 1;
     options.KnownIPNetworks.Clear();
     options.KnownProxies.Clear();
+
     foreach (var proxyAddress in knownProxyAddresses)
     {
         if (!IPAddress.TryParse(proxyAddress, out var parsedAddress))
@@ -39,14 +38,14 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 
     if (knownProxyAddresses.Length == 0)
     {
-        // An empty known-proxy list means "trust every proxy" in ASP.NET Core.
-        // A sentinel keeps forwarded headers disabled until an operator configures trusted proxies.
         options.KnownProxies.Add(IPAddress.None);
     }
 });
+
 var dataDirectory = Path.GetFullPath(
     builder.Configuration["ApexPost:DataDirectory"] ??
     Path.Combine(builder.Environment.ContentRootPath, "..", "data"));
+
 var persistenceProvider = builder.Configuration["Persistence:Provider"] ??
     (builder.Environment.IsEnvironment("Testing") ? "Json" : "SqlServer");
 var useSqlServer = string.Equals(persistenceProvider, "SqlServer", StringComparison.OrdinalIgnoreCase);
@@ -61,10 +60,19 @@ if (builder.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(demoPasswor
     throw new InvalidOperationException("Set DemoData:Password with dotnet user-secrets before running the seeded Development environment.");
 }
 demoPassword ??= string.Empty;
+
+var sqlServerConnectionString = builder.Configuration.GetConnectionString("ApexPostDb") ??
+    Environment.GetEnvironmentVariable("APEXPOST_DB_CONNECTION");
+if (useSqlServer && string.IsNullOrWhiteSpace(sqlServerConnectionString))
+{
+    throw new InvalidOperationException("Persistence:Provider is set to 'SqlServer' but no ApexPostDb connection string is configured.");
+}
+
 var moneyOrderPolicy = new ApexPost.Application.Models.MoneyOrderPolicy(
     builder.Configuration.GetValue<decimal>("MoneyOrders:IdentityVerificationThreshold", 10_000m),
     builder.Configuration.GetValue<decimal>("MoneyOrders:FeeAmount", 50m),
     builder.Configuration["MoneyOrders:DemoVerificationSuccessPrefix"] ?? "DEMO-VALID-");
+
 var taxRates = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase)
 {
     ["Standard"] = 0m,
@@ -88,10 +96,11 @@ if (builder.Environment.IsDevelopment())
 builder.Services.AddControllersWithViews(options =>
 {
     options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
-    options.Filters.AddService<RequestTimingActionFilter>();
-    options.Filters.AddService<MvcAuditActionFilter>();
-    options.Filters.AddService<ModelValidationActionFilter>();
+    options.Filters.Add(new ServiceFilterAttribute(typeof(RequestTimingActionFilter)));
+    options.Filters.Add(new ServiceFilterAttribute(typeof(MvcAuditActionFilter)));
+    options.Filters.Add(new ServiceFilterAttribute(typeof(ModelValidationActionFilter)));
 });
+
 builder.Services.AddScoped<RequestTimingActionFilter>();
 builder.Services.AddScoped<MvcAuditActionFilter>();
 builder.Services.AddScoped<ModelValidationActionFilter>();
@@ -135,6 +144,7 @@ builder.Services.AddScoped<ICourierTrackingClient>(provider =>
         builder.Configuration.GetValue<int>("CourierTracking:MaximumConcurrency", 3),
         TimeSpan.FromSeconds(builder.Configuration.GetValue<int>("CourierTracking:TimeoutSeconds", 2)));
 });
+
 builder.Services.AddScoped<PartnerTrackingService>();
 builder.Services.AddSingleton(moneyOrderPolicy);
 builder.Services.AddSingleton(taxPolicy);
@@ -171,26 +181,22 @@ builder.Services.AddRateLimiter(options =>
             AutoReplenishment = true
         }));
 });
+
 builder.Services.AddApexPostInfrastructure(
     dataDirectory,
     demoPassword,
     moneyOrderPolicy,
-    builder.Environment.IsDevelopment());
+    builder.Environment.IsDevelopment(),
+    sqlServerConnectionString,
+    useSqlServer);
 
-var sqlConnectionString = builder.Configuration.GetConnectionString("ApexPostDb") ??
-    Environment.GetEnvironmentVariable("APEXPOST_DB_CONNECTION");
 if (useSqlServer)
 {
-    if (string.IsNullOrWhiteSpace(sqlConnectionString))
-    {
-        throw new InvalidOperationException("Persistence:Provider is set to 'SqlServer' but no ApexPostDb connection string is configured.");
-    }
-
-    builder.Services.AddApexPostSqlServerInfrastructure(sqlConnectionString);
     builder.Services.AddApexPostSqlServer(
-        sqlConnectionString,
+        sqlServerConnectionString,
         builder.Configuration.GetValue("Persistence:CommandTimeoutSeconds", 30));
 }
+
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
@@ -209,6 +215,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
             return Task.CompletedTask;
         };
     });
+
 builder.Services.AddAuthorization(options =>
 {
     options.FallbackPolicy = new AuthorizationPolicyBuilder()
@@ -218,6 +225,7 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("SameBranchOnly", policy =>
         policy.RequireAuthenticatedUser().AddRequirements(new SameBranchRequirement()));
 });
+
 builder.Services.AddSingleton<IAuthorizationHandler, SameBranchAuthorizationHandler>();
 
 var app = builder.Build();

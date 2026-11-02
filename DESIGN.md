@@ -49,6 +49,22 @@ erDiagram
 
 This design follows a normalized relational model and avoids the classic update anomalies that make file-based storage difficult to scale.
 
+## SQL Server data layer (Assignment 3)
+
+The Assignment 3 persistence work keeps the domain and application contracts stable while moving the persistence implementation behind EF Core and SQL Server. The `ApexPostDbContext` maps the normalized relational model for branches, staff, products, stock, shipments, money orders, identity verification, counters, payments, and audit records. Migrations are produced in `ApexPost.Infrastructure/Data/Migrations`, and the repository abstraction remains the boundary that the application code depends on.
+
+The generated schema script is checked in under `sql/ApexPostDb_schema.sql` and can be regenerated with:
+
+```bash
+dotnet ef migrations script --idempotent --project ApexPost.Infrastructure --startup-project ApexPost.Web --output sql/ApexPostDb_schema.sql
+```
+
+This design keeps the `DbContext` and repository implementation scoped, uses shadow/audit metadata and rowversion concurrency columns, and separates persistence concerns from rich domain behavior.
+
+## Middleware and MVC filters
+
+The application continues to use MVC filters and middleware for request timing, auditing, security, antiforgery, and exception handling. These remain at the web boundary, while the domain and infrastructure layers own the operational rules and storage details.
+
 1. Product duplication anomaly prevention
    - Product details are stored once in the product table and referenced from branch stock and transaction lines.
 2. Branch stock drift prevention

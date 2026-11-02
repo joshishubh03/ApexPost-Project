@@ -1,12 +1,13 @@
 using System.Net;
 using System.Security.Claims;
-using System.Text.Json;
 using System.Text.Encodings.Web;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using ApexPost.Application.Abstractions;
 using ApexPost.Application.Models;
 using ApexPost.Domain.Entities;
 using ApexPost.Domain.Enums;
+using ApexPost.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
@@ -20,6 +21,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Xunit;
 
 namespace ApexPost.Tests;
 
@@ -348,6 +350,7 @@ public sealed class WebIntegrationTests
                 {
                     ["Persistence:Provider"] = "Json",
                     ["ApexPost:DataDirectory"] = dataDirectory,
+                    ["ConnectionStrings:ApexPostDb"] = string.Empty,
                     ["PartnerApi:ApiKey"] = "integration-test-key",
                     ["PartnerApi:AllowedCorsOrigins:0"] = "https://widget.example",
                     ["Security:MaintenanceMode"] = maintenanceMode.ToString(),
@@ -372,6 +375,33 @@ public sealed class WebIntegrationTests
                         options.KnownProxies.Add(IPAddress.IPv6Loopback);
                     });
                 }
+
+                services.RemoveAll<IApplicationMutationCoordinator>();
+                services.AddSingleton<IApplicationMutationCoordinator>(_ => new JsonMutationCoordinator(dataDirectory));
+
+                services.RemoveAll<IBranchRepository>();
+                services.AddSingleton<IBranchRepository>(_ => new JsonBranchRepository(dataDirectory));
+                services.RemoveAll<IStaffRepository>();
+                services.AddSingleton<IStaffRepository>(_ => new JsonStaffRepository(dataDirectory));
+                services.RemoveAll<IProductRepository>();
+                services.AddSingleton<IProductRepository>(_ => new JsonProductRepository(dataDirectory));
+                services.RemoveAll<IInventoryRepository>();
+                services.AddSingleton<IInventoryRepository>(_ => new JsonInventoryRepository(dataDirectory));
+                services.RemoveAll<IShippingZoneRepository>();
+                services.AddSingleton<IShippingZoneRepository>(_ => new JsonShippingZoneRepository(dataDirectory));
+                services.RemoveAll<IShippingRateRepository>();
+                services.AddSingleton<IShippingRateRepository>(_ => new JsonShippingRateRepository(dataDirectory));
+                services.RemoveAll<ICounterTerminalRepository>();
+                services.AddSingleton<ICounterTerminalRepository>(_ => new JsonCounterTerminalRepository(dataDirectory));
+                services.RemoveAll<IMoneyOrderRepository>();
+                services.AddSingleton<IMoneyOrderRepository>(_ => new JsonMoneyOrderRepository(dataDirectory));
+                services.RemoveAll<IIdentityVerificationRepository>();
+                services.AddSingleton<IIdentityVerificationRepository>(_ => new JsonIdentityVerificationRepository(dataDirectory));
+                services.RemoveAll<IAuditLogRepository>();
+                services.AddSingleton<IAuditLogRepository>(_ => new JsonAuditLogRepository(dataDirectory));
+                services.RemoveAll<INotificationRepository>();
+                services.AddSingleton<INotificationRepository>(_ => new JsonNotificationRepository(dataDirectory));
+
                 services.AddSingleton<IStartupFilter, LoopbackAddressStartupFilter>();
                 services.RemoveAll<ApexPost.Application.Abstractions.IAuthenticationService>();
                 services.AddSingleton<ApexPost.Application.Abstractions.IAuthenticationService, TestAuthenticationService>();

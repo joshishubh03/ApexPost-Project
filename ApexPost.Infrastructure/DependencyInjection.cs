@@ -2,12 +2,11 @@ using ApexPost.Application.Abstractions;
 using ApexPost.Application.Events;
 using ApexPost.Application.Models;
 using ApexPost.Application.Services;
+using ApexPost.Infrastructure.Data;
 using ApexPost.Infrastructure.Events;
 using ApexPost.Infrastructure.Repositories;
 using ApexPost.Infrastructure.Security;
 using ApexPost.Infrastructure.Seed;
-using ApexPost.Infrastructure.Persistence;
-using ApexPost.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -32,6 +31,7 @@ public static class DependencyInjection
                 .CommandTimeout(commandTimeoutSeconds)
                 .EnableRetryOnFailure(3, TimeSpan.FromSeconds(5), null)
                 .MigrationsAssembly(typeof(ApexPostDbContext).Assembly.GetName().Name)));
+
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<IApplicationMutationCoordinator, EfApplicationMutationCoordinator>();
         services.AddScoped<IBranchRepository, EfBranchRepository>();
@@ -54,21 +54,49 @@ public static class DependencyInjection
         string dataDirectory,
         string demoPassword,
         MoneyOrderPolicy moneyOrderPolicy,
-        bool enableSimulatedIdentityVerification)
+        bool enableSimulatedIdentityVerification,
+        string? connectionString = null,
+        bool useSqlServer = false)
     {
         services.AddSingleton<IApplicationMutationCoordinator>(_ => new JsonMutationCoordinator(dataDirectory));
-        services.AddSingleton<IBranchRepository>(_ => new JsonBranchRepository(dataDirectory));
-        services.AddSingleton<IStaffRepository>(_ => new JsonStaffRepository(dataDirectory));
-        services.AddSingleton<IProductRepository>(_ => new JsonProductRepository(dataDirectory));
-        services.AddSingleton<IInventoryRepository>(_ => new JsonInventoryRepository(dataDirectory));
-        services.AddSingleton<IShippingZoneRepository>(_ => new JsonShippingZoneRepository(dataDirectory));
-        services.AddSingleton<IShippingRateRepository>(_ => new JsonShippingRateRepository(dataDirectory));
-        services.AddSingleton<ICounterTransactionRepository>(_ => new JsonCounterTransactionRepository(dataDirectory));
-        services.AddSingleton<ICounterTerminalRepository>(_ => new JsonCounterTerminalRepository(dataDirectory));
-        services.AddSingleton<IMoneyOrderRepository>(_ => new JsonMoneyOrderRepository(dataDirectory));
-        services.AddSingleton<IIdentityVerificationRepository>(_ => new JsonIdentityVerificationRepository(dataDirectory));
-        services.AddSingleton<IAuditLogRepository>(_ => new JsonAuditLogRepository(dataDirectory));
-        services.AddSingleton<INotificationRepository>(_ => new JsonNotificationRepository(dataDirectory));
+
+        if (useSqlServer && !string.IsNullOrWhiteSpace(connectionString))
+        {
+            services.AddDbContext<ApexPostDbContext>(options =>
+                options.UseSqlServer(
+                    connectionString,
+                    sqlServerOptions => sqlServerOptions.MigrationsAssembly(typeof(ApexPostDbContext).Assembly.FullName)));
+
+            services.AddScoped<IUnitOfWork, EfUnitOfWork>();
+            services.AddScoped<IBranchRepository, EfBranchRepository>();
+            services.AddScoped<IStaffRepository, EfStaffRepository>();
+            services.AddScoped<IProductRepository, EfProductRepository>();
+            services.AddScoped<IInventoryRepository, EfInventoryRepository>();
+            services.AddScoped<IShippingZoneRepository, EfShippingZoneRepository>();
+            services.AddScoped<IShippingRateRepository, EfShippingRateRepository>();
+            services.AddScoped<ICounterTransactionRepository, EfCounterTransactionRepository>();
+            services.AddScoped<ICounterTerminalRepository, EfCounterTerminalRepository>();
+            services.AddScoped<IMoneyOrderRepository, EfMoneyOrderRepository>();
+            services.AddScoped<IIdentityVerificationRepository, EfIdentityVerificationRepository>();
+            services.AddScoped<IAuditLogRepository, EfAuditLogRepository>();
+            services.AddSingleton<INotificationRepository>(_ => new JsonNotificationRepository(dataDirectory));
+        }
+        else
+        {
+            services.AddSingleton<IBranchRepository>(_ => new JsonBranchRepository(dataDirectory));
+            services.AddSingleton<IStaffRepository>(_ => new JsonStaffRepository(dataDirectory));
+            services.AddSingleton<IProductRepository>(_ => new JsonProductRepository(dataDirectory));
+            services.AddSingleton<IInventoryRepository>(_ => new JsonInventoryRepository(dataDirectory));
+            services.AddSingleton<IShippingZoneRepository>(_ => new JsonShippingZoneRepository(dataDirectory));
+            services.AddSingleton<IShippingRateRepository>(_ => new JsonShippingRateRepository(dataDirectory));
+            services.AddSingleton<ICounterTransactionRepository>(_ => new JsonCounterTransactionRepository(dataDirectory));
+            services.AddSingleton<ICounterTerminalRepository>(_ => new JsonCounterTerminalRepository(dataDirectory));
+            services.AddSingleton<IMoneyOrderRepository>(_ => new JsonMoneyOrderRepository(dataDirectory));
+            services.AddSingleton<IIdentityVerificationRepository>(_ => new JsonIdentityVerificationRepository(dataDirectory));
+            services.AddSingleton<IAuditLogRepository>(_ => new JsonAuditLogRepository(dataDirectory));
+            services.AddSingleton<INotificationRepository>(_ => new JsonNotificationRepository(dataDirectory));
+        }
+
         if (enableSimulatedIdentityVerification)
         {
             services.AddSingleton<IIdentityVerificationService>(
@@ -78,6 +106,7 @@ public static class DependencyInjection
         {
             services.AddSingleton<IIdentityVerificationService, UnconfiguredIdentityVerificationService>();
         }
+
         services.AddScoped<IApplicationEventHandler, CounterTransactionAuditHandler>();
         services.AddScoped<IApplicationEventHandler, CounterTransactionReversedAuditHandler>();
         services.AddScoped<IApplicationEventHandler, MoneyOrderAuditHandler>();
