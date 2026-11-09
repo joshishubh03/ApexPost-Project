@@ -185,3 +185,28 @@ Try it: **9** (seed fictional scans), **2** with `APX-10000001`, **3**, **7** wi
 offline), **4** (scans stay Pending), **8** again, then **4** (Synced, plus one Failed because of `#reject`).
 Every change prints a `[listener]` log line with the changed IDs and the live pending count. The design notes are
 in [OFFLINE-DESIGN.md](OFFLINE-DESIGN.md).
+
+## Part B: REST API (`ApexPost.Api`)
+
+ASP.NET Core Web API with minimal hosting (`Program.cs`, no `Startup.cs`). It reuses the Week 3 DbContext,
+unit of work and SQL Server composition (`AddApexPostSqlServer`). The additive Week 4 pieces are
+`CourierShipmentService`, `EfCourierShipmentRepository` and the `CourierShipments` / `ShipmentScans` tables
+(migration `Week4CourierShipmentsApi`).
+
+```powershell
+dotnet user-secrets set "ConnectionStrings:ApexPostDb" "Server=(localdb)\MSSQLLocalDB;Database=ApexPostDb;Trusted_Connection=True;TrustServerCertificate=True" --project ApexPost.Api
+dotnet run --project ApexPost.Api --launch-profile https      # Development applies migrations on start
+dotnet test ApexPost.Api.Tests                                  # disposable LocalDB database per run
+```
+
+- **Controllers stay thin.** They bind the input, call `CourierShipmentService` and return the HTTP result.
+  The status machine, duplicate checks and the delete-only-while-Created rule live in the domain or the service.
+- **DTOs only.** The requests are `CreateShipmentRequest`, `UpdateShipmentRequest`, `UpdateStatusRequest` and
+  `ScanUploadRequest`; no EF entity is ever bound. Validation uses data annotations plus two custom rules: the
+  `[NotInFuture]` attribute and an `IValidatableObject` rule that a Delivered scan needs a signature name.
+- **Errors.** `[ApiController]` returns `ValidationProblemDetails` for 400s. `ApiExceptionHandler`
+  (`IExceptionHandler`) produces ProblemDetails for 404, 409, 403 and 500, and stack traces appear only in
+  Development. `UseStatusCodePages` gives empty-body 404, 405 and 415 responses a ProblemDetails body too.
+- **Idempotent scan upload.** `ShipmentScans.Id` *is* the device scan GUID (primary key). Stored IDs and IDs
+  repeated within one batch are counted as `duplicatesSkipped`. Scans that would break the status machine are
+  listed in `rejected` with a reason.

@@ -108,7 +108,9 @@ public sealed class SqlScriptTests(SqlServerTestDatabase database)
             .ToArray();
 
         Assert.DoesNotContain(permissions, p => p.Class == "SCHEMA" || p.Class == "DATABASE" && p.Permission != "CONNECT");
-        Assert.DoesNotContain(permissions, p => p.Permission == "DELETE" && p.State == "GRANT");
+        // Week 4: the only DELETE grant is CourierShipments (API deletes a shipment while it is still Created).
+        Assert.DoesNotContain(permissions, p => p.Permission == "DELETE" && p.State == "GRANT" && p.Object != "CourierShipments");
+        Assert.DoesNotContain(permissions, p => p.Object == "ShipmentScans" && p.Permission is "UPDATE" or "DELETE" && p.State == "GRANT");
         Assert.Contains(permissions, p => p.Object == "AuditEntries" && p.Permission == "INSERT" && p.State == "GRANT");
         Assert.Contains(permissions, p => p.Object == "AuditEntries" && p.Permission == "UPDATE" && p.State == "DENY");
         Assert.Contains(permissions, p => p.Object == "BranchStock" && p.Permission == "UPDATE" && p.State == "GRANT");
