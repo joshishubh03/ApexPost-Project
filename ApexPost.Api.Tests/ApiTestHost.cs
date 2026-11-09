@@ -1,4 +1,6 @@
+using System.Net.Http.Headers;
 using ApexPost.Api;
+using ApexPost.Api.Security;
 using ApexPost.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -30,6 +32,40 @@ public sealed class ApiTestHost : WebApplicationFactory<ApiAssemblyMarker>, IAsy
 
     public string ConnectionString { get; }
 
+    /// <summary>Test-only signing key (random per run, never a real secret).</summary>
+    public static readonly string SigningKey = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+    public const string Issuer = "https://identity.apexpost.example";
+    public const string Audience = "apexpost-api";
+    public const string PartnerKey = "test-partner-key-not-a-secret";
+
+    public static JwtSettings JwtSettings { get; } = new() { Issuer = Issuer, Audience = Audience, SigningKey = SigningKey };
+
+    /// <summary>Mints a token signed with the test key.</summary>
+    public static string Token(string roles, string? courierId = "courier-007", bool expired = false) =>
+        new DevelopmentTokenIssuer(JwtSettings, TimeProvider.System)
+            .Issue(roles.Split(','), courierId, expired: expired).AccessToken;
+
+    /// <summary>HTTPS client with a token holding both roles (used by the functional tests).</summary>
+    public HttpClient CreateAuthenticatedClient(string roles = "Admin,Courier", string? courierId = "courier-007")
+    {
+        var client = CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost") });
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Token(roles, courierId));
+        return client;
+    }
+
+    /// <summary>HTTPS client without credentials.</summary>
+    public HttpClient CreateAnonymousClient() =>
+        CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost") });
+
+    /// <summary>Settings every test host needs (the signing key normally comes from User Secrets).</summary>
+    public static void ApplySecuritySettings(IWebHostBuilder builder)
+    {
+        builder.UseSetting("Jwt:Issuer", Issuer);
+        builder.UseSetting("Jwt:Audience", Audience);
+        builder.UseSetting("Jwt:SigningKey", SigningKey);
+        builder.UseSetting("PartnerApi:Keys:demo-partner", PartnerKey);
+    }
+
     /// <summary>A tracking number no other test uses.</summary>
     public static string NewTrackingNumber() => $"APX-{Interlocked.Increment(ref trackingSeed):D8}";
 
@@ -37,6 +73,7 @@ public sealed class ApiTestHost : WebApplicationFactory<ApiAssemblyMarker>, IAsy
     {
         builder.UseEnvironment("Testing");
         builder.UseSetting("ConnectionStrings:ApexPostDb", ConnectionString);
+        ApplySecuritySettings(builder);
     }
 
     public async Task InitializeAsync()

@@ -14,8 +14,29 @@ rewritten to v1. All errors are `application/problem+json` (RFC 9457 Problem Det
 | DELETE | `/api/v{v}/shipments/{trackingNumber}` | 204 | 404, 409 (status is not Created), 500 | Deletes a shipment that has not been picked up. |
 | POST | `/api/v{v}/shipments/{trackingNumber}/scans` | 200 | 400 (validation: future time, Delivered without signature, bad scan ID), 404, 415, 500 | Idempotent bulk upload of offline scans. Returns `accepted`, `duplicatesSkipped` and `rejected[]` with reasons. |
 | GET | `/api/v{v}/shipments/{trackingNumber}/scans` | 200 | 404, 500 | Scan history, oldest first. |
+| GET | `/api/v2/partner/shipments/{trackingNumber}` | 200 | 401 (missing or invalid `X-Api-Key`), 404, 500 | Read-only partner tracking: status, destination city, latest scan. No recipient personal data. |
+| GET | `/dev/token?roles=&courierId=&expired=` | 200 | 400; 404 outside Development | Development-only token issuer (Courier / Admin). |
 | GET | `/openapi/v1.json`, `/openapi/v2.json` | 200 | 404 outside Development | Version-specific OpenAPI documents (Development only). |
 | GET | `/swagger` | 200 | 404 outside Development | Swagger UI with a "v2" / "v1 (deprecated)" dropdown (Development only). |
+
+## Authentication and authorization (Part D)
+
+Every shipments and scans endpoint needs `Authorization: Bearer <JWT>`.
+
+| Endpoint | Allowed |
+|---|---|
+| GETs | Any authenticated user |
+| POST and PUT shipment | Admin |
+| DELETE shipment | Admin |
+| PATCH status | Courier |
+| POST scans | Courier, and only under their own `courierId` claim |
+
+The partner route uses `X-Api-Key` instead of a JWT.
+
+| Code | When |
+|---|---|
+| 401 Unauthorized | Missing, invalid (bad signature, issuer or audience) or expired token; missing or invalid partner key. |
+| 403 Forbidden | Wrong role, or a courier uploading scans under another courier's ID. |
 
 ## Status code rules
 

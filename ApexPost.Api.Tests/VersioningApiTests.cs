@@ -7,7 +7,7 @@ namespace ApexPost.Api.Tests;
 [Collection(ApiCollection.Name)]
 public sealed class VersioningApiTests(ApiTestHost host)
 {
-    private readonly HttpClient client = host.CreateClient();
+    private readonly HttpClient client = host.CreateAuthenticatedClient();
 
     [Fact]
     public async Task V2_nests_the_recipient_adds_latest_scan_and_returns_status_as_a_string()
