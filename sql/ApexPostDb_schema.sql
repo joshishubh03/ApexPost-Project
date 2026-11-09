@@ -1005,13 +1005,13 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20261102223854_Week3SchemaCompliance'
 )
 BEGIN
-
+    EXEC(N'
     SELECT ct.Id AS CounterTransactionId, ct.ShippingRateId, ct.ShipmentType, ct.ShippingWeightKilograms,
            ct.ParcelLengthCentimeters, ct.ParcelWidthCentimeters, ct.ParcelHeightCentimeters,
            ct.ShippingRecipientName, ct.ShippingAddress, ct.Status, ct.CreatedAtUtc, ct.CreatedByStaffId
     INTO dbo.[__Week3ShipmentsToMove]
     FROM dbo.CounterTransactions AS ct
-    WHERE ct.ShippingRateId IS NOT NULL;
+    WHERE ct.ShippingRateId IS NOT NULL;');
 END;
 
 IF NOT EXISTS (
@@ -1979,17 +1979,17 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20261102223854_Week3SchemaCompliance'
 )
 BEGIN
-
+    EXEC(N'
     INSERT INTO dbo.Shipments
         (Id, CounterTransactionId, ShippingRateId, ShipmentType, WeightKilograms, LengthCentimeters, WidthCentimeters,
          HeightCentimeters, RecipientName, AddressLine, Status, CreatedAtUtc, CreatedBy)
     SELECT NEWID(), m.CounterTransactionId, m.ShippingRateId, m.ShipmentType, m.ShippingWeightKilograms,
            m.ParcelLengthCentimeters, m.ParcelWidthCentimeters, m.ParcelHeightCentimeters,
            m.ShippingRecipientName, m.ShippingAddress,
-           CASE WHEN m.Status IN ('Voided', 'Refunded') THEN 'Cancelled' ELSE 'Booked' END,
+           CASE WHEN m.Status IN (''Voided'', ''Refunded'') THEN ''Cancelled'' ELSE ''Booked'' END,
            m.CreatedAtUtc, m.CreatedByStaffId
     FROM dbo.[__Week3ShipmentsToMove] AS m;
-    DROP TABLE dbo.[__Week3ShipmentsToMove];
+    DROP TABLE dbo.[__Week3ShipmentsToMove];');
 END;
 
 IF NOT EXISTS (
@@ -1997,7 +1997,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20261102223854_Week3SchemaCompliance'
 )
 BEGIN
-    CREATE OR ALTER PROCEDURE dbo.usp_DailyBranchSales
+    EXEC(N'CREATE OR ALTER PROCEDURE dbo.usp_DailyBranchSales
         @BranchCode varchar(12),
         @Date date
     AS
@@ -2005,17 +2005,17 @@ BEGIN
         SET NOCOUNT ON;
         SET XACT_ABORT ON;
 
-        IF @BranchCode IS NULL OR LTRIM(RTRIM(@BranchCode)) = ''
-            THROW 50001, N'@BranchCode is required.', 1;
+        IF @BranchCode IS NULL OR LTRIM(RTRIM(@BranchCode)) = ''''
+            THROW 50001, N''@BranchCode is required.'', 1;
         IF @Date IS NULL
-            THROW 50002, N'@Date is required.', 1;
+            THROW 50002, N''@Date is required.'', 1;
         IF @Date > CAST(SYSUTCDATETIME() AS date)
-            THROW 50003, N'@Date cannot be in the future.', 1;
+            THROW 50003, N''@Date cannot be in the future.'', 1;
 
         DECLARE @BranchId uniqueidentifier = (SELECT b.Id FROM dbo.Branches AS b WHERE b.Code = @BranchCode);
         IF @BranchId IS NULL
         BEGIN
-            DECLARE @Missing nvarchar(200) = CONCAT(N'Branch code not found: ', @BranchCode);
+            DECLARE @Missing nvarchar(200) = CONCAT(N''Branch code not found: '', @BranchCode);
             THROW 50004, @Missing, 1;
         END;
 
@@ -2030,13 +2030,13 @@ BEGIN
             WHERE ct.BranchId = @BranchId
               AND ct.OccurredAt >= @From
               AND ct.OccurredAt < @To
-              AND ct.Status IN ('Paid', 'Completed')
+              AND ct.Status IN (''Paid'', ''Completed'')
         ),
         LineTotals AS
         (
             SELECT s.Id,
-                   SUM(CASE WHEN p.Category IN (N'Postage', N'Shipping', N'Money Order') THEN 0 ELSE tl.LineTotal + tl.TaxAmount END) AS Retail,
-                   SUM(CASE WHEN p.Category IN (N'Postage', N'Shipping', N'Money Order') THEN tl.LineTotal + tl.TaxAmount ELSE 0 END) AS ServiceLines
+                   SUM(CASE WHEN p.Category IN (N''Postage'', N''Shipping'', N''Money Order'') THEN 0 ELSE tl.LineTotal + tl.TaxAmount END) AS Retail,
+                   SUM(CASE WHEN p.Category IN (N''Postage'', N''Shipping'', N''Money Order'') THEN tl.LineTotal + tl.TaxAmount ELSE 0 END) AS ServiceLines
             FROM Sales AS s
             INNER JOIN dbo.TransactionLines AS tl ON tl.CounterTransactionId = s.Id
             INNER JOIN dbo.Products AS p ON p.Id = tl.ProductId
@@ -2050,7 +2050,7 @@ BEGIN
             CAST(ISNULL(SUM(ISNULL(lt.ServiceLines, 0) + s.ShippingCharge + s.ShippingTaxAmount + s.MoneyOrderAmount + s.MoneyOrderFee), 0) AS decimal(18, 2)) AS ServiceRevenue
         FROM Sales AS s
         LEFT JOIN LineTotals AS lt ON lt.Id = s.Id;
-    END
+    END');
 END;
 
 IF NOT EXISTS (
@@ -2058,7 +2058,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20261102223854_Week3SchemaCompliance'
 )
 BEGIN
-    CREATE OR ALTER PROCEDURE dbo.usp_LowStockReport
+    EXEC(N'CREATE OR ALTER PROCEDURE dbo.usp_LowStockReport
         @BranchCode varchar(12) = NULL,
         @Threshold int
     AS
@@ -2067,11 +2067,11 @@ BEGIN
         SET XACT_ABORT ON;
 
         IF @Threshold IS NULL OR @Threshold < 0 OR @Threshold > 1000
-            THROW 50005, N'@Threshold must be between 0 and 1000.', 1;
+            THROW 50005, N''@Threshold must be between 0 and 1000.'', 1;
 
         IF @BranchCode IS NOT NULL AND NOT EXISTS (SELECT 1 FROM dbo.Branches WHERE Code = @BranchCode)
         BEGIN
-            DECLARE @Missing nvarchar(200) = CONCAT(N'Branch code not found: ', @BranchCode);
+            DECLARE @Missing nvarchar(200) = CONCAT(N''Branch code not found: '', @BranchCode);
             THROW 50004, @Missing, 1;
         END;
 
@@ -2092,7 +2092,7 @@ BEGIN
           AND (@BranchCode IS NULL OR b.Code = @BranchCode)
         ORDER BY b.Code, bs.QuantityOnHand, p.Sku
         OPTION (RECOMPILE);
-    END
+    END');
 END;
 
 IF NOT EXISTS (
@@ -2100,7 +2100,7 @@ IF NOT EXISTS (
     WHERE [MigrationId] = N'20261102223854_Week3SchemaCompliance'
 )
 BEGIN
-    CREATE OR ALTER PROCEDURE dbo.usp_AdjustStock
+    EXEC(N'CREATE OR ALTER PROCEDURE dbo.usp_AdjustStock
         @BranchCode varchar(12),
         @Sku varchar(32),
         @Delta int,
@@ -2111,16 +2111,16 @@ BEGIN
         SET NOCOUNT ON;
         SET XACT_ABORT ON;
 
-        IF @BranchCode IS NULL OR LTRIM(RTRIM(@BranchCode)) = ''
-            THROW 50001, N'@BranchCode is required.', 1;
-        IF @Sku IS NULL OR LTRIM(RTRIM(@Sku)) = ''
-            THROW 50006, N'@Sku is required.', 1;
+        IF @BranchCode IS NULL OR LTRIM(RTRIM(@BranchCode)) = ''''
+            THROW 50001, N''@BranchCode is required.'', 1;
+        IF @Sku IS NULL OR LTRIM(RTRIM(@Sku)) = ''''
+            THROW 50006, N''@Sku is required.'', 1;
         IF @Delta IS NULL OR @Delta = 0
-            THROW 50007, N'@Delta must be a non-zero number of units.', 1;
+            THROW 50007, N''@Delta must be a non-zero number of units.'', 1;
         IF @Reason IS NULL OR LEN(LTRIM(RTRIM(@Reason))) < 3
-            THROW 50008, N'@Reason must contain at least three characters.', 1;
-        IF @ChangedBy IS NULL OR LTRIM(RTRIM(@ChangedBy)) = ''
-            THROW 50009, N'@ChangedBy is required.', 1;
+            THROW 50008, N''@Reason must contain at least three characters.'', 1;
+        IF @ChangedBy IS NULL OR LTRIM(RTRIM(@ChangedBy)) = ''''
+            THROW 50009, N''@ChangedBy is required.'', 1;
 
         DECLARE @BranchId uniqueidentifier = (SELECT Id FROM dbo.Branches WHERE Code = @BranchCode);
         DECLARE @ProductId uniqueidentifier = (SELECT Id FROM dbo.Products WHERE Sku = UPPER(LTRIM(RTRIM(@Sku))) AND IsActive = 1);
@@ -2129,17 +2129,17 @@ BEGIN
 
         IF @BranchId IS NULL
         BEGIN
-            SET @Message = CONCAT(N'Branch code not found: ', @BranchCode);
+            SET @Message = CONCAT(N''Branch code not found: '', @BranchCode);
             THROW 50004, @Message, 1;
         END;
         IF @ProductId IS NULL
         BEGIN
-            SET @Message = CONCAT(N'Active product SKU not found: ', @Sku);
+            SET @Message = CONCAT(N''Active product SKU not found: '', @Sku);
             THROW 50010, @Message, 1;
         END;
         IF @StaffId IS NULL
         BEGIN
-            SET @Message = CONCAT(N'@ChangedBy must be the e-mail of an active staff member: ', @ChangedBy);
+            SET @Message = CONCAT(N''@ChangedBy must be the e-mail of an active staff member: '', @ChangedBy);
             THROW 50011, @Message, 1;
         END;
 
@@ -2168,12 +2168,12 @@ BEGIN
             BEGIN
                 IF EXISTS (SELECT 1 FROM dbo.BranchStock WHERE BranchId = @BranchId AND ProductId = @ProductId)
                 BEGIN
-                    SET @Message = CONCAT(N'Adjustment would make stock negative for ', @Sku, N' at ', @BranchCode, N'.');
+                    SET @Message = CONCAT(N''Adjustment would make stock negative for '', @Sku, N'' at '', @BranchCode, N''.'');
                     THROW 50012, @Message, 1;
                 END;
                 IF @Delta < 0
                 BEGIN
-                    SET @Message = CONCAT(N'No stock is recorded for ', @Sku, N' at ', @BranchCode, N'.');
+                    SET @Message = CONCAT(N''No stock is recorded for '', @Sku, N'' at '', @BranchCode, N''.'');
                     THROW 50013, @Message, 1;
                 END;
 
@@ -2195,7 +2195,7 @@ BEGIN
                 ROLLBACK TRANSACTION;
             THROW;
         END CATCH;
-    END
+    END');
 END;
 
 IF NOT EXISTS (
@@ -2250,6 +2250,89 @@ IF NOT EXISTS (
 BEGIN
     INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
     VALUES (N'20261102230416_Week3MeasuredIndexes', N'10.0.14');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261109090000_Week4CourierShipmentsApi'
+)
+BEGIN
+    CREATE TABLE [CourierShipments] (
+        [Id] uniqueidentifier NOT NULL,
+        [TrackingNumber] varchar(12) NOT NULL,
+        [Status] varchar(24) NOT NULL,
+        [WeightKilograms] decimal(6,2) NOT NULL,
+        [RecipientName] nvarchar(120) NOT NULL,
+        [RecipientPhone] varchar(20) NOT NULL,
+        [RecipientAddress] nvarchar(250) NOT NULL,
+        [RecipientCity] nvarchar(80) NOT NULL,
+        [CreatedAtUtc] datetime2(3) NOT NULL,
+        [UpdatedAtUtc] datetime2(3) NOT NULL,
+        [RowVersion] rowversion NOT NULL,
+        CONSTRAINT [PK_CourierShipments] PRIMARY KEY ([Id]),
+        CONSTRAINT [CK_CourierShipments_Status] CHECK ([Status] IN ('Created', 'PickedUp', 'InTransit', 'OutForDelivery', 'Delivered', 'Failed')),
+        CONSTRAINT [CK_CourierShipments_TrackingNumber] CHECK ([TrackingNumber] LIKE 'APX-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'),
+        CONSTRAINT [CK_CourierShipments_Weight] CHECK ([WeightKilograms] >= 0.1 AND [WeightKilograms] <= 70)
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261109090000_Week4CourierShipmentsApi'
+)
+BEGIN
+    CREATE TABLE [ShipmentScans] (
+        [Id] uniqueidentifier NOT NULL,
+        [CourierShipmentId] uniqueidentifier NOT NULL,
+        [ScanType] varchar(16) NOT NULL,
+        [CourierId] varchar(40) NOT NULL,
+        [Location] nvarchar(120) NOT NULL,
+        [ScannedAtUtc] datetime2(3) NOT NULL,
+        [Notes] nvarchar(500) NULL,
+        [SignatureName] nvarchar(120) NULL,
+        [ReceivedAtUtc] datetime2(3) NOT NULL,
+        CONSTRAINT [PK_ShipmentScans] PRIMARY KEY ([Id]),
+        CONSTRAINT [CK_ShipmentScans_DeliveredSignature] CHECK ([ScanType] <> 'Delivered' OR [SignatureName] IS NOT NULL),
+        CONSTRAINT [CK_ShipmentScans_ScanType] CHECK ([ScanType] IN ('Pickup', 'InTransit', 'Delivered', 'Failed')),
+        CONSTRAINT [FK_ShipmentScans_CourierShipments_CourierShipmentId] FOREIGN KEY ([CourierShipmentId]) REFERENCES [CourierShipments] ([Id]) ON DELETE CASCADE
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261109090000_Week4CourierShipmentsApi'
+)
+BEGIN
+    CREATE INDEX [IX_CourierShipments_Status_RecipientCity] ON [CourierShipments] ([Status], [RecipientCity]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261109090000_Week4CourierShipmentsApi'
+)
+BEGIN
+    EXEC(N'CREATE UNIQUE INDEX [IX_CourierShipments_TrackingNumber] ON [CourierShipments] ([TrackingNumber]) WHERE [TrackingNumber] IS NOT NULL');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261109090000_Week4CourierShipmentsApi'
+)
+BEGIN
+    CREATE INDEX [IX_ShipmentScans_CourierShipmentId_ScannedAtUtc] ON [ShipmentScans] ([CourierShipmentId], [ScannedAtUtc]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261109090000_Week4CourierShipmentsApi'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261109090000_Week4CourierShipmentsApi', N'10.0.14');
 END;
 
 COMMIT;

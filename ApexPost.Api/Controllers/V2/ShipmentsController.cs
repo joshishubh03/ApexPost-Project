@@ -15,7 +15,6 @@ namespace ApexPost.Api.Controllers.V2;
 [ApiVersion("2.0")]
 [Route("api/v{version:apiVersion}/shipments")]
 [Tags("Shipments")]
-[Produces("application/json")]
 [Authorize] // any authenticated user may read; writes are narrowed per action below
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status500InternalServerError, "application/problem+json")]
@@ -28,7 +27,7 @@ public sealed class ShipmentsController(CourierShipmentService shipments) : Cont
     /// <response code="400">Invalid paging or filter values.</response>
     [HttpGet(Name = "ListShipments")]
     [EndpointSummary("List shipments")]
-    [ProducesResponseType<ShipmentPageResponseV2>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ShipmentPageResponseV2>(StatusCodes.Status200OK, "application/json")]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     public async Task<ActionResult<ShipmentPageResponseV2>> List([FromQuery] ShipmentListQuery query, CancellationToken cancellationToken) =>
         Ok((await shipments.ListAsync(query.ToQuery(), cancellationToken)).ToResponseV2());
@@ -40,7 +39,7 @@ public sealed class ShipmentsController(CourierShipmentService shipments) : Cont
     /// <response code="404">Unknown tracking number.</response>
     [HttpGet("{trackingNumber:trackingNumber}", Name = "GetShipment")]
     [EndpointSummary("Get a shipment")]
-    [ProducesResponseType<ShipmentResponseV2>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ShipmentResponseV2>(StatusCodes.Status200OK, "application/json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
     public async Task<ActionResult<ShipmentResponseV2>> Get(string trackingNumber, CancellationToken cancellationToken) =>
         Ok((await shipments.GetAsync(trackingNumber, cancellationToken)).ToResponseV2());
@@ -59,7 +58,7 @@ public sealed class ShipmentsController(CourierShipmentService shipments) : Cont
     [HttpPost(Name = "CreateShipment")]
     [Consumes("application/json")]
     [EndpointSummary("Create a shipment")]
-    [ProducesResponseType<ShipmentResponseV2>(StatusCodes.Status201Created)]
+    [ProducesResponseType<ShipmentResponseV2>(StatusCodes.Status201Created, "application/json")]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status415UnsupportedMediaType, "application/problem+json")]
@@ -85,7 +84,7 @@ public sealed class ShipmentsController(CourierShipmentService shipments) : Cont
     [HttpPut("{trackingNumber:trackingNumber}", Name = "ReplaceShipment")]
     [Consumes("application/json")]
     [EndpointSummary("Replace shipment details")]
-    [ProducesResponseType<ShipmentResponseV2>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ShipmentResponseV2>(StatusCodes.Status200OK, "application/json")]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]
@@ -109,7 +108,7 @@ public sealed class ShipmentsController(CourierShipmentService shipments) : Cont
     [HttpPatch("{trackingNumber:trackingNumber}/status", Name = "UpdateShipmentStatus")]
     [Consumes("application/json")]
     [EndpointSummary("Change shipment status")]
-    [ProducesResponseType<ShipmentResponseV2>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ShipmentResponseV2>(StatusCodes.Status200OK, "application/json")]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")]

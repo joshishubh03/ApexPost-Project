@@ -171,7 +171,8 @@ public sealed class SqlScriptTests(SqlServerTestDatabase database)
             }
 
             Assert.Equal(expectedMigrations, await SqlScripts.ScalarAsync<int>(builder.ConnectionString, "SELECT COUNT(*) FROM dbo.__EFMigrationsHistory;"));
-            Assert.Equal(21, await SqlScripts.ScalarAsync<int>(builder.ConnectionString, "SELECT COUNT(*) FROM sys.tables WHERE is_ms_shipped = 0;"));
+            // 20 Week 3 tables + __EFMigrationsHistory + the 2 Week 4 courier tables (CourierShipments, ShipmentScans; ADR 0052).
+            Assert.Equal(23, await SqlScripts.ScalarAsync<int>(builder.ConnectionString, "SELECT COUNT(*) FROM sys.tables WHERE is_ms_shipped = 0;"));
             Assert.Equal(3, await SqlScripts.ScalarAsync<int>(builder.ConnectionString, "SELECT COUNT(*) FROM sys.procedures WHERE name LIKE 'usp[_]%';"));
             Assert.Equal(0, await SqlScripts.ScalarAsync<int>(builder.ConnectionString, "SELECT COUNT(*) FROM sys.tables WHERE name = '__Week3ShipmentsToMove';"));
         }

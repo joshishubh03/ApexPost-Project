@@ -27,8 +27,10 @@ public sealed class CouchbaseScanRepository(CourierDatabase database) : IScanRep
     internal const string PendingQuery =
         SelectScan + "WHERE docType = $docType AND syncStatus = $syncStatus ORDER BY scannedAtUtc, META().id";
 
-    internal const string PendingWithLimitQuery =
-        SelectScan + "WHERE docType = $docType AND syncStatus = $syncStatus ORDER BY scannedAtUtc, META().id LIMIT $limit";
+    // Couchbase Lite SQL++ does not accept a $parameter after LIMIT, so the limit is appended as an integer literal.
+    // It comes from a validated int (>= 1), never from user text, so this is not string-built SQL injection.
+    internal static string PendingWithLimitQuery(int limit) =>
+        PendingQuery + " LIMIT " + limit.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
     internal const string AllQuery =
         SelectScan + "WHERE docType = $docType ORDER BY scannedAtUtc, META().id";
@@ -128,10 +130,8 @@ public sealed class CouchbaseScanRepository(CourierDatabase database) : IScanRep
         {
             ArgumentOutOfRangeException.ThrowIfLessThan(value, 1, nameof(limit));
             return RunScanQuery(
-                PendingWithLimitQuery,
-                parameters => parameters
-                    .SetString("syncStatus", nameof(SyncStatus.Pending))
-                    .SetInt("limit", value),
+                PendingWithLimitQuery(value),
+                parameters => parameters.SetString("syncStatus", nameof(SyncStatus.Pending)),
                 cancellationToken);
         }
 
