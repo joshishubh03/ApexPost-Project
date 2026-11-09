@@ -46,19 +46,27 @@ public sealed class HttpCourierTrackingClientTests
     [Fact]
     public async Task Provider_timeout_is_separate_from_caller_cancellation()
     {
-        using var client = CreateClient(async (_, token) =>
+        static async Task<HttpResponseMessage> SlowProvider(HttpRequestMessage _, CancellationToken token)
         {
-            await Task.Delay(TimeSpan.FromSeconds(1), token);
+            await Task.Delay(TimeSpan.FromSeconds(30), token);
             return JsonResponse(ValidResponse("APT-TEST-001"));
-        });
+        }
+
+        using var client = CreateClient(SlowProvider);
         var timeoutClient = new HttpCourierTrackingClient(
             client, "https://courier.example", "tracking", "test-secret", timeout: TimeSpan.FromMilliseconds(150));
 
         await Assert.ThrowsAsync<TimeoutException>(() => timeoutClient.FindShipmentAsync("APT-TEST-001"));
 
+        // Caller cancellation is checked with a long provider timeout, so the two timers cannot race when the
+        // machine is busy running the other test projects in parallel.
+        // HttpCourierTrackingClient sets BaseAddress, so the second instance needs its own HttpClient.
+        using var patientHttpClient = CreateClient(SlowProvider);
+        var patientClient = new HttpCourierTrackingClient(
+            patientHttpClient, "https://courier.example", "tracking", "test-secret", timeout: TimeSpan.FromSeconds(30));
         using var cancel = new CancellationTokenSource(TimeSpan.FromMilliseconds(25));
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            timeoutClient.FindShipmentAsync("APT-TEST-001", cancel.Token));
+            patientClient.FindShipmentAsync("APT-TEST-001", cancel.Token));
     }
 
     [Fact]

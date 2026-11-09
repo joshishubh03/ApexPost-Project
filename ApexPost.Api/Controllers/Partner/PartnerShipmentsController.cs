@@ -17,7 +17,6 @@ namespace ApexPost.Api.Controllers.Partner;
 [Route("api/v{version:apiVersion}/partner/shipments")]
 [AllowAnonymous]
 [Tags("Partner")]
-[Produces("application/json")]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status500InternalServerError, "application/problem+json")]
 public sealed class PartnerShipmentsController(CourierShipmentService shipments) : ControllerBase
@@ -30,7 +29,7 @@ public sealed class PartnerShipmentsController(CourierShipmentService shipments)
     /// <response code="404">Unknown tracking number.</response>
     [HttpGet("{trackingNumber:trackingNumber}", Name = "GetPartnerShipment")]
     [EndpointSummary("Track a shipment (partner, API key)")]
-    [ProducesResponseType<PartnerShipmentResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<PartnerShipmentResponse>(StatusCodes.Status200OK, "application/json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
     public async Task<ActionResult<PartnerShipmentResponse>> Get(string trackingNumber, CancellationToken cancellationToken)
     {

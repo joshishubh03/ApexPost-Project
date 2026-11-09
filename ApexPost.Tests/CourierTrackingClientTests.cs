@@ -13,7 +13,8 @@ public sealed class CourierTrackingClientTests
             new DelayedTransactionRepository(TimeSpan.Zero),
             maximumConcurrency: 1,
             timeout: TimeSpan.FromMilliseconds(10),
-            simulatedLatency: TimeSpan.FromMilliseconds(100));
+            // Far longer than the timeout, so the timeout always wins even when the machine is busy.
+            simulatedLatency: TimeSpan.FromSeconds(30));
 
         await Assert.ThrowsAsync<TimeoutException>(() => client.FindShipmentAsync("APT-TEST-001"));
     }
@@ -24,8 +25,8 @@ public sealed class CourierTrackingClientTests
         var client = new SimulatedCourierTrackingClient(
             new DelayedTransactionRepository(TimeSpan.Zero),
             maximumConcurrency: 1,
-            timeout: TimeSpan.FromSeconds(1),
-            simulatedLatency: TimeSpan.FromMilliseconds(100));
+            timeout: TimeSpan.FromSeconds(30),
+            simulatedLatency: TimeSpan.FromSeconds(30));
         using var cancellationSource = new CancellationTokenSource(TimeSpan.FromMilliseconds(10));
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>

@@ -297,7 +297,7 @@ public sealed class WebIntegrationTests(SqlServerTestDatabase database)
         var data = await TestData.LoadAsync(database);
         var otherBranchId = await OtherBranchIdAsync(data.BranchId);
         var ownShipment = await FindShipmentAsync(data.BranchId);
-        var otherShipment = await FindShipmentAsync(otherBranchId);
+        var otherShipment = await FindShipmentInAnotherBranchAsync(data.BranchId);
         using var factory = new ApexPostWebFactory(database.ConnectionString);
         using var client = CreateSecureClient(factory, allowAutoRedirect: false, data: data);
         client.DefaultRequestHeaders.Add("X-Test-Role", nameof(StaffRole.CounterClerk));
@@ -390,6 +390,33 @@ public sealed class WebIntegrationTests(SqlServerTestDatabase database)
             .OrderBy(branch => branch.Id)
             .Select(branch => branch.Id)
             .FirstAsync();
+    }
+
+    // Only shipments created by tests carry a recipient name, and tests create them in the staff member's own
+    // branch. The seeded shipments in other branches have a shipping rate but no recipient. That is enough here:
+    // the request for the other branch must return 404 whatever the label would contain.
+    private async Task<CounterTransaction> FindShipmentInAnotherBranchAsync(Guid ownBranchId)
+    {
+        await using var scope = database.Services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<ApexPostDbContext>();
+        var repository = scope.ServiceProvider.GetRequiredService<ICounterTransactionRepository>();
+        var otherBranchIds = await context.Branches.AsNoTracking()
+            .Where(branch => branch.Id != ownBranchId)
+            .OrderBy(branch => branch.Id)
+            .Select(branch => branch.Id)
+            .ToListAsync();
+
+        foreach (var branchId in otherBranchIds)
+        {
+            var shipment = (await repository.GetRecentForBranchAsync(branchId, 500))
+                .FirstOrDefault(transaction => transaction.ShippingRateId is not null);
+            if (shipment is not null)
+            {
+                return shipment;
+            }
+        }
+
+        throw new InvalidOperationException("The test data has no shipment in any branch other than the staff member's.");
     }
 
     private async Task<CounterTransaction> FindShipmentAsync(Guid branchId)

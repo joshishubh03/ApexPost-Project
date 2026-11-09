@@ -17,7 +17,6 @@ namespace ApexPost.Api.Controllers;
 [ApiVersion("2.0")]
 [Route("api/v{version:apiVersion}/shipments/{trackingNumber:trackingNumber}/scans")]
 [Tags("Scans")]
-[Produces("application/json")]
 [Authorize]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status500InternalServerError, "application/problem+json")]
@@ -41,7 +40,7 @@ public sealed class ScansController(CourierShipmentService shipments) : Controll
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
     [Consumes("application/json")]
     [EndpointSummary("Upload offline scans (idempotent)")]
-    [ProducesResponseType<ScanUploadResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ScanUploadResponse>(StatusCodes.Status200OK, "application/json")]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status415UnsupportedMediaType, "application/problem+json")]
@@ -65,7 +64,7 @@ public sealed class ScansController(CourierShipmentService shipments) : Controll
     /// <response code="404">Unknown tracking number.</response>
     [HttpGet(Name = "GetScanHistory")]
     [EndpointSummary("Get scan history")]
-    [ProducesResponseType<IReadOnlyList<ScanResponse>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<IReadOnlyList<ScanResponse>>(StatusCodes.Status200OK, "application/json")]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
     public async Task<ActionResult<IReadOnlyList<ScanResponse>>> History(string trackingNumber, CancellationToken cancellationToken) =>
         Ok((await shipments.GetScanHistoryAsync(trackingNumber, cancellationToken)).Select(scan => scan.ToResponse()).ToArray());

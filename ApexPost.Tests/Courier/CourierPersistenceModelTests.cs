@@ -2,6 +2,7 @@ using ApexPost.Infrastructure.Persistence;
 using ApexPost.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace ApexPost.Tests.Courier;
 
