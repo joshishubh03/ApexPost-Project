@@ -6,7 +6,20 @@
     <RootNamespace>ApexPost.Api</RootNamespace>
     <!-- Secrets (connection string) come from User Secrets in Development, never from appsettings.json. -->
     <UserSecretsId>apexpost-api-local-development</UserSecretsId>
+    <!-- Part C: XML comments on actions and DTOs feed the OpenAPI descriptions (built-in .NET 10 generator). -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Every public action/DTO is documented; generated and infrastructure types need not be. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Built-in OpenAPI document generation (AddOpenApi / MapOpenApi). -->
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.*" />
+    <!-- Swagger UI only (static UI reading /openapi/{v}.json). No Swashbuckle generator: one generator only. -->
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUi" Version="9.*" />
+    <PackageReference Include="Asp.Versioning.Mvc" Version="8.*" />
+    <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="8.*" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\ApexPost.Application\ApexPost.Application.csproj" />
