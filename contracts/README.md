@@ -7,3 +7,7 @@
 - `ApexPost.Client` generates its NSwag client from `v2.json`.
 - To refresh them after an intentional API change, run `scripts/update-contracts.ps1`. Then review the diff and add
   the change to `VERSIONING.md` (breaking or non-breaking, and why).
+
+The first versions in Git are hand-written seeds, marked `"x-apexpost-seed": true`. The first
+`dotnet test ApexPost.Api.Tests` run overwrites them with the real generated documents. Commit those files, and the
+regenerated `ApexPost.Client/Generated/ApexPostApiClient.g.cs`, after that first run.

@@ -3,7 +3,10 @@ using System.Text.Json.Serialization;
 using ApexPost.Api.ErrorHandling;
 using ApexPost.Api.OpenApi;
 using ApexPost.Api.Routing;
+using ApexPost.Api.Security;
 using Asp.Versioning;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Rewrite;
 using ApexPost.Infrastructure;
 using ApexPost.Infrastructure.Persistence;
@@ -33,12 +36,76 @@ builder.Services
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
+// Part D: JWT bearer authentication. Issuer/audience/lifetime/signing key are all validated; values come from
+// configuration ("Jwt" section) and the signing key from User Secrets.
+var jwtSettings = builder.Configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>() ?? new JwtSettings();
+jwtSettings.Validate();
+builder.Services.AddSingleton(jwtSettings);
+builder.Services.AddSingleton<DevelopmentTokenIssuer>();
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.MapInboundClaims = false;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwtSettings.Issuer,
+            ValidateAudience = true,
+            ValidAudience = jwtSettings.Audience,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromSeconds(30),
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = jwtSettings.CreateSigningKey(),
+            RoleClaimType = ApexPostClaims.Role,
+            NameClaimType = ApexPostClaims.Subject
+        };
+        options.Events = new JwtBearerEvents
+        {
+            // 401/403 bodies are written as Problem Details by UseStatusCodePages; here we only explain *why*.
+            OnChallenge = context =>
+            {
+                if (context.AuthenticateFailure is SecurityTokenExpiredException)
+                {
+                    context.HttpContext.Items[AuthProblemKey] = "The access token has expired. Sign in again.";
+                }
+                else if (context.AuthenticateFailure is not null)
+                {
+                    context.HttpContext.Items[AuthProblemKey] = "The access token is invalid.";
+                }
+
+                return Task.CompletedTask;
+            }
+        };
+    });
+builder.Services.AddAuthorization();
+
+// Partner API keys (User Secrets "PartnerApi:Keys:{partner}"), hashed in memory.
+builder.Services.AddSingleton<PartnerApiKeyStore>();
+
+// HSTS outside Development: browsers must use HTTPS for a year, including subdomains.
+builder.Services.AddHsts(options =>
+{
+    options.MaxAge = TimeSpan.FromDays(365);
+    options.IncludeSubDomains = true;
+});
+
 // Problem Details for every error: validation (ValidationProblemDetails via [ApiController]), status-code pages
 // (404/405/415 with no body) and exceptions (ApiExceptionHandler).
 builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
 {
     context.ProblemDetails.Instance ??= context.HttpContext.Request.Path;
     context.ProblemDetails.Extensions.TryAdd("traceId", Activity.Current?.Id ?? context.HttpContext.TraceIdentifier);
+    switch (context.ProblemDetails.Status)
+    {
+        case StatusCodes.Status401Unauthorized:
+            context.ProblemDetails.Detail ??= context.HttpContext.Items[AuthProblemKey] as string
+                ?? "A valid bearer token is required (Authorization: Bearer <token>).";
+            break;
+        case StatusCodes.Status403Forbidden:
+            context.ProblemDetails.Detail ??= "Your role does not allow this operation.";
+            break;
+    }
 });
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 
@@ -73,10 +140,24 @@ var app = builder.Build();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
+// Transport security: always redirect HTTP to HTTPS; HSTS outside Development (a dev certificate must not be pinned
+// into the browser's HSTS list). Bearer tokens and API keys must never travel over plain HTTP - see SECURITY.md.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+
 // Part B clients that still call the unversioned /api/shipments routes are served by v1 (deprecated) so they keep
 // working until the v1 sunset date. The rewrite must run before routing.
 app.UseRewriter(new RewriteOptions().AddRewrite(@"^api/shipments(/.*)?$", "api/v1/shipments$1", skipRemainingRules: true));
 app.UseRouting();
+
+app.UseWhen(context => PartnerApiKeyMiddleware.IsPartnerPath(context.Request.Path),
+    partner => partner.UseMiddleware<PartnerApiKeyMiddleware>());
+app.UseAuthentication();
+app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
 {
@@ -96,6 +177,26 @@ if (app.Environment.IsDevelopment())
 
 app.MapControllers();
 
+if (app.Environment.IsDevelopment())
+{
+    // Development-only token endpoint (D1). Example: /dev/token?roles=Courier&courierId=courier-007
+    // roles: Courier, Admin or "Admin,Courier"; expired=true issues an already-expired token for the 401 demo.
+    app.MapGet("/dev/token", (string roles, string? courierId, bool? expired, DevelopmentTokenIssuer issuer) =>
+        {
+            try
+            {
+                var roleList = roles.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                return Results.Ok(issuer.Issue(roleList, courierId, expired: expired == true));
+            }
+            catch (ArgumentException exception)
+            {
+                return Results.Problem(exception.Message, statusCode: StatusCodes.Status400BadRequest, title: "Invalid token request.");
+            }
+        })
+        .AllowAnonymous()
+        .ExcludeFromDescription();
+}
+
 if (app.Environment.IsDevelopment() &&
     app.Configuration.GetValue("Persistence:ApplyMigrationsOnStartup", false))
 {
@@ -104,3 +205,9 @@ if (app.Environment.IsDevelopment() &&
 }
 
 await app.RunAsync();
+
+public partial class Program
+{
+    /// <summary>HttpContext.Items key carrying why authentication failed (expired vs invalid token).</summary>
+    internal const string AuthProblemKey = "ApexPost.AuthProblem";
+}

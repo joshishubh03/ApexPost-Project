@@ -1,6 +1,8 @@
 using ApexPost.Api.Contracts;
 using ApexPost.Application.Courier;
+using ApexPost.Api.Security;
 using Asp.Versioning;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ApexPost.Api.Controllers.V2;
@@ -14,6 +16,8 @@ namespace ApexPost.Api.Controllers.V2;
 [Route("api/v{version:apiVersion}/shipments")]
 [Tags("Shipments")]
 [Produces("application/json")]
+[Authorize] // any authenticated user may read; writes are narrowed per action below
+[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status500InternalServerError, "application/problem+json")]
 public sealed class ShipmentsController(CourierShipmentService shipments) : ControllerBase
 {
@@ -44,10 +48,14 @@ public sealed class ShipmentsController(CourierShipmentService shipments) : Cont
     /// <summary>Creates a shipment in status Created.</summary>
     /// <param name="request">The new shipment.</param>
     /// <param name="cancellationToken">Request abort token.</param>
+    /// <response code="401">Missing, invalid or expired token.</response>
+    /// <response code="403">Admin role required.</response>
     /// <response code="201">Created; the Location header points to the new shipment.</response>
     /// <response code="400">Validation failure.</response>
     /// <response code="409">The tracking number already exists.</response>
     /// <response code="415">The body is not application/json.</response>
+    [Authorize(Roles = ApexPostClaims.AdminRole)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
     [HttpPost(Name = "CreateShipment")]
     [Consumes("application/json")]
     [EndpointSummary("Create a shipment")]
@@ -65,11 +73,15 @@ public sealed class ShipmentsController(CourierShipmentService shipments) : Cont
     /// <param name="trackingNumber">APX-######## tracking number.</param>
     /// <param name="request">The new details.</param>
     /// <param name="cancellationToken">Request abort token.</param>
+    /// <response code="401">Missing, invalid or expired token.</response>
+    /// <response code="403">Admin role required.</response>
     /// <response code="200">The updated shipment.</response>
     /// <response code="400">Validation failure.</response>
     /// <response code="404">Unknown tracking number.</response>
     /// <response code="409">Delivered/Failed shipments cannot be edited, or a concurrent change won.</response>
     /// <response code="415">The body is not application/json.</response>
+    [Authorize(Roles = ApexPostClaims.AdminRole)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
     [HttpPut("{trackingNumber:trackingNumber}", Name = "ReplaceShipment")]
     [Consumes("application/json")]
     [EndpointSummary("Replace shipment details")]
@@ -85,11 +97,15 @@ public sealed class ShipmentsController(CourierShipmentService shipments) : Cont
     /// <param name="trackingNumber">APX-######## tracking number.</param>
     /// <param name="request">The new status.</param>
     /// <param name="cancellationToken">Request abort token.</param>
+    /// <response code="401">Missing, invalid or expired token.</response>
+    /// <response code="403">Courier role required.</response>
     /// <response code="200">The updated shipment.</response>
     /// <response code="400">Missing or unknown status.</response>
     /// <response code="404">Unknown tracking number.</response>
     /// <response code="409">The transition is not allowed.</response>
     /// <response code="415">The body is not application/json.</response>
+    [Authorize(Roles = ApexPostClaims.CourierRole)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
     [HttpPatch("{trackingNumber:trackingNumber}/status", Name = "UpdateShipmentStatus")]
     [Consumes("application/json")]
     [EndpointSummary("Change shipment status")]
@@ -104,9 +120,13 @@ public sealed class ShipmentsController(CourierShipmentService shipments) : Cont
     /// <summary>Deletes a shipment; only allowed while its status is Created.</summary>
     /// <param name="trackingNumber">APX-######## tracking number.</param>
     /// <param name="cancellationToken">Request abort token.</param>
+    /// <response code="401">Missing, invalid or expired token.</response>
+    /// <response code="403">Admin role required.</response>
     /// <response code="204">Deleted.</response>
     /// <response code="404">Unknown tracking number.</response>
     /// <response code="409">The shipment is no longer in status Created.</response>
+    [Authorize(Roles = ApexPostClaims.AdminRole)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")]
     [HttpDelete("{trackingNumber:trackingNumber}", Name = "DeleteShipment")]
     [EndpointSummary("Delete a shipment")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
