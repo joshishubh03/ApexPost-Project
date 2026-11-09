@@ -49,6 +49,12 @@ GRANT SELECT, INSERT ON OBJECT::dbo.StockAdjustments      TO apexpost_app;
 GRANT SELECT, INSERT ON OBJECT::dbo.IdentityVerifications TO apexpost_app;
 GRANT SELECT, INSERT ON OBJECT::dbo.AuditEntries          TO apexpost_app;
 
+-- Week 4 courier shipments API. DELETE is the one exception to "no DELETE anywhere": the API may delete a
+-- shipment only while it is still Created (enforced by CourierShipmentService). Its scans go with the ON DELETE
+-- CASCADE foreign key, which needs no DELETE permission on ShipmentScans. Scans themselves are append-only.
+GRANT SELECT, INSERT, UPDATE, DELETE ON OBJECT::dbo.CourierShipments TO apexpost_app;
+GRANT SELECT, INSERT                 ON OBJECT::dbo.ShipmentScans    TO apexpost_app;
+
 -- Stored procedures.
 GRANT EXECUTE ON OBJECT::dbo.usp_DailyBranchSales TO apexpost_app;
 GRANT EXECUTE ON OBJECT::dbo.usp_LowStockReport   TO apexpost_app;

@@ -371,6 +371,130 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Entities.CourierShipmentRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("RecipientAddress")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<string>("RecipientCity")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<string>("RecipientName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("RecipientPhone")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(24)");
+
+                    b.Property<string>("TrackingNumber")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(12)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<decimal>("WeightKilograms")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("decimal(6,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TrackingNumber")
+                        .IsUnique();
+
+                    b.HasIndex("Status", "RecipientCity");
+
+                    b.ToTable("CourierShipments", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CourierShipments_Status", "[Status] IN ('Created', 'PickedUp', 'InTransit', 'OutForDelivery', 'Delivered', 'Failed')");
+
+                            t.HasCheckConstraint("CK_CourierShipments_TrackingNumber", "[TrackingNumber] LIKE 'APX-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'");
+
+                            t.HasCheckConstraint("CK_CourierShipments_Weight", "[WeightKilograms] >= 0.1 AND [WeightKilograms] <= 70");
+                        });
+                });
+
+            modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Entities.ShipmentScanRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CourierId")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(40)");
+
+                    b.Property<Guid>("CourierShipmentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("ReceivedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("ScanType")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<DateTime>("ScannedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("SignatureName")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CourierShipmentId", "ScannedAtUtc");
+
+                    b.ToTable("ShipmentScans", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ShipmentScans_DeliveredSignature", "[ScanType] <> 'Delivered' OR [SignatureName] IS NOT NULL");
+
+                            t.HasCheckConstraint("CK_ShipmentScans_ScanType", "[ScanType] IN ('Pickup', 'InTransit', 'Delivered', 'Failed')");
+                        });
+                });
+
             modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Entities.IdentityVerificationRow", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1529,6 +1653,19 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
                     b.Navigation("Payment");
 
                     b.Navigation("Shipment");
+                });
+            modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Entities.ShipmentScanRow", b =>
+                {
+                    b.HasOne("ApexPost.Infrastructure.Persistence.Entities.CourierShipmentRow", null)
+                        .WithMany("Scans")
+                        .HasForeignKey("CourierShipmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ApexPost.Infrastructure.Persistence.Entities.CourierShipmentRow", b =>
+                {
+                    b.Navigation("Scans");
                 });
 #pragma warning restore 612, 618
         }
