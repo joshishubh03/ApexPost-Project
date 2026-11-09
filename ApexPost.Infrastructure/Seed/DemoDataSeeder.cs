@@ -19,16 +19,14 @@ public sealed class DemoDataSeeder(
     IStaffPasswordService passwordService,
     MoneyOrderPolicy moneyOrderPolicy,
     string demoPassword,
-    IApplicationMutationCoordinator mutationCoordinator,
-    IUnitOfWork? unitOfWork = null)
+    IUnitOfWork unitOfWork)
 {
-    private readonly IUnitOfWork stageCommitter = unitOfWork ?? new NoOpUnitOfWork();
 
     /// <summary>Number of historical counter transactions seeded so indexes and reports are meaningful.</summary>
     public const int HistoricalTransactionCount = 240;
 
     public Task SeedAsync(CancellationToken cancellationToken = default) =>
-        mutationCoordinator.RunAsync(() => SeedCoreAsync(cancellationToken), cancellationToken);
+        unitOfWork.ExecuteUseCaseAsync(() => SeedCoreAsync(cancellationToken), cancellationToken);
 
     private async Task SeedCoreAsync(CancellationToken cancellationToken)
     {
@@ -44,7 +42,7 @@ public sealed class DemoDataSeeder(
                     isOpen: true))
                 .ToArray();
             await branchRepository.SaveAllAsync(branches, cancellationToken);
-            await stageCommitter.SaveChangesAsync(cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
         var terminals = await terminalRepository.GetAllAsync(cancellationToken);
@@ -53,7 +51,7 @@ public sealed class DemoDataSeeder(
             terminals = branches.SelectMany(branch => Enumerable.Range(1, 2).Select(number => new CounterTerminal(
                 StableGuid($"terminal-{branch.Code}-{number}"), branch.Id, $"T-{number:00}", $"Counter {number}"))).ToArray();
             await terminalRepository.SaveAllAsync(terminals, cancellationToken);
-            await stageCommitter.SaveChangesAsync(cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
         var products = await productRepository.GetAllAsync(cancellationToken);
@@ -96,7 +94,7 @@ public sealed class DemoDataSeeder(
                 Guid.Parse($"20000000-0000-0000-0000-{index + 1:000000000000}"),
                 seed.Sku, seed.Name, seed.Description, seed.Category, seed.Price, isActive: true)).ToArray();
             await productRepository.SaveAllAsync(seededProducts, cancellationToken);
-            await stageCommitter.SaveChangesAsync(cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
             products = seededProducts;
         }
 
@@ -120,7 +118,7 @@ public sealed class DemoDataSeeder(
                 Guid.Parse($"30000000-0000-0000-0000-{index + 1:000000000000}"),
                 seed.Code, seed.Name, seed.Destination, isActive: true)).ToArray();
             await shippingZoneRepository.SaveAllAsync(zones, cancellationToken);
-            await stageCommitter.SaveChangesAsync(cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
         var rates = await shippingRateRepository.GetAllAsync(cancellationToken);
@@ -146,7 +144,7 @@ public sealed class DemoDataSeeder(
                     isActive: true)
             });
             await shippingRateRepository.SaveAllAsync(seededRates, cancellationToken);
-            await stageCommitter.SaveChangesAsync(cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
             rates = seededRates.ToArray();
         }
 
@@ -182,7 +180,7 @@ public sealed class DemoDataSeeder(
         if (missingRegisteredRates.Length > 0)
         {
             await shippingRateRepository.SaveAllAsync(rates.Concat(missingRegisteredRates), cancellationToken);
-            await stageCommitter.SaveChangesAsync(cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
         var staff = await staffRepository.GetAllAsync(cancellationToken);
@@ -251,7 +249,7 @@ public sealed class DemoDataSeeder(
             demoPassword));
 
             await staffRepository.SaveAllAsync(seededStaff, cancellationToken);
-            await stageCommitter.SaveChangesAsync(cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
             staff = seededStaff;
         }
 
@@ -400,9 +398,9 @@ public sealed class DemoDataSeeder(
         }
 
         await inventoryRepository.SaveAllAsync(inventory, cancellationToken);
-        await stageCommitter.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         await transactionRepository.SaveAllAsync(seededTransactions, cancellationToken);
-        await stageCommitter.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
     private async Task SeedAuditorHistoryAsync(
@@ -494,10 +492,10 @@ public sealed class DemoDataSeeder(
 
         if (changedVerifications)
             await verificationRepository.SaveAllAsync(verifications, cancellationToken);
-            await stageCommitter.SaveChangesAsync(cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
         if (changedOrders)
             await moneyOrderRepository.SaveAllAsync(orders, cancellationToken);
-            await stageCommitter.SaveChangesAsync(cancellationToken);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
     private static Guid StableGuid(string value)

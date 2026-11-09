@@ -11,7 +11,7 @@ public sealed class ProductCatalogueCacheTests
     {
         var product = new Product(Guid.NewGuid(), "PEN-01", "Pen", "Blue ink pen", "Stationery", 1.25m, true);
         var repository = new FakeProductRepository([product]);
-        var service = new ProductCatalogueService(repository, ImmediateMutationCoordinator.Instance);
+        var service = new ProductCatalogueService(repository, ImmediateUnitOfWork.Instance);
 
         var initial = await service.GetCatalogueAsync();
         var warmCache = service.GetCatalogueAsync();

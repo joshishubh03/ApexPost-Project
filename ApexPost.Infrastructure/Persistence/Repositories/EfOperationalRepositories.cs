@@ -490,7 +490,7 @@ public sealed class EfCounterTransactionRepository(ApexPostDbContext context) : 
         }
     }
 
-    /// <summary>Upsert used by the seeder and JSON-era callers. Stages only rows that are new or changed.</summary>
+    /// <summary>Bulk upsert used by the demo-data seeder. Stages only rows that are new or changed.</summary>
     public async Task SaveAllAsync(IEnumerable<CounterTransaction> transactions, CancellationToken cancellationToken = default)
     {
         var values = transactions.ToArray();

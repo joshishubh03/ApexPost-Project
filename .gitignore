@@ -17,8 +17,5 @@ coverage/
 !.env.example
 
 # local run artefacts
-app-out.log
-app-err.log
-claude-run.log
-claude-run.done
-backup-before-*.zip
+*.log
+*.zip

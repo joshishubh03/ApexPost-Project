@@ -5,7 +5,7 @@ namespace ApexPost.Application.Services;
 
 public sealed class ProductCatalogueService(
     IProductRepository productRepository,
-    IApplicationMutationCoordinator mutationCoordinator)
+    IUnitOfWork unitOfWork)
 {
 
     private IReadOnlyList<Product>? cachedProducts;
@@ -56,7 +56,7 @@ public sealed class ProductCatalogueService(
         string taxCategory = "Standard",
         CancellationToken cancellationToken = default)
     {
-        await mutationCoordinator.RunAsync(async () =>
+        await unitOfWork.ExecuteUseCaseAsync(async () =>
         {
             var products = (await productRepository.GetAllAsync(cancellationToken)).ToList();
             var product = new Product(Guid.NewGuid(), sku, name, description, category, price, isActive: true, taxCategory: taxCategory);
@@ -74,7 +74,7 @@ public sealed class ProductCatalogueService(
 
     public async Task SetActiveAsync(Guid productId, bool isActive, CancellationToken cancellationToken = default)
     {
-        await mutationCoordinator.RunAsync(async () =>
+        await unitOfWork.ExecuteUseCaseAsync(async () =>
         {
             var products = (await productRepository.GetAllAsync(cancellationToken)).ToList();
             var index = products.FindIndex(product => product.Id == productId);
@@ -102,7 +102,7 @@ public sealed class ProductCatalogueService(
     }
 
     private Task<IReadOnlyList<Product>> LoadCatalogueAsync(CancellationToken cancellationToken) =>
-        mutationCoordinator.RunAsync(async () =>
+        unitOfWork.ExecuteUseCaseAsync(async () =>
         {
             var current = Volatile.Read(ref cachedProducts);
             var version = await productRepository.GetVersionAsync(cancellationToken);

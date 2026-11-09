@@ -42,13 +42,7 @@ public sealed class SqlServerTestDatabase : IAsyncLifetime
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddApexPostInfrastructure(
-            Path.Combine(Path.GetTempPath(), "apexpost-sql-tests-unused"),
-            DemoPassword,
-            MoneyOrderPolicy,
-            enableSimulatedIdentityVerification: true,
-            connectionString,
-            useSqlServer: true);
+        services.AddApexPostInfrastructure(DemoPassword, MoneyOrderPolicy, enableSimulatedIdentityVerification: true);
         services.AddApexPostSqlServer(connectionString, 60);
         services.AddSingleton(MoneyOrderPolicy);
         services.AddSingleton(new TaxPolicy(new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase)

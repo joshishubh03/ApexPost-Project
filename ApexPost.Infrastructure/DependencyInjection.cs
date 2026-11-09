@@ -5,7 +5,6 @@ using ApexPost.Application.Services;
 using ApexPost.Infrastructure.Persistence;
 using ApexPost.Infrastructure.Events;
 using ApexPost.Infrastructure.Persistence.Repositories;
-using ApexPost.Infrastructure.Repositories;
 using ApexPost.Infrastructure.Security;
 using ApexPost.Infrastructure.Seed;
 using ApexPost.Application.Queries;
@@ -47,7 +46,6 @@ public static class DependencyInjection
             .AddInterceptors(provider.GetServices<ISaveChangesInterceptor>()));
 
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
-        services.AddScoped<IApplicationMutationCoordinator, UnitOfWorkMutationCoordinator>();
         services.AddScoped<IBranchRepository, EfBranchRepository>();
         services.AddScoped<ICounterTerminalRepository, EfCounterTerminalRepository>();
         services.AddScoped<IStaffRepository, EfStaffRepository>();
@@ -69,43 +67,16 @@ public static class DependencyInjection
         return services;
     }
 
+    /// <summary>
+    /// Persistence-independent infrastructure: identity verification, event handlers, password hashing and the
+    /// demo-data seeder. Persistence itself is registered by <see cref="AddApexPostSqlServer"/>.
+    /// </summary>
     public static IServiceCollection AddApexPostInfrastructure(
         this IServiceCollection services,
-        string dataDirectory,
         string demoPassword,
         MoneyOrderPolicy moneyOrderPolicy,
-        bool enableSimulatedIdentityVerification,
-        string? connectionString = null,
-        bool useSqlServer = false)
+        bool enableSimulatedIdentityVerification)
     {
-        if (useSqlServer)
-        {
-            // SQL Server registrations are intentionally centralized in AddApexPostSqlServer.
-            // Do not register a second DbContext or SQL repositories here.
-            if (string.IsNullOrWhiteSpace(connectionString))
-            {
-                throw new InvalidOperationException(
-                    "SQL Server persistence is enabled, but no connection string was supplied.");
-            }
-        }
-        else
-        {
-            services.AddSingleton<IApplicationMutationCoordinator>(_ => new JsonMutationCoordinator(dataDirectory));
-            services.AddSingleton<IBranchRepository>(_ => new JsonBranchRepository(dataDirectory));
-            services.AddSingleton<IStaffRepository>(_ => new JsonStaffRepository(dataDirectory));
-            services.AddSingleton<IProductRepository>(_ => new JsonProductRepository(dataDirectory));
-            services.AddSingleton<IInventoryRepository>(_ => new JsonInventoryRepository(dataDirectory));
-            services.AddSingleton<IShippingZoneRepository>(_ => new JsonShippingZoneRepository(dataDirectory));
-            services.AddSingleton<IShippingRateRepository>(_ => new JsonShippingRateRepository(dataDirectory));
-            services.AddSingleton<ICounterTransactionRepository>(_ => new JsonCounterTransactionRepository(dataDirectory));
-            services.AddSingleton<ICounterTerminalRepository>(_ => new JsonCounterTerminalRepository(dataDirectory));
-            services.AddSingleton<IMoneyOrderRepository>(_ => new JsonMoneyOrderRepository(dataDirectory));
-            services.AddSingleton<IIdentityVerificationRepository>(_ => new JsonIdentityVerificationRepository(dataDirectory));
-            services.AddSingleton<IAuditLogRepository>(_ => new JsonAuditLogRepository(dataDirectory));
-            services.AddSingleton<INotificationRepository>(_ => new JsonNotificationRepository(dataDirectory));
-            services.AddScoped<IAuditStore, RepositoryAuditStore>();
-        }
-
         if (enableSimulatedIdentityVerification)
         {
             services.AddSingleton<IIdentityVerificationService>(
@@ -138,8 +109,7 @@ public static class DependencyInjection
             serviceProvider.GetRequiredService<IStaffPasswordService>(),
             moneyOrderPolicy,
             demoPassword,
-            serviceProvider.GetRequiredService<IApplicationMutationCoordinator>(),
-            serviceProvider.GetService<IUnitOfWork>() ?? new NoOpUnitOfWork()));
+            serviceProvider.GetRequiredService<IUnitOfWork>()));
 
         return services;
     }

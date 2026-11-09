@@ -12,8 +12,6 @@ namespace ApexPost.Infrastructure.Persistence;
 /// </summary>
 public sealed class EfUnitOfWork(ApexPostDbContext context) : IUnitOfWork
 {
-    public bool SupportsAtomicCommit => true;
-
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         try
