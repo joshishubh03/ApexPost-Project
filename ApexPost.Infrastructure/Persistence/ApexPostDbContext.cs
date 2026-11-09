@@ -32,6 +32,10 @@ public sealed class ApexPostDbContext(DbContextOptions<ApexPostDbContext> option
     public DbSet<OperationalNotificationRow> OperationalNotifications => Set<OperationalNotificationRow>();
     public DbSet<OutboxMessageRow> OutboxMessages => Set<OutboxMessageRow>();
 
+    // Week 4 (additive): courier shipments API.
+    public DbSet<CourierShipmentRow> CourierShipments => Set<CourierShipmentRow>();
+    public DbSet<ShipmentScanRow> ShipmentScans => Set<ShipmentScanRow>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(

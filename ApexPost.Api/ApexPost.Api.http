@@ -1,0 +1,81 @@
+### ApexPost.Api - Part B (unversioned routes). Fictional data only.
+@host = https://localhost:7301
+@tn = APX-10000001
+
+### 201 Created + Location header
+POST {{host}}/api/shipments
+Content-Type: application/json
+
+{ "trackingNumber": "{{tn}}", "weightKg": 2.5, "recipientName": "Jordan Example",
+  "recipientPhone": "+15550100123", "recipientAddress": "12 Elm Row", "city": "Maplewood" }
+
+### 409 duplicate tracking number (run the request above first)
+POST {{host}}/api/shipments
+Content-Type: application/json
+
+{ "trackingNumber": "{{tn}}", "weightKg": 2.5, "recipientName": "Jordan Example",
+  "recipientPhone": "+15550100123", "recipientAddress": "12 Elm Row", "city": "Maplewood" }
+
+### 400 ValidationProblemDetails
+POST {{host}}/api/shipments
+Content-Type: application/json
+
+{ "trackingNumber": "APX-123", "weightKg": 80, "recipientName": "", "recipientPhone": "call me",
+  "recipientAddress": "", "city": "" }
+
+### 415 wrong content type
+POST {{host}}/api/shipments
+Content-Type: text/plain
+
+trackingNumber=APX-10000001
+
+### 200 list (paged and filtered)
+GET {{host}}/api/shipments?page=1&pageSize=20&status=Created&city=Maplewood
+
+### 200 one shipment / 404 unknown
+GET {{host}}/api/shipments/{{tn}}
+
+###
+GET {{host}}/api/shipments/APX-99999999
+
+### 200 replace details
+PUT {{host}}/api/shipments/{{tn}}
+Content-Type: application/json
+
+{ "weightKg": 3.1, "recipientName": "Casey Sample", "recipientPhone": "+15550100999",
+  "recipientAddress": "7 Oak Street", "city": "Riverton" }
+
+### 200 status change / 409 invalid transition
+PATCH {{host}}/api/shipments/{{tn}}/status
+Content-Type: application/json
+
+{ "status": "PickedUp" }
+
+###
+PATCH {{host}}/api/shipments/{{tn}}/status
+Content-Type: application/json
+
+{ "status": "Delivered" }
+
+### 200 idempotent scan upload (send twice: second time duplicatesSkipped = 2)
+POST {{host}}/api/shipments/{{tn}}/scans
+Content-Type: application/json
+
+{ "scans": [
+  { "scanId": "scan::3f2c9a5e-0b1d-4c7e-9a10-2b3c4d5e6f70", "scanType": "Pickup", "courierId": "courier-007",
+    "location": "Maplewood Depot", "scannedAtUtc": "2026-11-09T08:00:00Z" },
+  { "scanId": "scan::7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d", "scanType": "InTransit", "courierId": "courier-007",
+    "location": "Northgate Hub", "scannedAtUtc": "2026-11-09T09:30:00Z" } ] }
+
+### 400 Delivered scan without signature (custom IValidatableObject rule)
+POST {{host}}/api/shipments/{{tn}}/scans
+Content-Type: application/json
+
+{ "scans": [ { "scanId": "scan::11111111-2222-4333-8444-555555555555", "scanType": "Delivered",
+  "courierId": "courier-007", "location": "12 Elm Row", "scannedAtUtc": "2026-11-09T10:00:00Z" } ] }
+
+### 200 scan history
+GET {{host}}/api/shipments/{{tn}}/scans
+
+### 409 delete after pickup / 204 delete while Created
+DELETE {{host}}/api/shipments/{{tn}}
