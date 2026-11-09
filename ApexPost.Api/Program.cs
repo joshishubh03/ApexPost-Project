@@ -1,7 +1,10 @@
 using System.Diagnostics;
 using System.Text.Json.Serialization;
 using ApexPost.Api.ErrorHandling;
+using ApexPost.Api.OpenApi;
 using ApexPost.Api.Routing;
+using Asp.Versioning;
+using Microsoft.AspNetCore.Rewrite;
 using ApexPost.Infrastructure;
 using ApexPost.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -39,10 +42,57 @@ builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = 
 });
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 
+// Part C: URL-segment versioning (/api/v{version}/shipments). v1 = the Part B contract (deprecated), v2 = new shape.
+builder.Services
+    .AddApiVersioning(options =>
+    {
+        options.DefaultApiVersion = new ApiVersion(2, 0);
+        options.AssumeDefaultVersionWhenUnspecified = false;
+        options.ApiVersionReader = new UrlSegmentApiVersionReader();
+        // Adds api-supported-versions / api-deprecated-versions response headers.
+        options.ReportApiVersions = true;
+        // Adds a Sunset header (RFC 8594) with a link to the migration guide on every v1 response.
+        options.Policies.Sunset(1.0)
+            .Effective(new DateTimeOffset(2027, 3, 31, 0, 0, 0, TimeSpan.Zero))
+            .Link("https://developer.apexpost.example/api/versioning")
+            .Title("ApexPost API v1 sunset and migration guide")
+            .Type("text/html");
+    })
+    .AddMvc()
+    .AddApiExplorer(options =>
+    {
+        // Group names "v1" / "v2" select the version-specific OpenAPI documents.
+        options.GroupNameFormat = "'v'VVV";
+        options.SubstituteApiVersionInUrl = true;
+    });
+
+builder.Services.AddApexPostOpenApi();
+
 var app = builder.Build();
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();
+
+// Part B clients that still call the unversioned /api/shipments routes are served by v1 (deprecated) so they keep
+// working until the v1 sunset date. The rewrite must run before routing.
+app.UseRewriter(new RewriteOptions().AddRewrite(@"^api/shipments(/.*)?$", "api/v1/shipments$1", skipRemainingRules: true));
+app.UseRouting();
+
+if (app.Environment.IsDevelopment())
+{
+    // OpenAPI documents and Swagger UI are Development-only. Hiding documentation is NOT a security control:
+    // the endpoints are protected by authentication/authorization, not by being undocumented.
+    app.MapOpenApi();
+    app.UseSwaggerUI(options =>
+    {
+        options.RoutePrefix = "swagger";
+        options.DocumentTitle = OpenApiConfiguration.Title;
+        foreach (var (name, label, _) in OpenApiConfiguration.Documents)
+        {
+            options.SwaggerEndpoint($"/openapi/{name}.json", label);
+        }
+    });
+}
 
 app.MapControllers();
 

@@ -7,6 +7,8 @@
     <Folder Name="/Api/">
         <Project Path="ApexPost.Api/ApexPost.Api.csproj" />
         <Project Path="ApexPost.Api.Tests/ApexPost.Api.Tests.csproj" />
+        <Project Path="ApexPost.Client/ApexPost.Client.csproj" />
+        <Project Path="ApexPost.Client.Consumer/ApexPost.Client.Consumer.csproj" />
     </Folder>
     <Folder Name="/Courier/">
         <Project Path="ApexPost.Courier.Offline/ApexPost.Courier.Offline.csproj" />
