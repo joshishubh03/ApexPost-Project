@@ -1,81 +1,202 @@
-### ApexPost.Api - Part B (unversioned routes). Fictional data only.
+### ApexPost.Api - success and failure request for every endpoint, v1 (deprecated) and v2. Fictional data only.
+### Run the API: dotnet run --project ApexPost.Api --launch-profile https
 @host = https://localhost:7301
-@tn = APX-10000001
+@tn1 = APX-10000101
+@tn2 = APX-10000201
 
-### 201 Created + Location header
-POST {{host}}/api/shipments
+######## V1 (deprecated: response carries api-deprecated-versions + Sunset headers)
+
+### [v1] POST create - 201 Created + Location
+POST {{host}}/api/v1/shipments
 Content-Type: application/json
 
-{ "trackingNumber": "{{tn}}", "weightKg": 2.5, "recipientName": "Jordan Example",
+{ "trackingNumber": "{{tn1}}", "weightKg": 2.5, "recipientName": "Jordan Example",
   "recipientPhone": "+15550100123", "recipientAddress": "12 Elm Row", "city": "Maplewood" }
 
-### 409 duplicate tracking number (run the request above first)
-POST {{host}}/api/shipments
+### [v1] POST create - 409 duplicate tracking number (send after the request above)
+POST {{host}}/api/v1/shipments
 Content-Type: application/json
 
-{ "trackingNumber": "{{tn}}", "weightKg": 2.5, "recipientName": "Jordan Example",
+{ "trackingNumber": "{{tn1}}", "weightKg": 2.5, "recipientName": "Jordan Example",
   "recipientPhone": "+15550100123", "recipientAddress": "12 Elm Row", "city": "Maplewood" }
 
-### 400 ValidationProblemDetails
-POST {{host}}/api/shipments
+### [v1] POST create - 400 ValidationProblemDetails
+POST {{host}}/api/v1/shipments
 Content-Type: application/json
 
-{ "trackingNumber": "APX-123", "weightKg": 80, "recipientName": "", "recipientPhone": "call me",
-  "recipientAddress": "", "city": "" }
+{ "trackingNumber": "APX-123", "weightKg": 80, "recipientName": "", "recipientPhone": "call me", "recipientAddress": "", "city": "" }
 
-### 415 wrong content type
-POST {{host}}/api/shipments
+### [v1] POST create - 415 Unsupported Media Type
+POST {{host}}/api/v1/shipments
 Content-Type: text/plain
 
-trackingNumber=APX-10000001
+trackingNumber={{tn1}}
 
-### 200 list (paged and filtered)
-GET {{host}}/api/shipments?page=1&pageSize=20&status=Created&city=Maplewood
+### [v1] GET list - 200 paged and filtered
+GET {{host}}/api/v1/shipments?page=1&pageSize=20&status=Created&city=Maplewood
 
-### 200 one shipment / 404 unknown
-GET {{host}}/api/shipments/{{tn}}
+### [v1] GET list - 400 pageSize above 50
+GET {{host}}/api/v1/shipments?pageSize=51
 
-###
-GET {{host}}/api/shipments/APX-99999999
+### [v1] GET one - 200
+GET {{host}}/api/v1/shipments/{{tn1}}
 
-### 200 replace details
-PUT {{host}}/api/shipments/{{tn}}
+### [v1] GET one - 404 unknown tracking number
+GET {{host}}/api/v1/shipments/APX-99999999
+
+### [v1] PUT replace - 200
+PUT {{host}}/api/v1/shipments/{{tn1}}
 Content-Type: application/json
 
-{ "weightKg": 3.1, "recipientName": "Casey Sample", "recipientPhone": "+15550100999",
-  "recipientAddress": "7 Oak Street", "city": "Riverton" }
+{ "weightKg": 3.1, "recipientName": "Casey Sample", "recipientPhone": "+15550100999", "recipientAddress": "7 Oak Street", "city": "Riverton" }
 
-### 200 status change / 409 invalid transition
-PATCH {{host}}/api/shipments/{{tn}}/status
+### [v1] PUT replace - 404 unknown tracking number
+PUT {{host}}/api/v1/shipments/APX-99999999
+Content-Type: application/json
+
+{ "weightKg": 3.1, "recipientName": "Casey Sample", "recipientPhone": "+15550100999", "recipientAddress": "7 Oak Street", "city": "Riverton" }
+
+### [v1] PATCH status - 200 Created -> PickedUp
+PATCH {{host}}/api/v1/shipments/{{tn1}}/status
 Content-Type: application/json
 
 { "status": "PickedUp" }
 
-###
-PATCH {{host}}/api/shipments/{{tn}}/status
+### [v1] PATCH status - 409 invalid transition PickedUp -> Delivered
+PATCH {{host}}/api/v1/shipments/{{tn1}}/status
 Content-Type: application/json
 
 { "status": "Delivered" }
 
-### 200 idempotent scan upload (send twice: second time duplicatesSkipped = 2)
-POST {{host}}/api/shipments/{{tn}}/scans
+### [v1] POST scans - 200 (send twice: the second response shows duplicatesSkipped = 2)
+POST {{host}}/api/v1/shipments/{{tn1}}/scans
 Content-Type: application/json
 
 { "scans": [
   { "scanId": "scan::3f2c9a5e-0b1d-4c7e-9a10-2b3c4d5e6f70", "scanType": "Pickup", "courierId": "courier-007",
     "location": "Maplewood Depot", "scannedAtUtc": "2026-11-09T08:00:00Z" },
-  { "scanId": "scan::7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d", "scanType": "InTransit", "courierId": "courier-007",
+  { "scanId": "scan::7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c00", "scanType": "InTransit", "courierId": "courier-007",
     "location": "Northgate Hub", "scannedAtUtc": "2026-11-09T09:30:00Z" } ] }
 
-### 400 Delivered scan without signature (custom IValidatableObject rule)
-POST {{host}}/api/shipments/{{tn}}/scans
+### [v1] POST scans - 400 Delivered scan without a signature (custom IValidatableObject rule)
+POST {{host}}/api/v1/shipments/{{tn1}}/scans
 Content-Type: application/json
 
-{ "scans": [ { "scanId": "scan::11111111-2222-4333-8444-555555555555", "scanType": "Delivered",
-  "courierId": "courier-007", "location": "12 Elm Row", "scannedAtUtc": "2026-11-09T10:00:00Z" } ] }
+{ "scans": [ { "scanId": "scan::11111111-2222-4333-8444-555555555551", "scanType": "Delivered", "courierId": "courier-007", "location": "12 Elm Row", "scannedAtUtc": "2026-11-09T10:00:00Z" } ] }
 
-### 200 scan history
-GET {{host}}/api/shipments/{{tn}}/scans
+### [v1] GET scans - 200 history
+GET {{host}}/api/v1/shipments/{{tn1}}/scans
 
-### 409 delete after pickup / 204 delete while Created
-DELETE {{host}}/api/shipments/{{tn}}
+### [v1] GET scans - 404 unknown tracking number
+GET {{host}}/api/v1/shipments/APX-99999999/scans
+
+### [v1] DELETE - 409 (shipment was picked up above)
+DELETE {{host}}/api/v1/shipments/{{tn1}}
+
+### [v1] DELETE - 204 (create a fresh Created shipment first)
+POST {{host}}/api/v1/shipments
+Content-Type: application/json
+
+{ "trackingNumber": "APX-10000109", "weightKg": 1.2, "recipientName": "Robin Test", "recipientPhone": "+15550100777", "recipientAddress": "3 Pine Close", "city": "Maplewood" }
+
+###
+DELETE {{host}}/api/v1/shipments/APX-10000109
+
+######## V2
+
+### [v2] POST create - 201 Created + Location
+POST {{host}}/api/v2/shipments
+Content-Type: application/json
+
+{ "trackingNumber": "{{tn2}}", "weightKg": 2.5, "recipientName": "Jordan Example",
+  "recipientPhone": "+15550100123", "recipientAddress": "12 Elm Row", "city": "Maplewood" }
+
+### [v2] POST create - 409 duplicate tracking number (send after the request above)
+POST {{host}}/api/v2/shipments
+Content-Type: application/json
+
+{ "trackingNumber": "{{tn2}}", "weightKg": 2.5, "recipientName": "Jordan Example",
+  "recipientPhone": "+15550100123", "recipientAddress": "12 Elm Row", "city": "Maplewood" }
+
+### [v2] POST create - 400 ValidationProblemDetails
+POST {{host}}/api/v2/shipments
+Content-Type: application/json
+
+{ "trackingNumber": "APX-123", "weightKg": 80, "recipientName": "", "recipientPhone": "call me", "recipientAddress": "", "city": "" }
+
+### [v2] POST create - 415 Unsupported Media Type
+POST {{host}}/api/v2/shipments
+Content-Type: text/plain
+
+trackingNumber={{tn2}}
+
+### [v2] GET list - 200 paged and filtered
+GET {{host}}/api/v2/shipments?page=1&pageSize=20&status=Created&city=Maplewood
+
+### [v2] GET list - 400 pageSize above 50
+GET {{host}}/api/v2/shipments?pageSize=51
+
+### [v2] GET one - 200
+GET {{host}}/api/v2/shipments/{{tn2}}
+
+### [v2] GET one - 404 unknown tracking number
+GET {{host}}/api/v2/shipments/APX-99999999
+
+### [v2] PUT replace - 200
+PUT {{host}}/api/v2/shipments/{{tn2}}
+Content-Type: application/json
+
+{ "weightKg": 3.1, "recipientName": "Casey Sample", "recipientPhone": "+15550100999", "recipientAddress": "7 Oak Street", "city": "Riverton" }
+
+### [v2] PUT replace - 404 unknown tracking number
+PUT {{host}}/api/v2/shipments/APX-99999999
+Content-Type: application/json
+
+{ "weightKg": 3.1, "recipientName": "Casey Sample", "recipientPhone": "+15550100999", "recipientAddress": "7 Oak Street", "city": "Riverton" }
+
+### [v2] PATCH status - 200 Created -> PickedUp
+PATCH {{host}}/api/v2/shipments/{{tn2}}/status
+Content-Type: application/json
+
+{ "status": "PickedUp" }
+
+### [v2] PATCH status - 409 invalid transition PickedUp -> Delivered
+PATCH {{host}}/api/v2/shipments/{{tn2}}/status
+Content-Type: application/json
+
+{ "status": "Delivered" }
+
+### [v2] POST scans - 200 (send twice: the second response shows duplicatesSkipped = 2)
+POST {{host}}/api/v2/shipments/{{tn2}}/scans
+Content-Type: application/json
+
+{ "scans": [
+  { "scanId": "scan::3f2c9a5e-0b1d-4c7e-9a10-2b3c4d5e6f71", "scanType": "Pickup", "courierId": "courier-007",
+    "location": "Maplewood Depot", "scannedAtUtc": "2026-11-09T08:00:00Z" },
+  { "scanId": "scan::7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c01", "scanType": "InTransit", "courierId": "courier-007",
+    "location": "Northgate Hub", "scannedAtUtc": "2026-11-09T09:30:00Z" } ] }
+
+### [v2] POST scans - 400 Delivered scan without a signature (custom IValidatableObject rule)
+POST {{host}}/api/v2/shipments/{{tn2}}/scans
+Content-Type: application/json
+
+{ "scans": [ { "scanId": "scan::11111111-2222-4333-8444-555555555552", "scanType": "Delivered", "courierId": "courier-007", "location": "12 Elm Row", "scannedAtUtc": "2026-11-09T10:00:00Z" } ] }
+
+### [v2] GET scans - 200 history
+GET {{host}}/api/v2/shipments/{{tn2}}/scans
+
+### [v2] GET scans - 404 unknown tracking number
+GET {{host}}/api/v2/shipments/APX-99999999/scans
+
+### [v2] DELETE - 409 (shipment was picked up above)
+DELETE {{host}}/api/v2/shipments/{{tn2}}
+
+### [v2] DELETE - 204 (create a fresh Created shipment first)
+POST {{host}}/api/v2/shipments
+Content-Type: application/json
+
+{ "trackingNumber": "APX-10000108", "weightKg": 1.2, "recipientName": "Robin Test", "recipientPhone": "+15550100777", "recipientAddress": "3 Pine Close", "city": "Maplewood" }
+
+###
+DELETE {{host}}/api/v2/shipments/APX-10000108
+

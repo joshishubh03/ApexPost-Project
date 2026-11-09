@@ -210,3 +210,48 @@ dotnet test ApexPost.Api.Tests                                  # disposable Loc
 - **Idempotent scan upload.** `ShipmentScans.Id` *is* the device scan GUID (primary key). Stored IDs and IDs
   repeated within one batch are counted as `duplicatesSkipped`. Scans that would break the status machine are
   listed in `rejected` with a reason.
+
+## Part C: OpenAPI, Swagger UI, versioning and the client SDK
+
+### OpenAPI specification vs the .NET generator vs Swagger UI
+
+| Piece | What it is | In this repo |
+|---|---|---|
+| **OpenAPI Specification** | A vendor-neutral *standard* (a JSON/YAML format) that describes an HTTP API: paths, operations, parameters, schemas, status codes and security schemes. It is the contract, not a tool. | `contracts/v1.json`, `contracts/v2.json` (OpenAPI 3.0) |
+| **Built-in .NET generator** (`Microsoft.AspNetCore.OpenApi`) | Code that *produces* an OpenAPI document from the running app's endpoints. It reads routes, `[ProducesResponseType]`, `[Tags]`, `[EndpointSummary]`, XML comments and the API Explorer groups. `AddOpenApi("v1")` / `AddOpenApi("v2")` register the documents and `MapOpenApi()` serves them at `/openapi/{v}.json`. Transformers customise the result. | `OpenApi/OpenApiConfiguration.cs` (title, description, version, contact; v1 operations marked deprecated) |
+| **Swagger UI** (`Swashbuckle.AspNetCore.SwaggerUi`) | A static web page that *reads* an OpenAPI document and renders interactive docs with "Try it out". It generates nothing. Only the UI package is referenced; Swashbuckle's own generator is **not** used, so there is exactly one generator. | `/swagger`, with a dropdown for "v2" and "v1 (deprecated)" |
+
+The OpenAPI documents and Swagger UI are enabled **in Development only**. Hiding documentation is not a security
+control: the endpoints are protected by authentication and authorization (Part D), not by being undocumented.
+
+### Rich metadata
+
+- `GenerateDocumentationFile` is on, and every action and DTO has XML comments, which become summaries,
+  descriptions and per-response texts.
+- Every possible status code has a `[ProducesResponseType]`.
+- `[Tags("Shipments")]` / `[Tags("Scans")]` group the operations, and `[EndpointSummary]` gives each one a summary.
+- Every action has a stable route name, which becomes its `operationId` and the SDK method name (`CreateShipment`
+  becomes `CreateShipmentAsync`). v1 names end in `V1` because route names must be unique.
+
+### Versioning
+
+URL-segment versioning (`/api/v1/...`, `/api/v2/...`) with `ReportApiVersions`. v1 is `Deprecated = true` and has
+a Sunset policy. v2 nests the recipient, adds `latestScan` and returns `status` as a string. See
+[VERSIONING.md](VERSIONING.md) and [API-NOTES.md](API-NOTES.md).
+
+### Generated client SDK
+
+| Project | Purpose |
+|---|---|
+| `ApexPost.Client` | NSwag-generated `ApexPostApiClient` / `IApexPostApiClient` from `contracts/v2.json`. The config is `ApexPost.Client/nswag.json`, with the NSwag version pinned in `.config/dotnet-tools.json`. Building the project regenerates `Generated/ApexPostApiClient.g.cs` when the contract changes. Additions live in `ApexPostApiClient.Extensions.cs` (partial class). |
+| `ApexPost.Client.Consumer` | Console app. It registers the client with `AddHttpClient`, creates a shipment, fetches it, uploads two scans, and handles a 404 through `ApexPostApiException<ProblemDetails>`. |
+
+```powershell
+dotnet tool restore
+dotnet build ApexPost.Client                      # runs: dotnet tool run nswag run nswag.json
+dotnet run --project ApexPost.Api --launch-profile https
+dotnet run --project ApexPost.Client.Consumer -- https://localhost:7301/
+powershell -File scripts/update-contracts.ps1     # after an intentional API change
+```
+
+`ApexPost.Api/ApexPost.Api.http` has one success and one failure request per endpoint, for both versions.
