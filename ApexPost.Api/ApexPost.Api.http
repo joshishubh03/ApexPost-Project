@@ -3,7 +3,7 @@
 @host = https://localhost:7301
 @tn1 = APX-10000101
 @tn2 = APX-10000201
-### Tokens: dotnet run --project ApexPost.Api ... then GET {{host}}/dev/token?role=Courier&courierId=courier-007 (Development only)
+### Tokens: dotnet run --project ApexPost.Api ... then GET {{host}}/dev/token?roles=Courier&courierId=courier-007 (Development only)
 ### or: dotnet user-jwts create --project ApexPost.Api --role Courier --claim courierId=courier-007
 @courierToken = paste-a-Courier-token-here
 @adminToken = paste-an-Admin-token-here

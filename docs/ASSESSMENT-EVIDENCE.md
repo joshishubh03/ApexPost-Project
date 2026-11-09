@@ -14,7 +14,7 @@ with a merge commit.
 | Outbox / offline persistence (4) | `Outbox/OutboxService.cs` (save locally as Pending; Synced or Failed; transient errors stay Pending) and `FakeShipmentUploader`. Tests: `OutboxServiceTests`. |
 | Change listener and clean-up (3) | `Monitoring/PendingScanMonitor.cs` logs the changed IDs and the live pending count. `CourierDatabase.Dispose()` removes the tokens. Tests: `ChangeListenerTests`. |
 | Design note (2) | `OFFLINE-DESIGN.md` |
-| Harness and screenshots | `ApexPost.Courier.Offline.Harness` (menu), `docs/screenshots/` |
+| Harness and query/listener results | `ApexPost.Courier.Offline.Harness` (menu). How to reproduce: `docs/screenshots/README.md` |
 
 ## Part B - REST API (25)
 
@@ -48,7 +48,7 @@ with a merge commit.
 | Polly retry, circuit breaker, timeout with logging (5) | `Resilience/CourierResilience.cs`, `RESILIENCE.md`. Tests: `ResilienceTests`. |
 | JSON and ProblemDetails (2) | `Api/ApiDtos.cs` (`CourierJsonContext`), `ProblemMessages`. Tests: `AuthAndJsonTests`. |
 | Offline sync and SecureStorage (4) | `Sync/ApiShipmentUploader.cs`, `Sync/SyncCoordinator.cs`, `ApexPost.Courier/Services/PlatformServices.cs`. Tests: `OfflineSyncTests`. |
-| Demo video | Linked in `docs/screenshots/README.md` |
+| End-to-end demo | Demo script in README ("Demo script"); automated evidence in `OfflineSyncTests`, `ResilienceTests`, `SecurityApiTests` |
 
 ## Verification
 
