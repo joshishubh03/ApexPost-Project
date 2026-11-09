@@ -162,3 +162,26 @@ powershell -ExecutionPolicy Bypass -File scripts/run-blocking-demo.ps1
 
 `Persistence:Provider` is `SqlServer` (default) or `Json`. The JSON adapter from Weeks 1-2 is kept for offline
 demos; it has no atomic commit, so services use their compensation path (ADR 0030).
+
+---
+
+# Week 4: courier offline -> API -> mobile app
+
+## Part A: offline courier store (Couchbase Lite)
+
+| Project | Purpose |
+|---|---|
+| `ApexPost.Courier.Offline` | Class library: `ShipmentScan` domain record, `IScanRepository`, `CouchbaseScanRepository`, `CourierDatabase` (IDisposable), `OutboxService`, `FakeShipmentUploader`, `PendingScanMonitor` |
+| `ApexPost.Courier.Offline.Harness` | Console menu: Add Scan, Find by Tracking Number, List Pending, Simulate Sync, Delete Scan, Exit, plus scans per type, an offline toggle, demo seeding and query plans |
+| `ApexPost.Courier.Offline.Tests` | CRUD, SQL++ queries and parameters, indexes, outbox, change listener and clean-up, architecture rule |
+
+```powershell
+dotnet run --project ApexPost.Courier.Offline.Harness           # data in %LOCALAPPDATA%\ApexPost\courier-harness
+dotnet run --project ApexPost.Courier.Offline.Harness -- --data .\work\courier   # custom folder
+dotnet test ApexPost.Courier.Offline.Tests
+```
+
+Try it: **9** (seed fictional scans), **2** with `APX-10000001`, **3**, **7** with `courier-007`, **8** (go
+offline), **4** (scans stay Pending), **8** again, then **4** (Synced, plus one Failed because of `#reject`).
+Every change prints a `[listener]` log line with the changed IDs and the live pending count. The design notes are
+in [OFFLINE-DESIGN.md](OFFLINE-DESIGN.md).
