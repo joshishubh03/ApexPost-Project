@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Week 4 Part A: offline courier store. Couchbase Lite is referenced ONLY here; the Domain and Abstractions
+       folders of this library never use Couchbase types (CourierDomainHasNoCouchbaseDependencyTests enforces it). -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>ApexPost.Courier.Offline</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Couchbase.Lite" Version="3.2.*" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+  </ItemGroup>
+
+</Project>
