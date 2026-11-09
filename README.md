@@ -255,3 +255,47 @@ powershell -File scripts/update-contracts.ps1     # after an intentional API cha
 ```
 
 `ApexPost.Api/ApexPost.Api.http` has one success and one failure request per endpoint, for both versions.
+
+## Part D: API security and the courier MAUI app
+
+| Project | Purpose |
+|---|---|
+| `ApexPost.Api` (updated) | JWT bearer (issuer, audience, lifetime and key validated from config), roles (`Courier`/`Admin`), courierId ownership check, partner `X-Api-Key` middleware, HTTPS redirection everywhere plus HSTS outside Development, `Bearer` and `PartnerApiKey` schemes in OpenAPI, Development-only `/dev/token`. |
+| `ApexPost.Courier.Core` | Typed `ApexApiClient` (`AddHttpClient<ApexApiClient>()`), `AuthHeaderHandler`, Polly retry / circuit breaker / timeouts with logging, source-generated `CourierJsonContext`, ProblemDetails to friendly messages, `ApiShipmentUploader` (replaces Part A's fake), `SyncCoordinator` (batches of 20 on reconnect). |
+| `ApexPost.Courier` | .NET MAUI app (Android emulator + Windows). Screens: Login, New Scan, Pending Scans, Sync Status. Uses SecureStorage for the token, Connectivity for online/offline, and the offline banner. |
+| `ApexPost.Courier.Core.Tests` | Retry, no-retry-on-4xx, circuit breaker, timeouts, auth handler and 401, JSON tolerance, uploader mapping, end-to-end sync. |
+
+### Setup
+
+```powershell
+# API secrets (never committed)
+dotnet user-secrets set "Jwt:SigningKey" "$([Convert]::ToBase64String((1..32 | % { [byte](Get-Random -Max 256) })))" --project ApexPost.Api
+dotnet user-secrets set "PartnerApi:Keys:demo-partner" "demo-partner-$(New-Guid)" --project ApexPost.Api
+dotnet dev-certs https --trust
+dotnet run --project ApexPost.Api --launch-profile https
+
+# Tokens (Development): https://localhost:7301/dev/token?roles=Courier&courierId=courier-007   (or roles=Admin)
+# Swagger UI: https://localhost:7301/swagger  -> Authorize -> paste the accessToken
+
+# Courier app (needs: dotnet workload install maui)
+dotnet build ApexPost.Courier -f net10.0-windows10.0.19041.0 -t:Run       # Windows
+dotnet build ApexPost.Courier -f net10.0-android -t:Run                    # running Android emulator
+
+# Everything except the MAUI app (no MAUI workload needed)
+dotnet test ApexPost.Server.slnf
+```
+
+### Demo script (3-5 minute video)
+
+1. Start the API. In Swagger UI, show 401 (no token), then Authorize with a Courier token and show
+   `DELETE` returning 403 and `GET` returning 200. Optionally show `expired=true` giving a 401 "expired" message.
+2. Start the app and use **Login**: "Get development token" for `courier-007`.
+3. Turn on **airplane mode** in the emulator. Save two **New Scan** entries (create the shipment first as Admin in
+   Swagger). The banner says no network, and **Pending** shows 2.
+4. Turn airplane mode off. `SyncCoordinator` uploads automatically, **Pending** drops to 0 and **Sync Status**
+   shows the time.
+5. **Stop the API** and save a scan, then press "Sync now" a few times. The retries are logged, the circuit opens,
+   and the banner reads **"Server unavailable – working offline"**. Start the API again: after 20 s the circuit
+   goes half-open, then closed, and the scan syncs.
+
+See [SECURITY.md](SECURITY.md) and [RESILIENCE.md](RESILIENCE.md).

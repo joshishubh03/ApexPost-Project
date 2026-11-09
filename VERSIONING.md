@@ -24,6 +24,8 @@
 | v2 | Paged list returns `ShipmentPageResponseV2` (items are `ShipmentResponseV2`). | **Yes** | Follows from the item shape change. |
 | v1 + v2 | Request bodies (`CreateShipmentRequest`, `UpdateShipmentRequest`, `UpdateStatusRequest`, `ScanUploadRequest`) are unchanged. | No | Only the response shape changed, so request compatibility is kept. |
 | v1 + v2 | Scan endpoints are identical in both versions. | No | No reason to fork them. |
+| v1 + v2 (Part D) | Endpoints now require a bearer token (401/403 documented; `Bearer` security scheme in both documents). | **Yes** for anonymous callers | Security requirement. Released together with v2 before any external client went live. |
+| v2 (Part D) | New read-only `GET /api/v2/partner/shipments/{trackingNumber}` (X-Api-Key). | No (additive) | New endpoint for partner systems. |
 
 A change is **breaking** when an existing, correctly written client can fail. That covers removing or renaming a
 field, changing a field's type or meaning, making an optional input required, removing an endpoint, or changing a

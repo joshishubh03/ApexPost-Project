@@ -16,7 +16,8 @@ public sealed class OpenApiDocumentTests : IClassFixture<OpenApiDocumentTests.De
 {
     private readonly HttpClient client;
 
-    public OpenApiDocumentTests(DevelopmentHost host) => client = host.CreateClient();
+    public OpenApiDocumentTests(DevelopmentHost host) =>
+        client = host.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost") });
 
     [Theory]
     [InlineData("v1")]
@@ -26,7 +27,11 @@ public sealed class OpenApiDocumentTests : IClassFixture<OpenApiDocumentTests.De
         var generated = await client.GetStringAsync($"/openapi/{version}.json");
         var path = Path.Combine(RepositoryRoot(), "contracts", $"{version}.json");
 
-        if (Environment.GetEnvironmentVariable("APEXPOST_UPDATE_CONTRACTS") == "1")
+        // The first committed contracts were hand-written seeds ("x-apexpost-seed": true). The first test run
+        // replaces a seed with the real generated document; from then on any drift fails this test.
+        var isSeed = File.Exists(path) &&
+                     JsonNode.Parse(await File.ReadAllTextAsync(path))?["x-apexpost-seed"]?.GetValue<bool>() == true;
+        if (isSeed || Environment.GetEnvironmentVariable("APEXPOST_UPDATE_CONTRACTS") == "1")
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             await File.WriteAllTextAsync(path, Pretty(generated) + Environment.NewLine);
@@ -87,6 +92,37 @@ public sealed class OpenApiDocumentTests : IClassFixture<OpenApiDocumentTests.De
     }
 
     [Fact]
+    public async Task Documents_declare_the_bearer_and_partner_api_key_schemes()
+    {
+        var document = await GetDocumentAsync("v2");
+        var schemes = document.GetProperty("components").GetProperty("securitySchemes");
+
+        Assert.Equal("bearer", schemes.GetProperty("Bearer").GetProperty("scheme").GetString());
+        Assert.Equal("X-Api-Key", schemes.GetProperty("PartnerApiKey").GetProperty("name").GetString());
+        var partner = document.GetProperty("paths").GetProperty("/api/v2/partner/shipments/{trackingNumber}").GetProperty("get");
+        Assert.True(partner.GetProperty("security")[0].TryGetProperty("PartnerApiKey", out _));
+        var create = document.GetProperty("paths").GetProperty("/api/v2/shipments").GetProperty("post");
+        Assert.True(create.GetProperty("security")[0].TryGetProperty("Bearer", out _));
+        Assert.True(create.GetProperty("responses").TryGetProperty("401", out _));
+        Assert.True(create.GetProperty("responses").TryGetProperty("403", out _));
+    }
+
+    [Fact]
+    public async Task Development_token_endpoint_issues_tokens_that_the_api_accepts()
+    {
+        var token = JsonDocument.Parse(await client.GetStringAsync("/dev/token?roles=Courier&courierId=courier-042"))
+            .RootElement.GetProperty("accessToken").GetString();
+
+        // A Courier calling an Admin-only endpoint: 403 (authenticated, wrong role) - not 401 - proves the issued
+        // token passed issuer, audience, lifetime and signature validation. No database is needed for this check.
+        using var request = new HttpRequestMessage(HttpMethod.Delete, "/api/v2/shipments/APX-12345678");
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Swagger_ui_is_served_in_development()
     {
         using var response = await client.GetAsync("/swagger/index.html");
@@ -128,6 +164,7 @@ public sealed class OpenApiDocumentTests : IClassFixture<OpenApiDocumentTests.De
             builder.UseSetting("ConnectionStrings:ApexPostDb",
                 @"Server=(localdb)\MSSQLLocalDB;Database=ApexPost_OpenApi_NotOpened;Trusted_Connection=True;TrustServerCertificate=True");
             builder.UseSetting("Persistence:ApplyMigrationsOnStartup", "false");
+            ApiTestHost.ApplySecuritySettings(builder);
         }
     }
 }

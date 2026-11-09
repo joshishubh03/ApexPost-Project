@@ -7,7 +7,7 @@ namespace ApexPost.Api.Tests;
 [Collection(ApiCollection.Name)]
 public sealed class ScansApiTests(ApiTestHost host)
 {
-    private readonly HttpClient client = host.CreateClient();
+    private readonly HttpClient client = host.CreateAuthenticatedClient();
 
     [Fact]
     public async Task Uploading_the_same_scan_ids_twice_never_creates_duplicates()

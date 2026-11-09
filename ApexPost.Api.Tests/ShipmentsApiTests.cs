@@ -9,7 +9,7 @@ namespace ApexPost.Api.Tests;
 public sealed class ShipmentsApiTests(ApiTestHost host)
 {
     private const string Shipments = ApiRoutes.Shipments;
-    private readonly HttpClient client = host.CreateClient();
+    private readonly HttpClient client = host.CreateAuthenticatedClient();
 
     [Fact]
     public async Task Create_returns_201_with_a_location_header_and_the_shipment()
