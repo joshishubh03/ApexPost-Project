@@ -37,7 +37,9 @@ LEFT JOIN dbo.CounterTransactions AS ct
 WHERE ct.Id IS NULL
 ORDER BY b.Code;
 
-/* 3. Top 10 products by revenue per region (last 30 days; window function over a GROUP BY). */
+/* 3. Top 10 products by revenue per region (last 30 days; window function over a GROUP BY).
+      ROW_NUMBER (not RANK/DENSE_RANK) with a deterministic tie-breaker guarantees at most 10 rows per region even
+      when revenues tie: equal revenue -> more units sold first -> then SKU (unique), so the result is repeatable. */
 WITH RegionProductRevenue AS
 (
     SELECT
@@ -57,7 +59,7 @@ WITH RegionProductRevenue AS
 ),
 Ranked AS
 (
-    SELECT *, DENSE_RANK() OVER (PARTITION BY Region ORDER BY Revenue DESC) AS RevenueRank
+    SELECT *, ROW_NUMBER() OVER (PARTITION BY Region ORDER BY Revenue DESC, UnitsSold DESC, Sku ASC) AS RevenueRank
     FROM RegionProductRevenue
 )
 SELECT Region, RevenueRank, Sku, ProductName, Revenue, UnitsSold

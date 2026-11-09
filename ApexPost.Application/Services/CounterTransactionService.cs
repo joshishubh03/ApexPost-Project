@@ -19,29 +19,8 @@ public sealed class CounterTransactionService(
     ICounterTerminalRepository terminalRepository,
     MoneyOrderService moneyOrderService,
     MoneyOrderPolicy moneyOrderPolicy,
-    IApplicationMutationCoordinator mutationCoordinator,
     IUnitOfWork unitOfWork)
 {
-    public CounterTransactionService(
-        IBranchRepository branchRepository,
-        IProductRepository productRepository,
-        IInventoryRepository inventoryRepository,
-        ICounterTransactionRepository transactionRepository,
-        IStaffRepository staffRepository,
-        IApplicationEventPublisher eventPublisher,
-        InventoryManagementService inventoryManagementService,
-        ShippingRateService shippingRateService,
-        TaxPolicy taxPolicy,
-        ICounterTerminalRepository terminalRepository,
-        MoneyOrderService moneyOrderService,
-        MoneyOrderPolicy moneyOrderPolicy,
-        IApplicationMutationCoordinator mutationCoordinator)
-        : this(branchRepository, productRepository, inventoryRepository, transactionRepository, staffRepository,
-            eventPublisher, inventoryManagementService, shippingRateService, taxPolicy, terminalRepository,
-            moneyOrderService, moneyOrderPolicy, mutationCoordinator, new NoOpUnitOfWork())
-    {
-    }
-
     public async Task<CounterRegisterContext> GetRegisterContextAsync(
         Guid branchId,
         CancellationToken cancellationToken = default)
@@ -85,7 +64,7 @@ public sealed class CounterTransactionService(
         string? moneyOrderDocumentIdentifier,
         string correlationId,
         CancellationToken cancellationToken = default) =>
-        mutationCoordinator.RunAsync(
+        unitOfWork.ExecuteUseCaseAsync(
             () => CompleteSaleCoreAsync(
                 branchId, staffId, quantities, paymentMethod, shippingRateId, shipmentType,
                 shippingWeightKilograms, shippingRecipientName, shippingAddress,
@@ -266,27 +245,17 @@ public sealed class CounterTransactionService(
         }
 
         var changedItems = inventoryChanges.Select(change => change.Updated).ToArray();
-        if (unitOfWork.SupportsAtomicCommit)
+        // Stage the stock decrement, the transaction (lines, payment, shipment) and any money order.
+        // Nothing is written yet - the unit of work commits all of it with ONE SaveChangesAsync inside
+        // one database transaction when this use case returns.
+        await inventoryRepository.UpdateAsync(changedItems, cancellationToken);
+        await transactionRepository.AddAsync(transaction, cancellationToken);
+        if (moneyOrderId is not null)
         {
-            // SQL Server: stage the stock decrement, the transaction (lines, payment, shipment) and any
-            // money order. Nothing is written yet - the unit of work commits all of it with ONE
-            // SaveChangesAsync inside one database transaction when this use case returns.
-            await inventoryRepository.UpdateAsync(changedItems, cancellationToken);
-            await transactionRepository.AddAsync(transaction, cancellationToken);
-            if (moneyOrderId is not null)
-            {
-                await moneyOrderService.IssueAsync(branchId, staffId,
-                    moneyOrderSenderName!, moneyOrderRecipientName!, moneyOrderAmount!.Value,
-                    moneyOrderDocumentType, moneyOrderDocumentIdentifier, correlationId,
-                    cancellationToken, moneyOrderId);
-            }
-        }
-        else
-        {
-            await CompleteSaleWithCompensationAsync(
-                transaction, changedItems, inventoryChanges.Select(change => originalInventory[change.Index]).ToArray(),
-                moneyOrderId, branchId, staffId, moneyOrderSenderName, moneyOrderRecipientName, moneyOrderAmount,
-                moneyOrderDocumentType, moneyOrderDocumentIdentifier, correlationId);
+            await moneyOrderService.IssueAsync(branchId, staffId,
+                moneyOrderSenderName!, moneyOrderRecipientName!, moneyOrderAmount!.Value,
+                moneyOrderDocumentType, moneyOrderDocumentIdentifier, correlationId,
+                cancellationToken, moneyOrderId);
         }
 
         await eventPublisher.PublishAsync(new CounterTransactionCompletedEvent(
@@ -311,61 +280,6 @@ public sealed class CounterTransactionService(
         return transaction;
     }
 
-    /// <summary>
-    /// JSON-file adapter path (Week 2): files cannot join one database transaction, so each write is
-    /// applied immediately and compensated if a later step fails.
-    /// </summary>
-    private async Task CompleteSaleWithCompensationAsync(
-        CounterTransaction transaction,
-        IReadOnlyCollection<InventoryItem> changedItems,
-        IReadOnlyCollection<InventoryItem> originalItems,
-        Guid? moneyOrderId,
-        Guid branchId,
-        Guid staffId,
-        string? moneyOrderSenderName,
-        string? moneyOrderRecipientName,
-        decimal? moneyOrderAmount,
-        IdentityDocumentType? moneyOrderDocumentType,
-        string? moneyOrderDocumentIdentifier,
-        string correlationId)
-    {
-        var originalTransactions = await transactionRepository.GetAllAsync(CancellationToken.None);
-        if (changedItems.Count > 0)
-        {
-            await inventoryRepository.UpdateAsync(changedItems, CancellationToken.None);
-        }
-        try
-        {
-            await transactionRepository.AddAsync(transaction, CancellationToken.None);
-            if (moneyOrderId is not null)
-            {
-                await moneyOrderService.IssueAsync(branchId, staffId,
-                    moneyOrderSenderName!, moneyOrderRecipientName!, moneyOrderAmount!.Value,
-                    moneyOrderDocumentType, moneyOrderDocumentIdentifier, correlationId,
-                    CancellationToken.None, moneyOrderId);
-            }
-        }
-        catch (Exception checkoutException) when (checkoutException is not OperationCanceledException)
-        {
-            try
-            {
-                await transactionRepository.SaveAllAsync(originalTransactions, CancellationToken.None);
-                if (changedItems.Count > 0)
-                {
-                    await inventoryRepository.UpdateAsync(originalItems, CancellationToken.None);
-                }
-            }
-            catch (Exception compensationException) when (compensationException is not OperationCanceledException)
-            {
-                throw new InvalidOperationException(
-                    "The mixed checkout failed and its receipt or inventory could not be fully rolled back. Reconcile this basket before retrying.",
-                    new AggregateException(checkoutException, compensationException));
-            }
-
-            throw new InvalidOperationException($"The mixed checkout was rolled back: {checkoutException.Message}", checkoutException);
-        }
-    }
-
     public async Task<CounterTransaction?> GetTransactionForBranchAsync(
         Guid branchId,
         Guid transactionId,
@@ -383,7 +297,7 @@ public sealed class CounterTransactionService(
         string reason,
         string correlationId,
         CancellationToken cancellationToken = default) =>
-        mutationCoordinator.RunAsync(
+        unitOfWork.ExecuteUseCaseAsync(
             () => ReverseCoreAsync(branchId, transactionId, managerId, refund, reason, correlationId, cancellationToken),
             cancellationToken);
 
@@ -453,46 +367,14 @@ public sealed class CounterTransactionService(
         {
             await moneyOrderService.RefundAsync(branchId, moneyOrderId, managerId,
                 $"Counter transaction {original.TransactionNumber}: {reason}", correlationId,
-                unitOfWork.SupportsAtomicCommit ? cancellationToken : CancellationToken.None,
+                cancellationToken,
                 fromCounterTransaction: true);
         }
 
-        if (unitOfWork.SupportsAtomicCommit)
-        {
-            // SQL Server: the status change (checked against the CounterTransactions rowversion) and the
-            // restock are staged together and committed once by the unit of work.
-            await transactionRepository.UpdateAsync(reversed, cancellationToken);
-            await inventoryRepository.UpdateAsync(restockedItems, cancellationToken);
-            await PublishReversedAsync(reversed, managerId, now, correlationId);
-            return reversed;
-        }
-
-        // JSON adapter: mark the receipt resolved before returning stock so a retry cannot
-        // restock it twice. Compensate if the inventory write fails.
-        await transactionRepository.UpdateAsync(reversed, CancellationToken.None);
-        try
-        {
-            await inventoryRepository.UpdateAsync(restockedItems, CancellationToken.None);
-        }
-
-        catch (Exception inventoryException) when (inventoryException is not OperationCanceledException)
-        {
-            try
-            {
-                await transactionRepository.UpdateAsync(original, CancellationToken.None);
-            }
-            catch (Exception compensationException) when (compensationException is not OperationCanceledException)
-            {
-                throw new InvalidOperationException(
-                    "Inventory could not be restored and the transaction status could not be rolled back. Reconcile this receipt before processing it again.",
-                    new AggregateException(inventoryException, compensationException));
-            }
-
-            throw new InvalidOperationException(
-                "Inventory could not be restored. The transaction reversal was rolled back; retry after checking the inventory store.",
-                inventoryException);
-        }
-
+        // The status change (checked against the CounterTransactions rowversion) and the restock are
+        // staged together and committed once by the unit of work.
+        await transactionRepository.UpdateAsync(reversed, cancellationToken);
+        await inventoryRepository.UpdateAsync(restockedItems, cancellationToken);
         await PublishReversedAsync(reversed, managerId, now, correlationId);
         return reversed;
     }

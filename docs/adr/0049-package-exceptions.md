@@ -17,7 +17,7 @@ and an ADR. The solution builds with `TreatWarningsAsErrors`, so NuGet audit war
 | `Microsoft.NET.Test.Sdk`, `xunit.runner.visualstudio` | Tests | The test host and runner that `dotnet test` needs to execute xUnit tests. They are part of "xUnit" in practice. | None: without them no test runs. |
 | `coverlet.collector` | Tests | Optional code-coverage collector (`dotnet test --collect "XPlat Code Coverage"`). It has no runtime effect. | Can be removed if the trainer prefers. Nothing depends on it. |
 
-No other third-party packages are referenced. `ApexPost.Benchmarks` (Week 2, ADR 0032) has no package references at all; it is a plain console app. All data access uses EF Core and `Microsoft.Data.SqlClient` (via EF).
+No other third-party packages are referenced. All data access uses EF Core and `Microsoft.Data.SqlClient` (via EF).
 
 ## Consequences
 

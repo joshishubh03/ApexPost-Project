@@ -15,7 +15,7 @@ public sealed class MoneyOrderService(
     IIdentityVerificationService identityVerificationService,
     IApplicationEventPublisher eventPublisher,
     MoneyOrderPolicy policy,
-    IApplicationMutationCoordinator mutationCoordinator)
+    IUnitOfWork unitOfWork)
 {
     public Task<IReadOnlyList<MoneyOrder>> GetForBranchAsync(
         Guid branchId,
@@ -33,7 +33,7 @@ public sealed class MoneyOrderService(
         string correlationId,
         CancellationToken cancellationToken = default,
         Guid? orderId = null) =>
-        mutationCoordinator.RunAsync(
+        unitOfWork.ExecuteUseCaseAsync(
             () => IssueCoreAsync(
                 branchId, staffId, senderName, recipientName, amount, documentType,
                 documentIdentifier, correlationId, cancellationToken, orderId),
@@ -169,7 +169,7 @@ public sealed class MoneyOrderService(
         string correlationId,
         CancellationToken cancellationToken = default,
         bool fromCounterTransaction = false) =>
-        mutationCoordinator.RunAsync(
+        unitOfWork.ExecuteUseCaseAsync(
             () => RefundCoreAsync(
                 branchId, moneyOrderId, managerId, reason, correlationId,
                 cancellationToken, fromCounterTransaction),

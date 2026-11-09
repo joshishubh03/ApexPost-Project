@@ -8,7 +8,7 @@ namespace ApexPost.Application.Services;
 public sealed class ShippingRateService(
     IShippingZoneRepository zoneRepository,
     IShippingRateRepository rateRepository,
-    IApplicationMutationCoordinator mutationCoordinator)
+    IUnitOfWork unitOfWork)
 {
 
     public async Task<IReadOnlyList<ShippingSchedule>> GetScheduleAsync(
@@ -32,7 +32,7 @@ public sealed class ShippingRateService(
         string code,
         string name,
         string destination,
-        CancellationToken cancellationToken = default) => mutationCoordinator.RunAsync(async () =>
+        CancellationToken cancellationToken = default) => unitOfWork.ExecuteUseCaseAsync(async () =>
         {
             var zones = (await zoneRepository.GetAllAsync(cancellationToken)).ToList();
             var zone = new ShippingZone(Guid.NewGuid(), code, name, destination, isActive: true);
@@ -51,7 +51,7 @@ public sealed class ShippingRateService(
         decimal basePrice,
         decimal pricePerKilogram,
         decimal maximumWeightKilograms,
-        CancellationToken cancellationToken = default) => mutationCoordinator.RunAsync(async () =>
+        CancellationToken cancellationToken = default) => unitOfWork.ExecuteUseCaseAsync(async () =>
         {
             var zone = (await zoneRepository.GetAllAsync(cancellationToken))
                 .FirstOrDefault(candidate => candidate.Id == zoneId);

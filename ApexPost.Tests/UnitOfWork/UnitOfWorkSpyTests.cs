@@ -129,7 +129,7 @@ public sealed class UnitOfWorkSpyTests
             var terminals = new InMemoryTerminalRepository(new CounterTerminal(TerminalId, BranchId, "T-01", "Counter 1"));
             var publisher = new NullEventPublisher();
             UnitOfWork = new SpyUnitOfWork();
-            IApplicationMutationCoordinator coordinator = new UnitOfWorkMutationCoordinator(UnitOfWork);
+            IUnitOfWork coordinator = UnitOfWork;
             var policy = new MoneyOrderPolicy(10_000m, 50m, "DEMO-VALID-");
             var taxPolicy = new TaxPolicy(new Dictionary<string, decimal>
             {
@@ -141,7 +141,7 @@ public sealed class UnitOfWorkSpyTests
             var inventoryService = new InventoryManagementService(Inventory, products, branches, publisher, coordinator);
             var shippingService = new ShippingRateService(new InMemoryZoneRepository(), new InMemoryRateRepository(), coordinator);
             Service = new CounterTransactionService(branches, products, Inventory, Transactions, staff, publisher,
-                inventoryService, shippingService, taxPolicy, terminals, moneyOrders, policy, coordinator, UnitOfWork);
+                inventoryService, shippingService, taxPolicy, terminals, moneyOrders, policy, UnitOfWork);
         }
 
         public InMemoryInventoryRepository Inventory { get; }

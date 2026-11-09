@@ -9,7 +9,7 @@ public sealed class StaffManagementService(
     IStaffRepository staffRepository,
     IStaffPasswordService passwordService,
     ICounterTerminalRepository terminalRepository,
-    IApplicationMutationCoordinator mutationCoordinator)
+    IUnitOfWork unitOfWork)
 {
 
     public Task<IReadOnlyList<Branch>> GetBranchesAsync(CancellationToken cancellationToken = default) =>
@@ -24,7 +24,7 @@ public sealed class StaffManagementService(
         string region,
         TimeOnly openingTime,
         TimeOnly closingTime,
-        CancellationToken cancellationToken = default) => mutationCoordinator.RunAsync(async () =>
+        CancellationToken cancellationToken = default) => unitOfWork.ExecuteUseCaseAsync(async () =>
         {
             var branches = (await branchRepository.GetAllAsync(cancellationToken)).ToList();
             var branch = new Branch(Guid.NewGuid(), code, name, region, isOpen: true,
@@ -43,7 +43,7 @@ public sealed class StaffManagementService(
         await terminalRepository.GetAllAsync(cancellationToken);
 
     public Task CreateTerminalAsync(Guid branchId, string code, string name, CancellationToken cancellationToken = default) =>
-        mutationCoordinator.RunAsync(async () =>
+        unitOfWork.ExecuteUseCaseAsync(async () =>
         {
             if (await branchRepository.GetByIdAsync(branchId, cancellationToken) is null)
                 throw new InvalidOperationException("Select an existing branch for this terminal.");
@@ -59,7 +59,7 @@ public sealed class StaffManagementService(
         }, cancellationToken);
 
     public Task SetTerminalActiveAsync(Guid id, bool isActive, CancellationToken cancellationToken = default) =>
-        mutationCoordinator.RunAsync(async () =>
+        unitOfWork.ExecuteUseCaseAsync(async () =>
         {
             var terminals = (await terminalRepository.GetAllAsync(cancellationToken)).ToList();
             var index = terminals.FindIndex(terminal => terminal.Id == id);
@@ -70,7 +70,7 @@ public sealed class StaffManagementService(
         }, cancellationToken);
 
     public Task SetBranchOpenStatusAsync(Guid id, bool isOpen, CancellationToken cancellationToken = default) =>
-        mutationCoordinator.RunAsync(async () =>
+        unitOfWork.ExecuteUseCaseAsync(async () =>
         {
             var branches = (await branchRepository.GetAllAsync(cancellationToken)).ToList();
             var index = branches.FindIndex(branch => branch.Id == id);
@@ -86,7 +86,7 @@ public sealed class StaffManagementService(
         StaffRole role,
         Guid? branchId,
         string initialPassword,
-        CancellationToken cancellationToken = default) => mutationCoordinator.RunAsync(async () =>
+        CancellationToken cancellationToken = default) => unitOfWork.ExecuteUseCaseAsync(async () =>
     {
         var staff = (await staffRepository.GetAllAsync(cancellationToken)).ToList();
         var normalizedEmail = email.Trim().ToLowerInvariant();
@@ -117,7 +117,7 @@ public sealed class StaffManagementService(
     public Task SetStaffActiveAsync(
         Guid staffId,
         bool isActive,
-        CancellationToken cancellationToken = default) => mutationCoordinator.RunAsync(async () =>
+        CancellationToken cancellationToken = default) => unitOfWork.ExecuteUseCaseAsync(async () =>
     {
         var staff = (await staffRepository.GetAllAsync(cancellationToken)).ToList();
         var index = staff.FindIndex(member => member.Id == staffId);
@@ -143,7 +143,7 @@ public sealed class StaffManagementService(
         string fullName,
         StaffRole role,
         Guid? branchId,
-        CancellationToken cancellationToken = default) => mutationCoordinator.RunAsync(async () =>
+        CancellationToken cancellationToken = default) => unitOfWork.ExecuteUseCaseAsync(async () =>
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(email);
         ArgumentException.ThrowIfNullOrWhiteSpace(fullName);

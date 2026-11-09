@@ -13,14 +13,15 @@ namespace ApexPost.Infrastructure.Persistence.Migrations
         {
             // REVIEWED BY HAND (see docs/adr/0041): shipping columns move from CounterTransactions to the new
             // Shipments table. Copy them to a staging table BEFORE the columns are dropped. A permanent staging
-            // table (not #temp) is used so the idempotent script, which wraps statements in EXEC, also works.
-            migrationBuilder.Sql(@"
+            // table (not #temp) is used because every raw statement runs through EXEC (see StoredProcedureSql.Exec):
+            // that keeps the idempotent script valid when it is re-run after these columns were dropped.
+            migrationBuilder.Sql(StoredProcedureSql.Exec(@"
 SELECT ct.Id AS CounterTransactionId, ct.ShippingRateId, ct.ShipmentType, ct.ShippingWeightKilograms,
        ct.ParcelLengthCentimeters, ct.ParcelWidthCentimeters, ct.ParcelHeightCentimeters,
        ct.ShippingRecipientName, ct.ShippingAddress, ct.Status, ct.CreatedAtUtc, ct.CreatedByStaffId
 INTO dbo.[__Week3ShipmentsToMove]
 FROM dbo.CounterTransactions AS ct
-WHERE ct.ShippingRateId IS NOT NULL;");
+WHERE ct.ShippingRateId IS NOT NULL;"));
 
             migrationBuilder.DropForeignKey(
                 name: "FK_CounterTransactions_ShippingRates_ShippingRateId",
@@ -523,7 +524,7 @@ WHERE ct.ShippingRateId IS NOT NULL;");
                 table: "Shipments",
                 columns: new[] { "ShippingRateId", "Status" });
 
-            migrationBuilder.Sql(@"
+            migrationBuilder.Sql(StoredProcedureSql.Exec(@"
 INSERT INTO dbo.Shipments
     (Id, CounterTransactionId, ShippingRateId, ShipmentType, WeightKilograms, LengthCentimeters, WidthCentimeters,
      HeightCentimeters, RecipientName, AddressLine, Status, CreatedAtUtc, CreatedBy)
@@ -533,18 +534,19 @@ SELECT NEWID(), m.CounterTransactionId, m.ShippingRateId, m.ShipmentType, m.Ship
        CASE WHEN m.Status IN ('Voided', 'Refunded') THEN 'Cancelled' ELSE 'Booked' END,
        m.CreatedAtUtc, m.CreatedByStaffId
 FROM dbo.[__Week3ShipmentsToMove] AS m;
-DROP TABLE dbo.[__Week3ShipmentsToMove];");
+DROP TABLE dbo.[__Week3ShipmentsToMove];"));
 
-            // Reporting / batch stored procedures (also in sql/stored-procedures.sql). Each is its own batch.
-            migrationBuilder.Sql(StoredProcedureSql.DailyBranchSales);
-            migrationBuilder.Sql(StoredProcedureSql.LowStockReport);
-            migrationBuilder.Sql(StoredProcedureSql.AdjustStock);
+            // Reporting / batch stored procedures (also in sql/stored-procedures.sql). CREATE PROCEDURE must be the
+            // first statement of a batch, so each one runs through EXEC (also inside the idempotent script's IF blocks).
+            migrationBuilder.Sql(StoredProcedureSql.Exec(StoredProcedureSql.DailyBranchSales));
+            migrationBuilder.Sql(StoredProcedureSql.Exec(StoredProcedureSql.LowStockReport));
+            migrationBuilder.Sql(StoredProcedureSql.Exec(StoredProcedureSql.AdjustStock));
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.Sql(StoredProcedureSql.DropAll);
+            migrationBuilder.Sql(StoredProcedureSql.Exec(StoredProcedureSql.DropAll));
 
             migrationBuilder.DropTable(
                 name: "Shipments");

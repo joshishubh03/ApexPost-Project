@@ -192,6 +192,18 @@ BEGIN
     END CATCH;
 END";
 
+    /// <summary>
+    /// Wraps raw T-SQL in EXEC(N'...') so it compiles as its own batch. Needed because the idempotent migration
+    /// script puts every statement inside IF NOT EXISTS (...) BEGIN ... END: CREATE PROCEDURE must start a batch,
+    /// and a statement that references a column dropped by a later migration would otherwise fail to compile
+    /// when the script is run a second time.
+    /// </summary>
+    public static string Exec(string sql)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sql);
+        return "EXEC(N'" + sql.Replace("'", "''", StringComparison.Ordinal) + "');";
+    }
+
     public const string DropAll = @"DROP PROCEDURE IF EXISTS dbo.usp_AdjustStock;
 DROP PROCEDURE IF EXISTS dbo.usp_LowStockReport;
 DROP PROCEDURE IF EXISTS dbo.usp_DailyBranchSales;";

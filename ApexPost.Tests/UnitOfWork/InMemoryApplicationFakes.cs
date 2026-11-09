@@ -6,7 +6,7 @@ namespace ApexPost.Tests.UnitOfWork;
 
 // Database-free fakes for application-service tests. They only implement the two core members of each
 // repository; the focused members (GetByIdAsync, AddAsync, UpdateAsync, ...) come from the interfaces'
-// default implementations, exactly like the JSON adapter.
+// default implementations.
 
 internal sealed class InMemoryBranchRepository(params Branch[] branches) : IBranchRepository
 {
@@ -100,7 +100,6 @@ internal sealed class SpyUnitOfWork : IUnitOfWork
 
     public int Commits { get; private set; }
     public int Transactions { get; private set; }
-    public bool SupportsAtomicCommit => true;
 
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {

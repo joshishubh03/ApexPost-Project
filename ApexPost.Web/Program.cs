@@ -44,18 +44,6 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     }
 });
 
-var dataDirectory = Path.GetFullPath(
-    builder.Configuration["ApexPost:DataDirectory"] ??
-    Path.Combine(builder.Environment.ContentRootPath, "..", "data"));
-
-var persistenceProvider = builder.Configuration["Persistence:Provider"] ??
-    (builder.Environment.IsEnvironment("Testing") ? "Json" : "SqlServer");
-var useSqlServer = string.Equals(persistenceProvider, "SqlServer", StringComparison.OrdinalIgnoreCase);
-if (!useSqlServer && !string.Equals(persistenceProvider, "Json", StringComparison.OrdinalIgnoreCase))
-{
-    throw new InvalidOperationException("Persistence:Provider must be either 'SqlServer' or 'Json'.");
-}
-
 var demoPassword = builder.Configuration["DemoData:Password"];
 if (builder.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(demoPassword))
 {
@@ -65,9 +53,10 @@ demoPassword ??= string.Empty;
 
 var sqlServerConnectionString = builder.Configuration.GetConnectionString("ApexPostDb") ??
     Environment.GetEnvironmentVariable("APEXPOST_DB_CONNECTION");
-if (useSqlServer && string.IsNullOrWhiteSpace(sqlServerConnectionString))
+if (string.IsNullOrWhiteSpace(sqlServerConnectionString))
 {
-    throw new InvalidOperationException("Persistence:Provider is set to 'SqlServer' but no ApexPostDb connection string is configured.");
+    throw new InvalidOperationException(
+        "No ApexPostDb connection string is configured. Set ConnectionStrings:ApexPostDb with dotnet user-secrets (see README).");
 }
 
 var moneyOrderPolicy = new ApexPost.Application.Models.MoneyOrderPolicy(
@@ -185,19 +174,12 @@ builder.Services.AddRateLimiter(options =>
 });
 
 builder.Services.AddApexPostInfrastructure(
-    dataDirectory,
     demoPassword,
     moneyOrderPolicy,
-    builder.Environment.IsDevelopment(),
+    builder.Environment.IsDevelopment());
+builder.Services.AddApexPostSqlServer(
     sqlServerConnectionString,
-    useSqlServer);
-
-if (useSqlServer)
-{
-    builder.Services.AddApexPostSqlServer(
-        sqlServerConnectionString!,
-        builder.Configuration.GetValue("Persistence:CommandTimeoutSeconds", 30));
-}
+    builder.Configuration.GetValue("Persistence:CommandTimeoutSeconds", 30));
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -233,8 +215,7 @@ builder.Services.AddSingleton<IAuthorizationHandler, SameBranchAuthorizationHand
 var app = builder.Build();
 await using (var startupScope = app.Services.CreateAsyncScope())
 {
-    await startupScope.ServiceProvider.GetRequiredService<IApplicationMutationCoordinator>().InitializeAsync();
-    if (useSqlServer && !builder.Environment.IsEnvironment("Testing") &&
+    if (!builder.Environment.IsEnvironment("Testing") &&
         builder.Configuration.GetValue("Persistence:ApplyMigrationsOnStartup", builder.Environment.IsDevelopment()))
     {
         await startupScope.ServiceProvider.GetRequiredService<ApexPostDbContext>().Database.MigrateAsync();

@@ -256,11 +256,9 @@ public sealed class SqlServerWebTests(SqlServerTestDatabase database)
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Testing");
-            builder.UseSetting("Persistence:Provider", "SqlServer");
             builder.UseSetting("ConnectionStrings:ApexPostDb", connectionString);
             builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Persistence:Provider"] = "SqlServer",
                 ["ConnectionStrings:ApexPostDb"] = connectionString,
                 ["Persistence:ApplyMigrationsOnStartup"] = "false",
                 ["PartnerApi:ApiKey"] = "integration-test-key"

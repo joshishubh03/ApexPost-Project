@@ -200,13 +200,13 @@ public sealed class BusinessRuleTests
         var publisher = new FakeEventPublisher();
         var moneyOrderPolicy = new MoneyOrderPolicy(10_000m, 50m, "DEMO-VALID-");
         var moneyOrderService = new MoneyOrderService(branches, staff, orders, transactions, verification,
-            new FakeIdentityVerificationService(true), publisher, moneyOrderPolicy, ImmediateMutationCoordinator.Instance);
-        var inventoryService = new InventoryManagementService(inventory, products, branches, publisher, ImmediateMutationCoordinator.Instance);
-        var shippingService = new ShippingRateService(new FakeShippingZoneRepository(), new FakeShippingRateRepository(), ImmediateMutationCoordinator.Instance);
+            new FakeIdentityVerificationService(true), publisher, moneyOrderPolicy, ImmediateUnitOfWork.Instance);
+        var inventoryService = new InventoryManagementService(inventory, products, branches, publisher, ImmediateUnitOfWork.Instance);
+        var shippingService = new ShippingRateService(new FakeShippingZoneRepository(), new FakeShippingRateRepository(), ImmediateUnitOfWork.Instance);
         var checkout = new CounterTransactionService(branches, products, inventory, transactions, staff, publisher,
             inventoryService, shippingService,
             new TaxPolicy(new Dictionary<string, decimal> { ["Standard"] = 5m, ["Shipping"] = 0m }),
-            new FakeTerminalRepository([terminal]), moneyOrderService, moneyOrderPolicy, ImmediateMutationCoordinator.Instance);
+            new FakeTerminalRepository([terminal]), moneyOrderService, moneyOrderPolicy, ImmediateUnitOfWork.Instance);
 
         var receipt = await checkout.CompleteSaleAsync(
             branch.Id, clerk.Id, new Dictionary<Guid, int> { [product.Id] = 1 }, PaymentMethod.Cash,
@@ -311,16 +311,14 @@ public sealed class BusinessRuleTests
     }
 
     [Fact]
-    public void Existing_money_order_json_defaults_to_issued_status()
+    public void New_money_order_is_issued_and_total_includes_the_fee()
     {
-        var json = """{"id":"21000000-0000-0000-0000-000000000001","moneyOrderNumber":"APM-20261025-00000001","branchId":"22000000-0000-0000-0000-000000000001","staffId":"23000000-0000-0000-0000-000000000001","occurredAt":"2026-10-25T10:00:00+00:00","senderName":"Sender","recipientName":"Recipient","amount":100,"fee":50,"totalAmount":150,"verificationStatus":"NotRequired","verificationRecordId":null,"documentType":null,"maskedDocumentIdentifier":null}""";
+        var order = new MoneyOrder(
+            Guid.NewGuid(), "APM-20261025-00000001", Guid.NewGuid(), Guid.NewGuid(), DateTimeOffset.UtcNow,
+            "Sender", "Recipient", 100m, 50m, IdentityVerificationStatus.NotRequired, null, null, null);
 
-        var options = new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web);
-        options.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
-        var order = System.Text.Json.JsonSerializer.Deserialize<MoneyOrder>(json, options);
-
-        Assert.NotNull(order);
         Assert.Equal(MoneyOrderStatus.Issued, order.Status);
+        Assert.Equal(150m, order.TotalAmount);
     }
 
     [Fact]
@@ -395,9 +393,9 @@ public sealed class BusinessRuleTests
                 new FakeIdentityVerificationService(true),
                 publisher,
                 moneyOrderPolicy,
-                ImmediateMutationCoordinator.Instance);
-            var inventoryService = new InventoryManagementService(InventoryRepository, products, branches, publisher, ImmediateMutationCoordinator.Instance);
-            var shippingService = new ShippingRateService(new FakeShippingZoneRepository(), new FakeShippingRateRepository(), ImmediateMutationCoordinator.Instance);
+                ImmediateUnitOfWork.Instance);
+            var inventoryService = new InventoryManagementService(InventoryRepository, products, branches, publisher, ImmediateUnitOfWork.Instance);
+            var shippingService = new ShippingRateService(new FakeShippingZoneRepository(), new FakeShippingRateRepository(), ImmediateUnitOfWork.Instance);
 
             Service = new CounterTransactionService(
                 branches,
@@ -412,7 +410,7 @@ public sealed class BusinessRuleTests
                 new FakeTerminalRepository([Terminal]),
                 moneyOrderService,
                 moneyOrderPolicy,
-                ImmediateMutationCoordinator.Instance);
+                ImmediateUnitOfWork.Instance);
         }
 
         public Task<CounterTransaction> CompleteSaleAsync() => Service.CompleteSaleAsync(
@@ -462,7 +460,7 @@ public sealed class BusinessRuleTests
                 new FakeIdentityVerificationService(verificationResult),
                 new FakeEventPublisher(),
                 new MoneyOrderPolicy(10_000m, 50m, "DEMO-VALID-"),
-                ImmediateMutationCoordinator.Instance);
+                ImmediateUnitOfWork.Instance);
         }
     }
 

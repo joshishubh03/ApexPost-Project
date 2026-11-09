@@ -23,10 +23,3 @@ public sealed class EfAuditStore(DbContextOptions<ApexPostDbContext> options) : 
         await auditContext.SaveChangesAsync(cancellationToken);
     }
 }
-
-/// <summary>JSON-mode audit store: appends through the existing JSON audit repository.</summary>
-public sealed class RepositoryAuditStore(IAuditLogRepository repository) : IAuditStore
-{
-    public Task AppendAsync(AuditRecord record, CancellationToken cancellationToken = default) =>
-        repository.AppendAsync(record, cancellationToken);
-}
