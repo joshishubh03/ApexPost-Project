@@ -1,14 +1,16 @@
-# ApexPost Logistics - Week 3: SQL Server + EF Core 10
+# ApexPost Logistics - Week 3 (SQL Server + EF Core 10) and Week 4 (courier offline -> API -> mobile app)
 
 ApexPost is a branch counter system: product sales, stock, shipping, money orders with identity checks, and
-reporting. In Week 3, SQL Server becomes the system of record:
+reporting. **Week 4** (Parts A-D) is described in the [Week 4 section](#week-4-courier-offline---api---mobile-app)
+below. In Week 3, SQL Server becomes the system of record:
 
 - EF Core 10 maps a 3NF schema (20 tables) with migrations.
 - Three stored procedures handle the set-based work.
 - The application runs on Repository + Unit of Work with optimistic concurrency.
 - Index choices are backed by measured execution plans.
 
-Couchbase is out of scope for this assignment and is not used anywhere.
+In Week 3 Couchbase was out of scope. Week 4 Part A adds Couchbase Lite, but only on the courier device
+(`ApexPost.Courier.Offline`). SQL Server stays the server's system of record.
 
 | Document | What it covers |
 |---|---|
@@ -16,7 +18,11 @@ Couchbase is out of scope for this assignment and is not used anywhere.
 | [PERFORMANCE.md](PERFORMANCE.md) | Workloads, indexes, before/after plans and numbers, write overhead, SARGability, statistics |
 | [docs/sql-transactions-and-concurrency.md](docs/sql-transactions-and-concurrency.md) | T-SQL transaction, blocking demo output, isolation level, deadlock avoidance |
 | [docs/generated-sql-samples.md](docs/generated-sql-samples.md) | SQL that EF Core generated for the main queries (`ToQueryString`) |
-| [docs/adr/](docs/adr/) | Architecture decisions; 0041-0048 are the Week 3 ones |
+| [docs/adr/](docs/adr/) | Architecture decisions; 0041-0049 are the Week 3 ones, 0051-0052 the Week 4 ones |
+| [OFFLINE-DESIGN.md](OFFLINE-DESIGN.md) | Week 4 Part A: save locally first, conflicts, one process per embedded database |
+| [API-NOTES.md](API-NOTES.md) / [VERSIONING.md](VERSIONING.md) | Week 4 Parts B-C: endpoints and status codes, v1/v2 changes and the v1 sunset plan |
+| [SECURITY.md](SECURITY.md) / [RESILIENCE.md](RESILIENCE.md) | Week 4 Part D: JWT, roles, API keys, OAuth2, TLS/HSTS; retry, circuit breaker and timeout values |
+| [docs/ASSESSMENT-EVIDENCE.md](docs/ASSESSMENT-EVIDENCE.md) | Week 4 requirement -> evidence map |
 
 ## Solution layout
 
