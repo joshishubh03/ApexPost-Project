@@ -1,3 +1,5 @@
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using ApexPost.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -6,15 +8,32 @@ using Microsoft.Extensions.Logging;
 // Start the API first:  dotnet run --project ApexPost.Api --launch-profile https
 var baseUrl = args.FirstOrDefault() ?? Environment.GetEnvironmentVariable("APEXPOST_API_BASEURL") ?? "https://localhost:7301/";
 
+var baseAddress = new Uri(baseUrl.EndsWith('/') ? baseUrl : baseUrl + "/");
+
+// Part D: the API needs a bearer token. Use APEXPOST_API_TOKEN, or (Development only) ask /dev/token for a token
+// with both roles: Admin to create the shipment, Courier (courier-007) to upload scans.
+var token = Environment.GetEnvironmentVariable("APEXPOST_API_TOKEN");
+if (string.IsNullOrWhiteSpace(token))
+{
+    using var bootstrap = new ServiceCollection().AddHttpClient().BuildServiceProvider();
+    var http = bootstrap.GetRequiredService<IHttpClientFactory>().CreateClient();
+    http.BaseAddress = baseAddress;
+    var issued = await http.GetFromJsonAsync<DevToken>("dev/token?roles=Admin,Courier&courierId=courier-007");
+    token = issued?.AccessToken ?? throw new InvalidOperationException("Set APEXPOST_API_TOKEN (the /dev/token endpoint exists only in Development).");
+}
+
+string accessToken = token;
 var services = new ServiceCollection();
 services.AddLogging(logging => logging.AddSimpleConsole(options => options.SingleLine = true));
+services.AddTransient(_ => new BearerTokenHandler(accessToken));
 
 // Typed client registered with IHttpClientFactory (no `new HttpClient()` per call).
 services.AddHttpClient<IApexPostApiClient, ApexPostApiClient>(client =>
 {
-    client.BaseAddress = new Uri(baseUrl.EndsWith('/') ? baseUrl : baseUrl + "/");
+    client.BaseAddress = baseAddress;
     client.Timeout = TimeSpan.FromSeconds(30);
-});
+})
+.AddHttpMessageHandler<BearerTokenHandler>();
 
 await using var provider = services.BuildServiceProvider();
 var api = provider.GetRequiredService<IApexPostApiClient>();
@@ -85,3 +104,15 @@ catch (ApexPostApiException exception) when (exception.StatusCode == 404)
 // Partial-class extension (no generated code edited): null instead of an exception.
 var missing = await ((ApexPostApiClient)api).TryGetShipmentAsync("APX-00000001");
 log.LogInformation("TryGetShipmentAsync for an unknown tracking number returned {Result}", missing is null ? "null" : "a shipment");
+
+/// <summary>Attaches the bearer token to every request (never logged).</summary>
+internal sealed class BearerTokenHandler(string token) : DelegatingHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return base.SendAsync(request, cancellationToken);
+    }
+}
+
+internal sealed record DevToken(string AccessToken, DateTimeOffset ExpiresAtUtc);

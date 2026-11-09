@@ -1,4 +1,5 @@
 {
+  "x-apexpost-seed": true,
   "openapi": "3.0.4",
   "info": {
     "title": "ApexPost Logistics API",
@@ -81,6 +82,16 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, invalid or expired token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal Server Error",
             "content": {
@@ -91,7 +102,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
       },
       "post": {
         "tags": [
@@ -131,6 +147,26 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, invalid or expired token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin role required.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "409": {
             "description": "The tracking number already exists.",
             "content": {
@@ -161,7 +197,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
       }
     },
     "/api/v2/shipments/{trackingNumber}": {
@@ -194,6 +235,16 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, invalid or expired token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Unknown tracking number.",
             "content": {
@@ -214,7 +265,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
       },
       "put": {
         "tags": [
@@ -265,6 +321,26 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, invalid or expired token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin role required.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Unknown tracking number.",
             "content": {
@@ -305,7 +381,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
       },
       "delete": {
         "tags": [
@@ -328,6 +409,26 @@
         "responses": {
           "204": {
             "description": "Deleted."
+          },
+          "401": {
+            "description": "Missing, invalid or expired token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin role required.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           },
           "404": {
             "description": "Unknown tracking number.",
@@ -359,7 +460,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
       }
     },
     "/api/v2/shipments/{trackingNumber}/status": {
@@ -412,6 +518,26 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, invalid or expired token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Courier role required.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Unknown tracking number.",
             "content": {
@@ -452,7 +578,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
       }
     },
     "/api/v2/shipments/{trackingNumber}/scans": {
@@ -488,6 +619,16 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, invalid or expired token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Unknown tracking number.",
             "content": {
@@ -508,7 +649,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
       },
       "post": {
         "tags": [
@@ -559,6 +705,26 @@
               }
             }
           },
+          "401": {
+            "description": "Missing, invalid or expired token.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a Courier, or a scan uses another courier's ID.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Unknown tracking number.",
             "content": {
@@ -589,7 +755,80 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v2/partner/shipments/{trackingNumber}": {
+      "get": {
+        "tags": [
+          "Partner"
+        ],
+        "summary": "Track a shipment (partner, API key)",
+        "description": "Tracking status of one shipment for a partner (requires the X-Api-Key header).",
+        "operationId": "GetPartnerShipment",
+        "parameters": [
+          {
+            "name": "trackingNumber",
+            "in": "path",
+            "description": "APX-######## tracking number.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Status, destination city and latest scan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerShipmentResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid X-Api-Key.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown tracking number.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "PartnerApiKey": []
+          }
+        ]
       }
     }
   },
@@ -680,6 +919,39 @@
             "format": "date-time"
           }
         }
+      },
+      "PartnerShipmentResponse": {
+        "required": [
+          "trackingNumber",
+          "status",
+          "destinationCity",
+          "updatedAtUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "trackingNumber": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CourierShipmentStatus"
+          },
+          "destinationCity": {
+            "type": "string"
+          },
+          "latestScan": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LatestScanResponse"
+              }
+            ],
+            "nullable": true
+          },
+          "updatedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "description": "Partner view of a shipment: no recipient name, phone or address."
       },
       "ProblemDetails": {
         "type": "object",
@@ -1061,6 +1333,20 @@
           }
         }
       }
+    },
+    "securitySchemes": {
+      "Bearer": {
+        "type": "http",
+        "description": "JWT access token with the courierId claim and the Courier or Admin role. Development: GET /dev/token?roles=Courier&courierId=courier-007",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "PartnerApiKey": {
+        "type": "apiKey",
+        "description": "Partner API key (read-only partner routes only).",
+        "name": "X-Api-Key",
+        "in": "header"
+      }
     }
   },
   "tags": [
@@ -1069,6 +1355,9 @@
     },
     {
       "name": "Scans"
+    },
+    {
+      "name": "Partner"
     }
   ]
 }

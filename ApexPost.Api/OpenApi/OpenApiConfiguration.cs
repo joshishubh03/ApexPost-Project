@@ -10,6 +10,8 @@ namespace ApexPost.Api.OpenApi;
 public static class OpenApiConfiguration
 {
     public const string Title = "ApexPost Logistics API";
+    public const string BearerScheme = "Bearer";
+    public const string ApiKeyScheme = "PartnerApiKey";
 
     public static readonly (string Name, string Label, bool Deprecated)[] Documents =
     [
@@ -50,6 +52,53 @@ public static class OpenApiConfiguration
                     Url = new Uri("https://developer.apexpost.example/api")
                 }
             };
+            return Task.CompletedTask;
+        });
+
+        // Part D: security schemes so Swagger UI shows the Authorize button. JWT bearer for courier/admin endpoints,
+        // X-Api-Key for the read-only partner route.
+        options.AddDocumentTransformer((document, _, _) =>
+        {
+            document.Components ??= new OpenApiComponents();
+            document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+            document.Components.SecuritySchemes[BearerScheme] = new OpenApiSecurityScheme
+            {
+                Type = SecuritySchemeType.Http,
+                Scheme = "bearer",
+                BearerFormat = "JWT",
+                Description = "JWT access token with the courierId claim and the Courier or Admin role. " +
+                              "Development: GET /dev/token?roles=Courier&courierId=courier-007"
+            };
+            document.Components.SecuritySchemes[ApiKeyScheme] = new OpenApiSecurityScheme
+            {
+                Type = SecuritySchemeType.ApiKey,
+                In = ParameterLocation.Header,
+                Name = "X-Api-Key",
+                Description = "Partner API key (read-only partner routes only)."
+            };
+
+            if (document.Paths is null)
+            {
+                return Task.CompletedTask;
+            }
+
+            foreach (var (path, item) in document.Paths)
+            {
+                if (item.Operations is null)
+                {
+                    continue;
+                }
+
+                var scheme = path.Contains("/partner/", StringComparison.OrdinalIgnoreCase) ? ApiKeyScheme : BearerScheme;
+                foreach (var operation in item.Operations.Values)
+                {
+                    operation.Security =
+                    [
+                        new OpenApiSecurityRequirement { [new OpenApiSecuritySchemeReference(scheme, document)] = [] }
+                    ];
+                }
+            }
+
             return Task.CompletedTask;
         });
 
