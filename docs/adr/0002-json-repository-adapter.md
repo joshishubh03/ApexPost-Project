@@ -1,6 +1,6 @@
 # ADR-0002: JSON persistence behind repository interfaces
 
-- Status: Accepted; extended by ADR-0030
+- Status: Superseded by ADR-0033 (Week 3 SQL Server persistence; the JSON repositories were removed)
 - Date: 2026-10-23
 
 ## Context

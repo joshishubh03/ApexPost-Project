@@ -1,6 +1,6 @@
 # ADR-0030: Coordinate and recover JSON mutations
 
-- Status: Accepted
+- Status: Superseded by ADR-0033 (the JSON repositories and their mutation coordinator were removed in Week 3)
 - Date: 2026-10-30
 
 ## Context
