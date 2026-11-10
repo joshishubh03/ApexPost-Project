@@ -1,34 +1,50 @@
-# Week 4 - how to reproduce the evidence
+# Week 4 screenshots
 
-Each result the assignment asks to show can be reproduced locally with the commands below. Fictional data only.
-The automated tests (`dotnet test ApexPost.Server.slnf`) check the same behaviour.
+Captured on a local machine with `scripts/capture-screenshots.ps1` (fictional data only). Part A images are the real
+output of the console harness on a fresh Couchbase Lite database. The Swagger UI images are headless Microsoft Edge
+screenshots. The HTTP images are the real responses from `ApexPost.Api` running in Development; the bearer token is
+shown as `<token>` and never saved.
 
-## Part A - Couchbase Lite (no network needed)
+## Part A - Couchbase Lite offline store
 
-`dotnet run --project ApexPost.Courier.Offline.Harness`
+**All scans for a tracking number, ordered by `scannedAtUtc` (SQL++ with `$trackingNumber`)**
 
-| Result | Menu option | Covered by test |
-|---|---|---|
-| Scans for `APX-10000001`, ordered by `scannedAtUtc` | 2 Find by Tracking Number | `CouchbaseScanRepositoryTests` |
-| Pending scans | 3 List Pending | `CouchbaseScanRepositoryTests` |
-| Number of scans per scan type for `courier-007` | 7 | `CouchbaseScanRepositoryTests` |
-| `[listener] ... changed ... pending scans: N` log lines | 1 Add Scan, then 4 Simulate Sync | `ChangeListenerTests` |
+![Find by tracking number](a1-query-by-tracking-number.png)
+
+**Pending scans, and the number of scans per scan type for one courier**
+
+![Pending scans and counts per scan type](a2-pending-and-counts.png)
+
+**Change listener: changed document IDs and the live pending count while a scan is added and synced**
+
+![Listener log](a3-listener-log.png)
 
 ## Parts B and C - API and Swagger UI
 
-`dotnet run --project ApexPost.Api --launch-profile https`, then open `https://localhost:7301/swagger`.
-Get a token from `https://localhost:7301/dev/token?roles=Admin,Courier&courierId=courier-007` and paste it into
-**Authorize**. The same requests are in `ApexPost.Api/ApexPost.Api.http`.
+**Swagger UI - "v2" and "v1 (deprecated)" in the definition dropdown**
 
-| Result | Request | Covered by test |
-|---|---|---|
-| Swagger dropdown "v2" and "v1 (deprecated)" | open `/swagger` | `OpenApiDocumentTests` |
-| 400 `ValidationProblemDetails` | POST `/api/v2/shipments` with tracking number `BAD-1` | `ShipmentsApiTests` |
-| 409 Conflict | POST the same shipment twice | `ShipmentsApiTests` |
-| 201 Created with `Location` | POST a new shipment | `ShipmentsApiTests` |
+![Swagger UI v2](c1-swagger-v2.png)
 
-## Part D - security and the courier app
+![Swagger UI v1 (deprecated)](c1-swagger-v1-deprecated.png)
 
-The 401, 403 and partner API key requests are in the "SECURITY" section of `ApexPost.Api/ApexPost.Api.http`
-(`SecurityApiTests`). The offline sync, retry and circuit-breaker walkthrough is the "Demo script" in `README.md`
-(`OfflineSyncTests`, `ResilienceTests`).
+**201 Created with the `Location` header and the API version headers**
+
+![201 Created](c4-201-location.png)
+
+**409 Conflict - the same tracking number posted again (Problem Details)**
+
+![409 Conflict](c3-409-conflict.png)
+
+**400 Bad Request - `ValidationProblemDetails` from automatic `[ApiController]` validation**
+
+![400 Validation](c2-400-validation.png)
+
+## Reproducing
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\capture-screenshots.ps1
+```
+
+The same behaviour is covered by the automated tests (`dotnet test ApexPost.Server.slnf`): `CouchbaseScanRepositoryTests`,
+`ChangeListenerTests`, `OpenApiDocumentTests`, `ShipmentsApiTests` and `VersioningApiTests`. The 401, 403 and partner API
+key requests are in the "SECURITY" section of `ApexPost.Api/ApexPost.Api.http` (`SecurityApiTests`).

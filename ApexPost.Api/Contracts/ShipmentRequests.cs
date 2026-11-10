@@ -71,7 +71,7 @@ public sealed class UpdateShipmentRequest
 public sealed class UpdateStatusRequest
 {
     /// <summary>
-    /// New status. Allowed transitions: Created -> PickedUp -> InTransit -> OutForDelivery -> Delivered / Failed.
+    /// New status. Allowed transitions: Created → PickedUp → InTransit → OutForDelivery → Delivered / Failed.
     /// </summary>
     [Required]
     public CourierShipmentStatus? Status { get; init; }

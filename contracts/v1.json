@@ -689,7 +689,7 @@
         "tags": [
           "Shipments"
         ],
-        "summary": "Changes the status only; must follow Created -\u0026gt; PickedUp -\u0026gt; InTransit -\u0026gt; OutForDelivery -\u0026gt; Delivered/Failed (v1).",
+        "summary": "Changes the status only; must follow Created \u2192 PickedUp \u2192 InTransit \u2192 OutForDelivery \u2192 Delivered/Failed (v1).",
         "operationId": "UpdateShipmentStatusV1",
         "parameters": [
           {
