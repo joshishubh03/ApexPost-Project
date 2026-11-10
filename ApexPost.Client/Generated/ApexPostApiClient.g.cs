@@ -101,7 +101,7 @@ namespace ApexPost.Client
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
-        /// Changes the status only; must follow Created -&amp;gt; PickedUp -&amp;gt; InTransit -&amp;gt; OutForDelivery -&amp;gt; Delivered/Failed.
+        /// Changes the status only; must follow Created → PickedUp → InTransit → OutForDelivery → Delivered/Failed.
         /// </summary>
         /// <param name="trackingNumber">APX-######## tracking number.</param>
         /// <param name="body">Request abort token.</param>
@@ -1070,7 +1070,7 @@ namespace ApexPost.Client
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
-        /// Changes the status only; must follow Created -&amp;gt; PickedUp -&amp;gt; InTransit -&amp;gt; OutForDelivery -&amp;gt; Delivered/Failed.
+        /// Changes the status only; must follow Created → PickedUp → InTransit → OutForDelivery → Delivered/Failed.
         /// </summary>
         /// <param name="trackingNumber">APX-######## tracking number.</param>
         /// <param name="body">Request abort token.</param>

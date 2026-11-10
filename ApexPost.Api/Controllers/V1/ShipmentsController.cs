@@ -92,7 +92,7 @@ public sealed class ShipmentsController(CourierShipmentService shipments) : Cont
     public async Task<ActionResult<ShipmentResponse>> Replace(string trackingNumber, UpdateShipmentRequest request, CancellationToken cancellationToken) =>
         Ok((await shipments.ReplaceAsync(trackingNumber, request.ToCommand(), cancellationToken)).ToResponse());
 
-    /// <summary>Changes the status only; must follow Created -> PickedUp -> InTransit -> OutForDelivery -> Delivered/Failed (v1).</summary>
+    /// <summary>Changes the status only; must follow Created → PickedUp → InTransit → OutForDelivery → Delivered/Failed (v1).</summary>
     /// <param name="trackingNumber">APX-######## tracking number.</param>
     /// <param name="request">The new status.</param>
     /// <param name="cancellationToken">Request abort token.</param>

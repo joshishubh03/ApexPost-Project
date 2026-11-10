@@ -14,7 +14,7 @@ with a merge commit.
 | Outbox / offline persistence (4) | `Outbox/OutboxService.cs` (save locally as Pending; Synced or Failed; transient errors stay Pending) and `FakeShipmentUploader`. Tests: `OutboxServiceTests`. |
 | Change listener and clean-up (3) | `Monitoring/PendingScanMonitor.cs` logs the changed IDs and the live pending count. `CourierDatabase.Dispose()` removes the tokens. Tests: `ChangeListenerTests`. |
 | Design note (2) | `OFFLINE-DESIGN.md` |
-| Harness and query/listener results | `ApexPost.Courier.Offline.Harness` (menu). How to reproduce: `docs/screenshots/README.md` |
+| Harness, query results and listener log | `ApexPost.Courier.Offline.Harness` (menu); screenshots `a1`-`a3` in [docs/screenshots](screenshots/README.md) |
 
 ## Part B - REST API (25)
 
@@ -36,6 +36,7 @@ with a merge commit.
 | v1/v2 versioning with deprecation (6) | `[ApiVersion("1.0", Deprecated = true)]`, Sunset policy, `ReportApiVersions`, `ShipmentResponseV2`. Tests: `VersioningApiTests`. |
 | Version-specific documents (3) | `/openapi/v1.json`, `/openapi/v2.json`, Swagger dropdown "v1 (deprecated)" / "v2", `contracts/` |
 | SDK and consumer (4) | `ApexPost.Client` (`nswag.json`, `Generated/`), `ApexPost.Client.Consumer` |
+| Screenshots | Swagger v1/v2, 400, 409 and 201 with `Location`: `c1`-`c4` in [docs/screenshots](screenshots/README.md) |
 
 ## Part D - Security and mobile integration (25)
 
