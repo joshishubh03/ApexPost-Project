@@ -64,6 +64,9 @@ public sealed partial class CourierShipment
     public const decimal MinimumWeightKilograms = 0.1m;
     public const decimal MaximumWeightKilograms = 70m;
 
+    /// <summary>Oldest scan the server still accepts, measured from when the scan reaches the server.</summary>
+    public static readonly TimeSpan MaximumScanAge = TimeSpan.FromDays(7);
+
     private static readonly IReadOnlyDictionary<CourierShipmentStatus, CourierShipmentStatus[]> AllowedTransitions =
         new Dictionary<CourierShipmentStatus, CourierShipmentStatus[]>
         {
@@ -154,6 +157,11 @@ public sealed partial class CourierShipment
         Status = newStatus;
         UpdatedAtUtc = now;
     }
+
+    /// <summary>
+    /// Stale-scan rule (Week 5, built test-first): returns the reason a scan is too old to accept, or null.
+    /// </summary>
+    public static string? CheckScanAge(DateTimeOffset scannedAtUtc, DateTimeOffset receivedAtUtc) => null;
 
     /// <summary>
     /// Applies a courier scan. Returns null when the scan is accepted (the status advances, or the scan repeats the
