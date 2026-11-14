@@ -1,8 +1,8 @@
-# ApexPost Logistics - Week 3 (SQL Server + EF Core 10) and Week 4 (courier offline -> API -> mobile app)
+# ApexPost Logistics - Week 3 (SQL Server + EF Core 10), Week 4 (courier offline -> API -> mobile app) and Week 5 (testing strategy)
 
 ApexPost is a branch counter system: product sales, stock, shipping, money orders with identity checks, and
 reporting. **Week 4** (Parts A-D) is described in the [Week 4 section](#week-4-courier-offline---api---mobile-app)
-below. In Week 3, SQL Server becomes the system of record:
+below, and the **Week 5** testing strategy in the [Week 5 section](#week-5-testing-strategy). In Week 3, SQL Server becomes the system of record:
 
 - EF Core 10 maps a 3NF schema (20 tables) with migrations.
 - Three stored procedures handle the set-based work.
@@ -23,6 +23,8 @@ In Week 3 Couchbase was out of scope. Week 4 Part A adds Couchbase Lite, but onl
 | [API-NOTES.md](API-NOTES.md) / [VERSIONING.md](VERSIONING.md) | Week 4 Parts B-C: endpoints and status codes, v1/v2 changes and the v1 sunset plan |
 | [SECURITY.md](SECURITY.md) / [RESILIENCE.md](RESILIENCE.md) | Week 4 Part D: JWT, roles, API keys, OAuth2, TLS/HSTS; retry, circuit breaker and timeout values |
 | [docs/ASSESSMENT-EVIDENCE.md](docs/ASSESSMENT-EVIDENCE.md) | Week 4 requirement -> evidence map |
+| [TESTING-STRATEGY.md](TESTING-STRATEGY.md) | Week 5: risk map, test pyramid, xUnit choice, review of every existing test, data access strategy, reflection |
+| [TDD-LOG.md](TDD-LOG.md) / [COPILOT-LOG.md](COPILOT-LOG.md) | Week 5: the stale-scan rule built Red -> Green -> Refactor; Copilot prompts and review decisions |
 
 ## Solution layout
 
@@ -130,8 +132,11 @@ Things to try:
 ## 4. Tests
 
 ```powershell
-dotnet test ApexPost.slnx
+dotnet test ApexPost.Server.slnf      # all test projects; the MAUI app is left out (it needs the MAUI workload)
 ```
+
+The tests are split into `ApexPost.UnitTests`, `ApexPost.IntegrationTests` and `ApexPost.Specs`; see the
+[Week 5 section](#week-5-testing-strategy) for how to run each one and the latest results.
 
 - Unit and unit-of-work spy tests need no database.
 - SQL Server integration and web tests do the following:
@@ -308,3 +313,48 @@ dotnet test ApexPost.Server.slnf
    goes half-open, then closed, and the scan syncs.
 
 See [SECURITY.md](SECURITY.md) and [RESILIENCE.md](RESILIENCE.md).
+
+---
+
+# Week 5: testing strategy
+
+The strategy (what we test, at which level and why) is in [TESTING-STRATEGY.md](TESTING-STRATEGY.md). In short:
+
+| Project | Level | What it covers | Needs |
+|---|---|---|---|
+| `ApexPost.UnitTests` | Unit (~55%) | Domain rules (status machine, weights, value objects), API request validation, services with **Moq** and in-memory fakes, outbox decisions, typed API client with a fake `HttpMessageHandler` (200, 404, 500, timeout, cancellation, ProblemDetails) | Nothing: no database, files or network |
+| `ApexPost.IntegrationTests` | Integration (~35%) | EF Core repositories, constraints, stored procedures and migrations on a disposable SQL Server database; MVC app and API end to end with `WebApplicationFactory` and test JWTs; Couchbase Lite repository, listener and device sync | SQL Server LocalDB (installed with Visual Studio) |
+| `ApexPost.Specs` | BDD (~10%) | Reqnroll features in business language: `ShipmentCreation.feature` (API level), `ScanSync.feature` (service level) | SQL Server LocalDB |
+
+## Running the tests
+
+```powershell
+dotnet test ApexPost.Server.slnf                       # everything (MAUI app excluded)
+dotnet test ApexPost.UnitTests                         # seconds, no set-up at all
+dotnet test ApexPost.IntegrationTests                  # SQL Server LocalDB + Couchbase Lite
+dotnet test ApexPost.Specs                             # Reqnroll scenarios
+dotnet test ApexPost.UnitTests --filter "FullyQualifiedName~StaleScanRuleTests"   # the TDD rule only
+
+# Full run with TRX files, a log, and the summary below written into this README (add -Coverage for line coverage)
+powershell -ExecutionPolicy Bypass -File scripts/run-tests.ps1
+```
+
+All three projects appear in Visual Studio **Test Explorer** (Test > Test Explorer > Run All). Nothing has to be
+set up by hand: each SQL Server test fixture creates its own database (`ApexPostDb_Test_<guid>`,
+`ApexPostDb_ApiTest_<guid>`, `ApexPostDb_Specs_<guid>`), applies the real migrations and drops it at the end.
+Another server can be used with `$env:APEXPOST_TEST_SQLSERVER = "Server=localhost;Trusted_Connection=True;TrustServerCertificate=True"`.
+No secrets are needed: the test JWT signing key is random per run.
+
+## Test results
+
+<!-- test-results:start -->
+Not run yet on this branch. Run `scripts/run-tests.ps1` to fill in this table.
+<!-- test-results:end -->
+
+## TDD, BDD and Copilot evidence
+
+- **TDD:** commits `RED:`, `GREEN:` and `REFACTOR:` on `week5-testing`, explained in [TDD-LOG.md](TDD-LOG.md).
+- **BDD:** `ApexPost.Specs/Features/*.feature`, with the Background, Scenario Outlines, hooks
+  (`Support/Hooks.cs`) and context classes (`Support/ShipmentApiContext.cs`, `Support/CourierSyncContext.cs`).
+- **Copilot:** prompts, review decisions and the break-the-code proof in [COPILOT-LOG.md](COPILOT-LOG.md)
+  (`scripts/prove-tests-fail.ps1`).
