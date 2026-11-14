@@ -8,8 +8,8 @@ with a merge commit.
 
 | Criterion | Evidence |
 |---|---|
-| Database lifecycle and document model (5) | `ApexPost.Courier.Offline/Storage/CourierDatabase.cs`: `apexpost_courier`, default collection, `IDisposable`. `Domain/ShipmentScan.cs`: all the required fields, and IDs `scan::{Guid}`. |
-| Repository and key-value CRUD (5) | `Abstractions/IScanRepository.cs`, `Storage/CouchbaseScanRepository.cs`. `ArchitectureTests` proves the domain has no Couchbase types. |
+| Database lifecycle and document model (5) | `ApexPost.Courier.Offline/Storage/CourierDatabase.cs`: `apexpost_courier`, default collection, `IDisposable`. `ApexPost.Courier.Offline.Domain/Domain/ShipmentScan.cs`: all the required fields, and IDs `scan::{Guid}`. |
+| Repository and key-value CRUD (5) | `ApexPost.Courier.Offline.Domain/Abstractions/IScanRepository.cs`, `ApexPost.Courier.Offline/Storage/CouchbaseScanRepository.cs`. The domain is a separate project with no package references, so the compiler keeps Couchbase out of it; `ArchitectureTests` guards that project's references (ADR 0054). |
 | SQL++ queries, parameters, indexes (6) | Queries by tracking number (ordered by `scannedAtUtc`), pending, and counts per scan type for a courier. All use `$parameters`. Value indexes on `trackingNumber`, `syncStatus` and `courierId`. Tests: `CouchbaseScanRepositoryTests`. |
 | Outbox / offline persistence (4) | `Outbox/OutboxService.cs` (save locally as Pending; Synced or Failed; transient errors stay Pending) and `FakeShipmentUploader`. Tests: `OutboxServiceTests`. |
 | Change listener and clean-up (3) | `Monitoring/PendingScanMonitor.cs` logs the changed IDs and the live pending count. `CourierDatabase.Dispose()` removes the tokens. Tests: `ChangeListenerTests`. |
@@ -50,6 +50,15 @@ with a merge commit.
 | JSON and ProblemDetails (2) | `Api/ApiDtos.cs` (`CourierJsonContext`), `ProblemMessages`. Tests: `AuthAndJsonTests`. |
 | Offline sync and SecureStorage (4) | `Sync/ApiShipmentUploader.cs`, `Sync/SyncCoordinator.cs`, `ApexPost.Courier/Services/PlatformServices.cs`. Tests: `OfflineSyncTests`. |
 | End-to-end demo | Demo script in README ("Demo script"); automated evidence in `OfflineSyncTests`, `ResilienceTests`, `SecurityApiTests` |
+
+## Review follow-ups
+
+| Feedback | Change | Evidence |
+|---|---|---|
+| Part A domain shared a project with Couchbase | `ShipmentScan` and the ports moved to `ApexPost.Courier.Offline.Domain`, a project with no package references | ADR 0054, `ArchitectureTests` |
+| Wildcard package versions | Every PackageReference has an exact version | ADR 0054, `PackageVersionTests` |
+| `PendingScanMonitor` blocked on a Task | Uses the synchronous `CouchbaseScanRepository.CountPending()` | `ChangeListenerTests.Monitor_starts_from_the_stored_pending_count_using_the_synchronous_count` |
+| A shipped Week 3 migration was edited | `Week3SchemaCompliance` restored to the shipped version; the idempotent script is handled by `IdempotentScriptMigrationsSqlGenerator` | ADR 0053, `MigrationScriptTests` |
 
 ## Verification
 

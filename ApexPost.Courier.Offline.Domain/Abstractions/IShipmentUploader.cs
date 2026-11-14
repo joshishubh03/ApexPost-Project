@@ -3,7 +3,7 @@ using ApexPost.Courier.Offline.Domain;
 namespace ApexPost.Courier.Offline.Abstractions;
 
 /// <summary>
-/// Sends scans to the server. Part A uses <see cref="Outbox.FakeShipmentUploader"/>; Part D replaces it with the
+/// Sends scans to the server. Part A uses <c>FakeShipmentUploader</c> (ApexPost.Courier.Offline); Part D replaces it with the
 /// real ApexPost API client. Implementations return one outcome per scan and throw
 /// <see cref="ShipmentUploadUnavailableException"/> when the server cannot be reached at all.
 /// </summary>

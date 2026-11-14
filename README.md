@@ -18,7 +18,7 @@ In Week 3 Couchbase was out of scope. Week 4 Part A adds Couchbase Lite, but onl
 | [PERFORMANCE.md](PERFORMANCE.md) | Workloads, indexes, before/after plans and numbers, write overhead, SARGability, statistics |
 | [docs/sql-transactions-and-concurrency.md](docs/sql-transactions-and-concurrency.md) | T-SQL transaction, blocking demo output, isolation level, deadlock avoidance |
 | [docs/generated-sql-samples.md](docs/generated-sql-samples.md) | SQL that EF Core generated for the main queries (`ToQueryString`) |
-| [docs/adr/](docs/adr/) | Architecture decisions; 0041-0049 are the Week 3 ones, 0051-0052 the Week 4 ones |
+| [docs/adr/](docs/adr/) | Architecture decisions; 0041-0049 are the Week 3 ones, 0051-0054 the Week 4 ones |
 | [OFFLINE-DESIGN.md](OFFLINE-DESIGN.md) | Week 4 Part A: save locally first, conflicts, one process per embedded database |
 | [API-NOTES.md](API-NOTES.md) / [VERSIONING.md](VERSIONING.md) | Week 4 Parts B-C: endpoints and status codes, v1/v2 changes and the v1 sunset plan |
 | [SECURITY.md](SECURITY.md) / [RESILIENCE.md](RESILIENCE.md) | Week 4 Part D: JWT, roles, API keys, OAuth2, TLS/HSTS; retry, circuit breaker and timeout values |
@@ -30,7 +30,7 @@ In Week 3 Couchbase was out of scope. Week 4 Part A adds Couchbase Lite, but onl
 ApexPost.Domain          entities, value objects (Sku, BranchCode, Money, Weight, IdentityDocumentMask), invariants
 ApexPost.Application     use-case services, ports (IUnitOfWork, repositories, IReportingQueries, IAuditStore), DTOs
 ApexPost.Infrastructure  Persistence/ (ApexPostDbContext, Configurations/, Migrations/, Repositories/, Queries/,
-                         StoredProcedures/, EfUnitOfWork, EfAuditStore), Seed/, JSON adapter (Weeks 1-2)
+                         StoredProcedures/, EfUnitOfWork, EfAuditStore), Seed/
 ApexPost.Web             MVC controllers + views, reports API, Problem Details, audit filter, composition root
 ApexPost.Tests           unit, unit-of-work spy, SQL Server integration and WebApplicationFactory tests
 sql/                     schema script, procedures, report queries, transaction + blocking demos, perf data/workloads
@@ -164,10 +164,10 @@ powershell -ExecutionPolicy Bypass -File scripts/measure-performance.ps1 -Server
 powershell -ExecutionPolicy Bypass -File scripts/run-blocking-demo.ps1
 ```
 
-## Persistence modes
+## Persistence
 
-`Persistence:Provider` is `SqlServer` (default) or `Json`. The JSON adapter from Weeks 1-2 is kept for offline
-demos; it has no atomic commit, so services use their compensation path (ADR 0030).
+SQL Server is the only persistence model. The JSON repositories from Weeks 1-2 were removed (ADRs 0002 and 0030
+are marked superseded), so every environment, including the tests, runs the same EF Core code.
 
 ---
 
@@ -177,7 +177,8 @@ demos; it has no atomic commit, so services use their compensation path (ADR 003
 
 | Project | Purpose |
 |---|---|
-| `ApexPost.Courier.Offline` | Class library: `ShipmentScan` domain record, `IScanRepository`, `CouchbaseScanRepository`, `CourierDatabase` (IDisposable), `OutboxService`, `FakeShipmentUploader`, `PendingScanMonitor` |
+| `ApexPost.Courier.Offline.Domain` | `ShipmentScan` domain record and the ports `IScanRepository` and `IShipmentUploader`. No package references, so the compiler keeps Couchbase out of the domain (ADR 0054) |
+| `ApexPost.Courier.Offline` | Couchbase Lite adapter: `CouchbaseScanRepository`, `CourierDatabase` (IDisposable), plus `OutboxService`, `FakeShipmentUploader`, `PendingScanMonitor` |
 | `ApexPost.Courier.Offline.Harness` | Console menu: Add Scan, Find by Tracking Number, List Pending, Simulate Sync, Delete Scan, Exit, plus scans per type, an offline toggle, demo seeding and query plans |
 | `ApexPost.Courier.Offline.Tests` | CRUD, SQL++ queries and parameters, indexes, outbox, change listener and clean-up, architecture rule |
 

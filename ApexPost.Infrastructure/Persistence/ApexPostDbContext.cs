@@ -1,6 +1,7 @@
 using ApexPost.Infrastructure.Persistence.Configurations;
 using ApexPost.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace ApexPost.Infrastructure.Persistence;
 
@@ -35,6 +36,16 @@ public sealed class ApexPostDbContext(DbContextOptions<ApexPostDbContext> option
     // Week 4 (additive): courier shipments API.
     public DbSet<CourierShipmentRow> CourierShipments => Set<CourierShipmentRow>();
     public DbSet<ShipmentScanRow> ShipmentScans => Set<ShipmentScanRow>();
+
+    /// <summary>
+    /// Applies to every way the context is created (Web, API, design-time factory, tests): raw SQL in the idempotent
+    /// migration script is wrapped in EXEC so the script can be re-run (ADR 0053). Normal migrations are unchanged.
+    /// </summary>
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        optionsBuilder.ReplaceService<IMigrationsSqlGenerator, IdempotentScriptMigrationsSqlGenerator>();
+        base.OnConfiguring(optionsBuilder);
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

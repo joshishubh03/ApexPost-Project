@@ -26,6 +26,23 @@ public sealed class ChangeListenerTests
     }
 
     [Fact]
+    public async Task Monitor_starts_from_the_stored_pending_count_using_the_synchronous_count()
+    {
+        using var store = new TemporaryCourierDatabase();
+        _ = await store.Repository.CreateAsync(
+            ShipmentScan.CreatePending("APX-10000002", ScanType.Pickup, "courier-007", "Depot", DateTimeOffset.UtcNow));
+        var synced = await store.Repository.CreateAsync(
+            ShipmentScan.CreatePending("APX-10000003", ScanType.Pickup, "courier-007", "Depot", DateTimeOffset.UtcNow));
+        await store.Repository.UpdateAsync(synced.MarkSynced(DateTimeOffset.UtcNow));
+
+        Assert.Equal(1, store.Repository.CountPending());
+        Assert.Equal(await store.Repository.CountPendingAsync(), store.Repository.CountPending());
+
+        using var monitor = new PendingScanMonitor(store.Database, store.Repository);
+        Assert.Equal(1, monitor.PendingCount);
+    }
+
+    [Fact]
     public void Disposing_the_database_removes_every_listener_token()
     {
         var directory = Path.Combine(Path.GetTempPath(), "apexpost-courier-tests", Guid.NewGuid().ToString("N"));

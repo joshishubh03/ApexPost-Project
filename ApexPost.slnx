@@ -11,6 +11,7 @@
         <Project Path="ApexPost.Client.Consumer/ApexPost.Client.Consumer.csproj" />
     </Folder>
     <Folder Name="/Courier/">
+        <Project Path="ApexPost.Courier.Offline.Domain/ApexPost.Courier.Offline.Domain.csproj" />
         <Project Path="ApexPost.Courier.Offline/ApexPost.Courier.Offline.csproj" />
         <Project Path="ApexPost.Courier.Offline.Harness/ApexPost.Courier.Offline.Harness.csproj" />
         <Project Path="ApexPost.Courier.Offline.Tests/ApexPost.Courier.Offline.Tests.csproj" />

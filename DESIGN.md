@@ -1,8 +1,8 @@
 ﻿# Design overview - ApexPost (Week 3: SQL Server + EF Core 10)
 
 SQL Server is the system of record. EF Core 10 maps the schema; three stored procedures cover the set-based
-operations; the domain model does not know about either. The JSON adapter from Weeks 1-2 is still available
-(`Persistence:Provider = Json`) for offline demos and for the legacy reliability tests.
+operations; the domain model does not know about either. SQL Server is the only persistence model: the JSON
+repositories from Weeks 1-2 were removed, so there is one write path and one unit of work.
 
 ## 1. Architecture and layers
 
@@ -187,10 +187,10 @@ and are marked *Superseded* by 0041-0048.
 
 - **S** - `CounterTransactionService` runs the sale use case; `EfCounterTransactionRepository` maps rows;
   `EfUnitOfWork` owns the transaction; controllers own HTTP.
-- **O** - a new persistence provider means new `IUnitOfWork` / repository classes. Services do not change, which is
-  how the JSON and SQL Server adapters coexist.
-- **L** - `NoOpUnitOfWork` (JSON mode), `EfUnitOfWork` and the test `SpyUnitOfWork` are interchangeable. `SupportsAtomicCommit`
-  tells services which commit path to use, instead of type checks.
+- **O** - a new persistence provider means new `IUnitOfWork` / repository classes. Services do not change: the
+  move from JSON files to SQL Server replaced the adapters without touching the business rules.
+- **L** - `EfUnitOfWork`, the test `SpyUnitOfWork` and `ImmediateUnitOfWork` are interchangeable behind `IUnitOfWork`;
+  services never check which one they got.
 - **I** - small ports (`IInventoryRepository`, `IReportingQueries`, `IStockAdjustmentCommand`, `IAuditStore`)
   instead of one generic repository.
 - **D** - Web and Application depend on interfaces; `AddApexPostSqlServer` in Infrastructure binds them.
