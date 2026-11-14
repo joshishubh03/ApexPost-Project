@@ -100,8 +100,8 @@ Every existing test class was reviewed. "Kept" means unchanged apart from the mo
 | `BusinessRuleTests` | 26 | **Modified** (1 test removed) | UnitTests | Core counter, tax, shipping and money-order rules: exactly what unit tests are for. `DateTimeOffset.UtcNow` replaced by a fixed instant (determinism). `Concurrent_counter_sales_preserve_every_receipt_and_stock_change` **removed**: it ran 20 tasks against an in-memory fake with `Task.Delay`, so it proved the fake unit of work's semaphore, not ApexPost. Real concurrency is proved by `Two_clerks_selling_the_last_unit_cannot_drive_stock_negative` (SQL Server rowversion) and `Concurrency_conflict_on_stock_returns_409`. |
 | `CachedAttributeValidatorTests` | 2 | Kept | UnitTests | Validation logic, no I/O |
 | `CounterTransactionReversalTests` | 3 | **Modified** | UnitTests | Void/refund rules. Fixed instant instead of `DateTimeOffset.UtcNow` |
-| `CourierShipmentDomainTests` | 7 | **Modified** (extended) | UnitTests | Status machine (R1). Added `[Theory]` rows over the full transition table, tracking-number formats and weight boundaries |
-| `CourierShipmentServiceTests` | 6 | Kept | UnitTests | State-based service tests with an in-memory repository: they prove outcomes (what was stored). Moq tests were added next to them to prove interactions (commit once / never) |
+| `CourierShipmentDomainTests` | 7 | Kept | UnitTests | Status machine examples (R1). The exhaustive transition table, tracking-number formats and weight boundaries were added in a new class, `CourierShipmentRulesTests`, so the original examples stay readable |
+| `CourierShipmentServiceTests` | 6 | **Modified** | UnitTests | State-based service tests with an in-memory repository: they prove outcomes (what was stored). Its in-memory repository and clock moved to `TestDoubles/` so the TDD tests and the BDD scenarios share them. Moq tests were added next to it to prove interactions |
 | `CourierTrackingClientTests` | 3 | Kept | UnitTests | Concurrency limit of the simulated courier client; asserts a maximum, not a duration, so it is not timing-sensitive |
 | `HttpCourierTrackingClientTests` | 4 | Kept | UnitTests | Fake handler, no network; timeouts use cancellation, not wall-clock assertions |
 | `ProblemDetailsMappingTests` | 7 | Kept | UnitTests | Exception -> status mapping (R9) |
@@ -150,7 +150,24 @@ Every existing test class was reviewed. "Kept" means unchanged apart from the mo
 |---|---|---|---|---|
 | `ResilienceTests` | 8 | Kept | UnitTests | Retry / no retry on 4xx / circuit breaker / timeouts with a fake handler (R5) |
 | `AuthAndJsonTests` | 7 | Kept | UnitTests | Auth header handler, 401 handling, JSON tolerance |
-| `OfflineSyncTests` | 3 | Kept | IntegrationTests | Real Couchbase Lite + fake HTTP server: end-to-end device sync |
+| `OfflineSyncTests` | 3 | **Modified** | IntegrationTests | Real Couchbase Lite + fake HTTP server: end-to-end device sync. Fixed instants instead of `DateTimeOffset.UtcNow` |
+
+### New in Week 5
+
+| Test class | Project | Level | Purpose |
+|---|---|---|---|
+| `CourierShipmentRulesTests` | UnitTests | Unit | All 36 status pairs (`[MemberData]`), forbidden transitions, tracking-number formats, weight boundaries 0.09 / 0.1 / 70 / 70.01, exceptions (R1, R8) |
+| `ApiRequestValidationTests` | UnitTests | Unit | Request DTO rules: tracking number, weight, E.164 phone, required fields, `[NotInFuture]` with an injected clock (300 s vs 301 s), Delivered needs a signature, 1-100 scans (R8) |
+| `CourierShipmentServiceMockTests` | UnitTests | Unit (Moq) | Service interactions: `Add` / `Update` / `Remove` / `AddScan` staged once or never, normalisation before the duplicate check, ownership checked before any unit of work (R1-R4) |
+| `OutboxServiceMockTests` | UnitTests | Unit (Moq) | Outbox decisions: Synced / Failed / stays Pending, batches of 20, stops when the server is down or returns nothing (R7) |
+| `ApexApiClientHttpTests` | UnitTests | Unit (fake handler) | Typed client: 200 + JSON, 404, 500 with retries, ProblemDetails, per-attempt timeout, caller cancellation (R5) |
+| `StaleScanRuleTests` | UnitTests | Unit (TDD) | The new stale-scan rule, see [TDD-LOG.md](TDD-LOG.md) |
+| `ShipmentCreation.feature`, `ScanSync.feature` | Specs | BDD | Section 6 |
+
+The required end-to-end API test with a test database and test authentication is
+`ShipmentsApiTests.Create_returns_201_with_a_location_header_and_the_shipment` (plus the rest of
+`ApexPost.IntegrationTests/Api`): `WebApplicationFactory`, a disposable SQL Server database migrated with the real
+migrations, and JWTs signed with a random per-run test key, validated by the real JWT bearer handler.
 
 **Naming.** Existing tests use full-sentence names (`Delete_after_pickup_is_refused`). They are kept: they are
 clear, and renaming 250 tests would add no value and break `git blame`. **New Week 5 tests use
@@ -237,4 +254,48 @@ with Visual Studio) unless `APEXPOST_TEST_SQLSERVER` points to another server.
 
 ## 10. Reflection
 
-*(Completed after the full run: see the end of this document.)*
+**What the strategy caught.** Reviewing the existing tests against the risk map found problems that were
+invisible while the suite was green:
+
+- `Concurrent_counter_sales_preserve_every_receipt_and_stock_change` gave false confidence. It ran 20 parallel
+  sales against an in-memory fake and passed because of the fake unit of work's semaphore, not because of ApexPost.
+  The real protection (SQL Server rowversion) is proved elsewhere, so the test was removed and the review table
+  says why.
+- Six test classes read the real clock (`DateTimeOffset.UtcNow`, 24 places). None had failed yet, but each one was
+  a future flaky test (a midnight or month-end boundary). They now use fixed instants.
+- Writing the BDD scan-sync scenario showed that two scans recorded in the same instant could be applied in either
+  order by the server (it sorts by time, then by random ID). A fixed clock would have made the scenario flaky, so
+  the phone uses a stepping clock. The determinism rule in section 7 caught it before it ever failed.
+- Putting the MVC app and the API in one integration project broke the build (two global `Program` classes). The
+  fix (an assembly marker type) is a small testability change in production code.
+- The API's tracking-number regex and the domain's are two separate constants; a unit test now keeps them equal.
+- The full run's numbers are in the README ("Test results").
+
+**What we would change.**
+
+- Run the SQL Server tests against a **container** (Testcontainers) in CI, so they do not depend on LocalDB being
+  installed.
+- Run the **same contract tests against the in-memory fake and the EF Core repository**, so the fakes cannot
+  drift from the real behaviour.
+- Replace the manual break-the-code script with a **mutation-testing tool** (Stryker.NET) on the domain and
+  service projects.
+- Rename the older sentence-style tests to `Method_Scenario_ExpectedResult` gradually, as each one is touched.
+
+**Most confidence per minute.** Parameterised unit tests over the business rules: one `[Theory]` with the full
+status table (36 rows) or a few weight boundaries took minutes to write, runs in milliseconds and pins down
+exactly the rules that change most often. The `WebApplicationFactory` API tests come second. They are slower to
+write and run, but one test exercises routing, JWT validation, model validation, the service, EF Core and SQL
+Server together, so a wiring mistake anywhere in the chain shows up.
+
+## 11. Viva notes (5 minutes)
+
+1. **Pyramid:** about 55% unit, 35% integration, 10% BDD. ApexPost has more integration tests than a textbook
+   pyramid because its key guarantees (rowversion, constraints, JWT, embedded store) only exist in real
+   infrastructure.
+2. **Framework:** xUnit. Consistency with ~255 existing tests, a new test-class instance per test (isolation),
+   explicit fixtures for the expensive SQL Server database, `[Theory]`, and `Reqnroll.xUnit`.
+3. **One mock and what it does not prove:** `CourierShipmentServiceMockTests` mocks `ICourierShipmentRepository`.
+   It proves that a duplicate tracking number is refused **before** anything is staged (`Add` verified
+   `Times.Never`). It does not prove that the database would also refuse it: the mock's `ExistsAsync` returns
+   whatever we tell it. The unique index is proved by `SqlConstraintTests` and the 409 by `ShipmentsApiTests`.
+4. **One Copilot test we rejected:** see [COPILOT-LOG.md](COPILOT-LOG.md), section 3.3.

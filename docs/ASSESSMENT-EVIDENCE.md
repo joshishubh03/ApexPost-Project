@@ -67,3 +67,17 @@ dotnet build ApexPost.Server.slnf      # everything except the MAUI app
 dotnet test  ApexPost.Server.slnf      # LocalDB; first run also writes the generated contracts/v1.json and v2.json
 dotnet build ApexPost.Courier -f net10.0-windows10.0.19041.0
 ```
+
+---
+
+# Week 5 assessment evidence (testing strategy)
+
+| Criterion | Evidence |
+|---|---|
+| Strategy document (20) | [TESTING-STRATEGY.md](../TESTING-STRATEGY.md): risk map (10 risks), pyramid with proportions and reasons, xUnit justification, one row per existing test class (kept / modified / removed), data access strategy (Moq, fakes, why not SQLite, SQL Server test database, why not to mock `DbContext`), what is not tested |
+| Unit tests (15) | `ApexPost.UnitTests`: AAA comments and `Method_Scenario_ExpectedResult` names in all new tests; `[Theory]` for status transitions (36 rows), tracking number, weight, phone, clock skew, scan ID, batch size; boundaries (0.09 / 0.1 / 70 / 70.01, 300 s / 301 s, 50 / 51); exception tests. Runs from Test Explorer and `dotnet test` |
+| Mocking and isolation (20) | Moq: `CourierShipmentServiceMockTests`, `OutboxServiceMockTests` (`Setup`, `ReturnsAsync`, `SetupSequence`, `ThrowsAsync`, `It.Is`, `It.IsAny`, `Verify` + `Times`, `VerifyNoOtherCalls`). HTTP: `ApexApiClientHttpTests` (200 JSON, 404, 500, timeout, cancellation, ProblemDetails). Repositories on SQL Server only (`IntegrationTests/SqlServer`). End-to-end API test: `ShipmentsApiTests` with `WebApplicationFactory`, a disposable database and test JWTs |
+| TDD (15) | Commits `RED:` / `GREEN:` / `REFACTOR:`; [TDD-LOG.md](../TDD-LOG.md); `StaleScanRuleTests` |
+| BDD (15) | `ApexPost.Specs` with Reqnroll 3.3.4: `ShipmentCreation.feature` (API level), `ScanSync.feature` (service level), Background, Scenario Outlines with Examples, context injection (`ShipmentApiContext`, `CourierSyncContext`), hooks (`Support/Hooks.cs`) |
+| Copilot (10) | [COPILOT-LOG.md](../COPILOT-LOG.md): prompts, review checklist and decisions, `scripts/prove-tests-fail.ps1` logs in `docs/test-results/` |
+| Results and reflection (5) | README "Test results" (written by `scripts/run-tests.ps1`), reflection and viva notes in TESTING-STRATEGY.md sections 10-11 |
