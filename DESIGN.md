@@ -15,7 +15,7 @@ flowchart LR
     Infra --> Domain
     Web --> Infra
     Infra --> Sql[(SQL Server<br/>ApexPostDb)]
-    Tests[ApexPost.Tests] --> Web & App & Domain & Infra
+    Tests[ApexPost.UnitTests / IntegrationTests / Specs] --> Web & App & Domain & Infra
 ```
 
 | Layer | Owns | Must not |
