@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace ApexPost.Domain.Courier;
@@ -159,19 +160,34 @@ public sealed partial class CourierShipment
     }
 
     /// <summary>
-    /// Stale-scan rule (Week 5, built test-first): returns the reason a scan is too old to accept, or null.
+    /// Stale-scan rule (Week 5, built test-first; see TDD-LOG.md): returns why a scan is too old to accept, or null.
+    /// A scan exactly <see cref="MaximumScanAge"/> old is still accepted. Both instants are passed in, so the rule
+    /// never reads a clock and is a pure function.
     /// </summary>
     public static string? CheckScanAge(DateTimeOffset scannedAtUtc, DateTimeOffset receivedAtUtc) =>
         receivedAtUtc - scannedAtUtc > MaximumScanAge
-            ? "Scan is older than 7 days and can no longer be accepted."
+            ? string.Create(CultureInfo.InvariantCulture,
+                $"Scan is older than {MaximumScanAge.TotalDays:0} days and can no longer be accepted " +
+                $"(scanned {scannedAtUtc:yyyy-MM-dd HH:mm}Z, received {receivedAtUtc:yyyy-MM-dd HH:mm}Z).")
             : null;
 
     /// <summary>
     /// Applies a courier scan. Returns null when the scan is accepted (the status advances, or the scan repeats the
     /// current status), otherwise the reason it is rejected. Scans never move a shipment backwards.
     /// </summary>
-    public string? ApplyScan(CourierScanType scanType, DateTimeOffset now)
+    public string? ApplyScan(CourierScanType scanType, DateTimeOffset now) =>
+        ApplyScan(scanType, scannedAtUtc: now, receivedAtUtc: now);
+
+    /// <summary>
+    /// Applies a courier scan taken at <paramref name="scannedAtUtc"/> that reached the server at
+    /// <paramref name="receivedAtUtc"/>. Every acceptance rule lives here, in order: too old, then the status machine.
+    /// Returns null when accepted, otherwise the reason it is rejected (the status is then unchanged).
+    /// </summary>
+    public string? ApplyScan(CourierScanType scanType, DateTimeOffset scannedAtUtc, DateTimeOffset receivedAtUtc)
     {
+        if (CheckScanAge(scannedAtUtc, receivedAtUtc) is { } tooOld)
+            return tooOld;
+
         var target = StatusAfter(scanType);
         if (target == Status)
             return null;
@@ -183,7 +199,7 @@ public sealed partial class CourierShipment
             return $"Invalid status transition {Status} -> {target} for a {scanType} scan.";
 
         Status = target;
-        UpdatedAtUtc = now;
+        UpdatedAtUtc = receivedAtUtc;
         return null;
     }
 

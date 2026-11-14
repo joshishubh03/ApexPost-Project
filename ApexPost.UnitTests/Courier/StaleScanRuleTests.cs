@@ -50,11 +50,9 @@ public sealed class StaleScanRuleTests
     public async Task UploadScansAsync_ScanOlderThanSevenDays_IsRejectedAndTheRestOfTheBatchIsAccepted()
     {
         // Arrange
-        var repository = new InMemoryCourierShipmentRepository();
-        var service = new CourierShipmentService(repository, ImmediateUnitOfWork.Instance, new FixedClock(ReceivedAt));
-        await service.CreateAsync(new CreateCourierShipmentCommand("APX-70000001", 2.5m, CourierShipmentDomainTests.Recipient()));
-        var stale = new ScanUploadItem(Guid.NewGuid(), CourierScanType.Pickup, "courier-007", "Depot", ReceivedAt.AddDays(-8), null, null);
-        var fresh = new ScanUploadItem(Guid.NewGuid(), CourierScanType.Pickup, "courier-007", "Depot", ReceivedAt.AddMinutes(-5), null, null);
+        var service = await ServiceWithShipmentAsync("APX-70000001");
+        var stale = PickupTaken(TimeSpan.FromDays(8));
+        var fresh = PickupTaken(TimeSpan.FromMinutes(5));
 
         // Act
         var summary = await service.UploadScansAsync("APX-70000001", [stale, fresh]);
@@ -71,10 +69,8 @@ public sealed class StaleScanRuleTests
     public async Task UploadScansAsync_OnlyAStaleScan_LeavesTheShipmentStatusUnchanged()
     {
         // Arrange
-        var repository = new InMemoryCourierShipmentRepository();
-        var service = new CourierShipmentService(repository, ImmediateUnitOfWork.Instance, new FixedClock(ReceivedAt));
-        await service.CreateAsync(new CreateCourierShipmentCommand("APX-70000002", 2.5m, CourierShipmentDomainTests.Recipient()));
-        var stale = new ScanUploadItem(Guid.NewGuid(), CourierScanType.Pickup, "courier-007", "Depot", ReceivedAt.AddDays(-10), null, null);
+        var service = await ServiceWithShipmentAsync("APX-70000002");
+        var stale = PickupTaken(TimeSpan.FromDays(10));
 
         // Act
         var summary = await service.UploadScansAsync("APX-70000002", [stale]);
@@ -85,4 +81,17 @@ public sealed class StaleScanRuleTests
         Assert.Equal(CourierShipmentStatus.Created, (await service.GetAsync("APX-70000002")).Status);
         Assert.Empty(await service.GetScanHistoryAsync("APX-70000002"));
     }
+
+    /// <summary>The real service on an in-memory repository, a fixed clock and one Created shipment.</summary>
+    private static async Task<CourierShipmentService> ServiceWithShipmentAsync(string trackingNumber)
+    {
+        var service = new CourierShipmentService(
+            new InMemoryCourierShipmentRepository(), ImmediateUnitOfWork.Instance, new FixedClock(ReceivedAt));
+        await service.CreateAsync(new CreateCourierShipmentCommand(trackingNumber, 2.5m, CourierShipmentDomainTests.Recipient()));
+        return service;
+    }
+
+    /// <summary>A Pickup scan taken <paramref name="age"/> before the server receives it.</summary>
+    private static ScanUploadItem PickupTaken(TimeSpan age) =>
+        new(Guid.NewGuid(), CourierScanType.Pickup, "courier-007", "Depot", ReceivedAt - age, null, null);
 }
