@@ -19,3 +19,6 @@ coverage/
 # local run artefacts
 *.log
 *.zip
+
+# Reqnroll generates these at build time
+**/*.feature.cs
