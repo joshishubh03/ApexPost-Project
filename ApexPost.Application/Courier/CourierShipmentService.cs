@@ -146,7 +146,8 @@ public sealed class CourierShipmentService(
                     continue;
                 }
 
-                var reason = shipment.ApplyScan(scan.ScanType, receivedAt);
+                var reason = CourierShipment.CheckScanAge(scan.ScannedAtUtc, receivedAt)
+                    ?? shipment.ApplyScan(scan.ScanType, receivedAt);
                 if (reason is not null)
                 {
                     rejected.Add(new RejectedScan(scan.ScanId, reason));
