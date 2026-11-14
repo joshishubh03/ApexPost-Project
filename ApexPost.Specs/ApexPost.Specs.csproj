@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Week 5: BDD specifications with Reqnroll (xUnit runner). Business-language feature files in Features/,
+       step definitions in Steps/, context classes and hooks in Support/. See TESTING-STRATEGY.md, section 6. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Reqnroll.xUnit" Version="3.3.4" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Reqnroll" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ApexPost.Domain\ApexPost.Domain.csproj" />
+    <ProjectReference Include="..\ApexPost.Application\ApexPost.Application.csproj" />
+    <ProjectReference Include="..\ApexPost.Infrastructure\ApexPost.Infrastructure.csproj" />
+    <ProjectReference Include="..\ApexPost.Api\ApexPost.Api.csproj" />
+    <ProjectReference Include="..\ApexPost.Courier.Offline\ApexPost.Courier.Offline.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Shared test doubles (one source of truth with the unit tests). -->
+    <Compile Include="..\ApexPost.UnitTests\TestDoubles\InMemoryCourierShipmentRepository.cs" Link="Support\Shared\InMemoryCourierShipmentRepository.cs" />
+    <Compile Include="..\ApexPost.UnitTests\TestDoubles\ImmediateUnitOfWork.cs" Link="Support\Shared\ImmediateUnitOfWork.cs" />
+    <Compile Include="..\ApexPost.UnitTests\TestDoubles\FixedClock.cs" Link="Support\Shared\FixedClock.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="reqnroll.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
