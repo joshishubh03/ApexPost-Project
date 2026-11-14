@@ -161,7 +161,10 @@ public sealed partial class CourierShipment
     /// <summary>
     /// Stale-scan rule (Week 5, built test-first): returns the reason a scan is too old to accept, or null.
     /// </summary>
-    public static string? CheckScanAge(DateTimeOffset scannedAtUtc, DateTimeOffset receivedAtUtc) => null;
+    public static string? CheckScanAge(DateTimeOffset scannedAtUtc, DateTimeOffset receivedAtUtc) =>
+        receivedAtUtc - scannedAtUtc > MaximumScanAge
+            ? "Scan is older than 7 days and can no longer be accepted."
+            : null;
 
     /// <summary>
     /// Applies a courier scan. Returns null when the scan is accepted (the status advances, or the scan repeats the
