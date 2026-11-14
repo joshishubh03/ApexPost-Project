@@ -32,7 +32,9 @@ ApexPost.Application     use-case services, ports (IUnitOfWork, repositories, IR
 ApexPost.Infrastructure  Persistence/ (ApexPostDbContext, Configurations/, Migrations/, Repositories/, Queries/,
                          StoredProcedures/, EfUnitOfWork, EfAuditStore), Seed/
 ApexPost.Web             MVC controllers + views, reports API, Problem Details, audit filter, composition root
-ApexPost.Tests           unit, unit-of-work spy, SQL Server integration and WebApplicationFactory tests
+ApexPost.UnitTests       unit tests (no I/O): domain, validation, services with Moq/fakes, typed API client
+ApexPost.IntegrationTests SQL Server, WebApplicationFactory (MVC + API), EF model/migrations, Couchbase Lite
+ApexPost.Specs           Reqnroll BDD scenarios (business language)
 sql/                     schema script, procedures, report queries, transaction + blocking demos, perf data/workloads
 scripts/                 measure-performance.ps1, run-blocking-demo.ps1
 ```
@@ -180,12 +182,12 @@ are marked superseded), so every environment, including the tests, runs the same
 | `ApexPost.Courier.Offline.Domain` | `ShipmentScan` domain record and the ports `IScanRepository` and `IShipmentUploader`. No package references, so the compiler keeps Couchbase out of the domain (ADR 0054) |
 | `ApexPost.Courier.Offline` | Couchbase Lite adapter: `CouchbaseScanRepository`, `CourierDatabase` (IDisposable), plus `OutboxService`, `FakeShipmentUploader`, `PendingScanMonitor` |
 | `ApexPost.Courier.Offline.Harness` | Console menu: Add Scan, Find by Tracking Number, List Pending, Simulate Sync, Delete Scan, Exit, plus scans per type, an offline toggle, demo seeding and query plans |
-| `ApexPost.Courier.Offline.Tests` | CRUD, SQL++ queries and parameters, indexes, outbox, change listener and clean-up, architecture rule |
+| Tests | `ApexPost.IntegrationTests/CourierOffline` (CRUD, SQL++ queries and parameters, indexes, outbox, change listener and clean-up) and `ApexPost.UnitTests/CourierOffline` (architecture rule, outbox logic with Moq) |
 
 ```powershell
 dotnet run --project ApexPost.Courier.Offline.Harness           # data in %LOCALAPPDATA%\ApexPost\courier-harness
 dotnet run --project ApexPost.Courier.Offline.Harness -- --data .\work\courier   # custom folder
-dotnet test ApexPost.Courier.Offline.Tests
+dotnet test ApexPost.IntegrationTests --filter "FullyQualifiedName~Courier.Offline"
 ```
 
 Try it: **9** (seed fictional scans), **2** with `APX-10000001`, **3**, **7** with `courier-007`, **8** (go
@@ -203,7 +205,7 @@ unit of work and SQL Server composition (`AddApexPostSqlServer`). The additive W
 ```powershell
 dotnet user-secrets set "ConnectionStrings:ApexPostDb" "Server=(localdb)\MSSQLLocalDB;Database=ApexPostDb;Trusted_Connection=True;TrustServerCertificate=True" --project ApexPost.Api
 dotnet run --project ApexPost.Api --launch-profile https      # Development applies migrations on start
-dotnet test ApexPost.Api.Tests                                  # disposable LocalDB database per run
+dotnet test ApexPost.IntegrationTests --filter "FullyQualifiedName~ApexPost.Api.Tests"   # disposable LocalDB database per run
 ```
 
 - **Controllers stay thin.** They bind the input, call `CourierShipmentService` and return the HTTP result.
@@ -270,7 +272,7 @@ powershell -File scripts/update-contracts.ps1     # after an intentional API cha
 | `ApexPost.Api` (updated) | JWT bearer (issuer, audience, lifetime and key validated from config), roles (`Courier`/`Admin`), courierId ownership check, partner `X-Api-Key` middleware, HTTPS redirection everywhere plus HSTS outside Development, `Bearer` and `PartnerApiKey` schemes in OpenAPI, Development-only `/dev/token`. |
 | `ApexPost.Courier.Core` | Typed `ApexApiClient` (`AddHttpClient<ApexApiClient>()`), `AuthHeaderHandler`, Polly retry / circuit breaker / timeouts with logging, source-generated `CourierJsonContext`, ProblemDetails to friendly messages, `ApiShipmentUploader` (replaces Part A's fake), `SyncCoordinator` (batches of 20 on reconnect). |
 | `ApexPost.Courier` | .NET MAUI app (Android emulator + Windows). Screens: Login, New Scan, Pending Scans, Sync Status. Uses SecureStorage for the token, Connectivity for online/offline, and the offline banner. |
-| `ApexPost.Courier.Core.Tests` | Retry, no-retry-on-4xx, circuit breaker, timeouts, auth handler and 401, JSON tolerance, uploader mapping, end-to-end sync. |
+| Tests | `ApexPost.UnitTests/CourierClient` (retry, no retry on 4xx, circuit breaker, timeouts, auth handler and 401, JSON tolerance, HTTP status handling) and `ApexPost.IntegrationTests/CourierClient` (end-to-end sync with Couchbase Lite). |
 
 ### Setup
 

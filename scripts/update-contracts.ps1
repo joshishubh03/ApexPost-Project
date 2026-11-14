@@ -8,7 +8,7 @@ $root = Split-Path $PSScriptRoot -Parent
 Push-Location $root
 try {
     $env:APEXPOST_UPDATE_CONTRACTS = "1"
-    dotnet test ApexPost.Api.Tests --filter "FullyQualifiedName~OpenApiDocumentTests.Committed_contract_matches_the_generated_document"
+    dotnet test ApexPost.IntegrationTests --filter "FullyQualifiedName~OpenApiDocumentTests.Committed_contract_matches_the_generated_document"
     Remove-Item Env:APEXPOST_UPDATE_CONTRACTS
     dotnet build ApexPost.Client
     git --no-pager diff --stat -- contracts ApexPost.Client/Generated

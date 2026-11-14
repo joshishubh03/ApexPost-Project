@@ -15,7 +15,7 @@ ApexApiClient
 ```
 
 The values are in `ApexPost.Courier/appsettings.json` (`Api:Resilience`) and `CourierResilienceOptions`. They are
-unit-tested in `ApexPost.Courier.Core.Tests/ResilienceTests.cs`.
+unit-tested in `ApexPost.UnitTests/CourierClient/ResilienceTests.cs`.
 
 ## Retry
 

@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Week 5: unit tests. No database, no files, no network: domain rules, validation, application services
+       (Moq and in-memory fakes), the courier outbox logic and the typed API client with a fake HttpMessageHandler.
+       See TESTING-STRATEGY.md. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Moq" Version="4.20.72" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ApexPost.Domain\ApexPost.Domain.csproj" />
+    <ProjectReference Include="..\ApexPost.Application\ApexPost.Application.csproj" />
+    <ProjectReference Include="..\ApexPost.Infrastructure\ApexPost.Infrastructure.csproj" />
+    <ProjectReference Include="..\ApexPost.Web\ApexPost.Web.csproj" />
+    <ProjectReference Include="..\ApexPost.Api\ApexPost.Api.csproj" />
+    <ProjectReference Include="..\ApexPost.Courier.Offline\ApexPost.Courier.Offline.csproj" />
+    <ProjectReference Include="..\ApexPost.Courier.Core\ApexPost.Courier.Core.csproj" />
+  </ItemGroup>
+
+</Project>
