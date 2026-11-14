@@ -20,10 +20,13 @@ The courier device keeps every shipment scan in an embedded Couchbase Lite datab
 }
 ```
 
-`ApexPost.Courier.Offline` contains the domain record (`ShipmentScan`), the `IScanRepository` port, the Couchbase
-adapter (`CourierDatabase`, `CouchbaseScanRepository`), the outbox (`OutboxService`) and the change-listener
-monitor (`PendingScanMonitor`). Only the `Storage` folder references Couchbase; `ArchitectureTests` fails the build
-if a domain or abstraction type ever exposes a Couchbase type.
+The code is split in two projects (ADR 0054):
+
+- `ApexPost.Courier.Offline.Domain` has the domain record (`ShipmentScan`) and the ports (`IScanRepository`,
+  `IShipmentUploader`). It has no package references, so the compiler stops it from ever using a Couchbase type.
+- `ApexPost.Courier.Offline` references it and adds the Couchbase adapter (`CourierDatabase`,
+  `CouchbaseScanRepository`), the outbox (`OutboxService`) and the change-listener monitor (`PendingScanMonitor`).
+  `Couchbase.Lite` (pinned to 3.2.6) is referenced only here.
 
 ## Why the app saves locally first
 

@@ -12,15 +12,17 @@
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
+  <!-- Exact versions only (no wildcards), so every restore resolves the same packages. Microsoft.AspNetCore.* stay on
+       the same 10.0.x servicing release as EF Core (10.0.14). -->
   <ItemGroup>
     <!-- Built-in OpenAPI document generation (AddOpenApi / MapOpenApi). -->
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.*" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
     <!-- Swagger UI only (static UI reading /openapi/{v}.json). No Swashbuckle generator: one generator only. -->
-    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUi" Version="9.*" />
-    <PackageReference Include="Asp.Versioning.Mvc" Version="8.*" />
-    <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="8.*" />
+    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUi" Version="9.0.6" />
+    <PackageReference Include="Asp.Versioning.Mvc" Version="8.1.1" />
+    <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="8.1.1" />
     <!-- Part D: JWT bearer authentication. -->
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.*" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.14" />
   </ItemGroup>
 
   <ItemGroup>

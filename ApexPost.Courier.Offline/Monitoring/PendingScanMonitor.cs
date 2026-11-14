@@ -1,4 +1,3 @@
-using ApexPost.Courier.Offline.Abstractions;
 using ApexPost.Courier.Offline.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -11,19 +10,24 @@ namespace ApexPost.Courier.Offline.Monitoring;
 /// binds it to the Pending Scans screen). The listener token is owned by <see cref="CourierDatabase"/> and removed
 /// when either this monitor or the database is disposed.
 /// </summary>
+/// <remarks>
+/// The monitor belongs to the Couchbase adapter (it registers a Couchbase change listener), so it uses the
+/// repository's synchronous <see cref="CouchbaseScanRepository.CountPending"/>. Neither the constructor nor the
+/// listener callback can await, and blocking on a Task there is avoided.
+/// </remarks>
 public sealed class PendingScanMonitor : IDisposable
 {
-    private readonly IScanRepository repository;
+    private readonly CouchbaseScanRepository repository;
     private readonly ILogger log;
     private readonly IDisposable registration;
     private int pendingCount;
 
-    public PendingScanMonitor(CourierDatabase database, IScanRepository repository, ILogger<PendingScanMonitor>? logger = null)
+    public PendingScanMonitor(CourierDatabase database, CouchbaseScanRepository repository, ILogger<PendingScanMonitor>? logger = null)
     {
         ArgumentNullException.ThrowIfNull(database);
         this.repository = repository ?? throw new ArgumentNullException(nameof(repository));
         log = logger ?? NullLogger<PendingScanMonitor>.Instance;
-        pendingCount = repository.CountPendingAsync().GetAwaiter().GetResult();
+        pendingCount = repository.CountPending();
         registration = database.AddChangeListener(OnDocumentsChanged);
     }
 
@@ -36,7 +40,7 @@ public sealed class PendingScanMonitor : IDisposable
 
     private void OnDocumentsChanged(IReadOnlyList<string> documentIds)
     {
-        var count = repository.CountPendingAsync().GetAwaiter().GetResult();
+        var count = repository.CountPending();
         Volatile.Write(ref pendingCount, count);
         log.LogInformation("[listener] {Count} document(s) changed: {DocumentIds} | pending scans: {Pending}",
             documentIds.Count, string.Join(", ", documentIds), count);

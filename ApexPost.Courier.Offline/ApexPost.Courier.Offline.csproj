@@ -1,14 +1,20 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Week 4 Part A: offline courier store. Couchbase Lite is referenced ONLY here; the Domain and Abstractions
-       folders of this library never use Couchbase types (CourierDomainHasNoCouchbaseDependencyTests enforces it). -->
+  <!-- Week 4 Part A: offline courier store (Couchbase Lite adapter, outbox, change-listener monitor).
+       Couchbase Lite is referenced ONLY here. The domain record and the ports live in
+       ApexPost.Courier.Offline.Domain, which has no package references, so the compiler enforces that the domain
+       never depends on Couchbase. -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>ApexPost.Courier.Offline</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Couchbase.Lite" Version="3.2.*" />
+    <ProjectReference Include="..\ApexPost.Courier.Offline.Domain\ApexPost.Courier.Offline.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Couchbase.Lite" Version="3.2.6" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.13" />
   </ItemGroup>
 
