@@ -309,7 +309,7 @@ dotnet test ApexPost.Server.slnf
 4. Turn airplane mode off. `SyncCoordinator` uploads automatically, **Pending** drops to 0 and **Sync Status**
    shows the time.
 5. **Stop the API** and save a scan, then press "Sync now" a few times. The retries are logged, the circuit opens,
-   and the banner reads **"Server unavailable – working offline"**. Start the API again: after 20 s the circuit
+   and the banner reads **"Server unavailable â€“ working offline"**. Start the API again: after 20 s the circuit
    goes half-open, then closed, and the scan syncs.
 
 See [SECURITY.md](SECURITY.md) and [RESILIENCE.md](RESILIENCE.md).
@@ -348,7 +348,14 @@ No secrets are needed: the test JWT signing key is random per run.
 ## Test results
 
 <!-- test-results:start -->
-Not run yet on this branch. Run `scripts/run-tests.ps1` to fill in this table.
+Last run: 2026-11-15 10:49 UTC on DESKTOP-FB55L35, `scripts/run-tests.ps1`. Full log: [docs/test-results/test-output.txt](docs/test-results/test-output.txt).
+
+| Project | Passed | Failed | Skipped | Total | Duration |
+|---|---|---|---|---|---|
+| ApexPost.UnitTests | 302 | 0 | 0 | 302 | 1 s |
+| ApexPost.IntegrationTests | 148 | 0 | 0 | 148 | 28 s |
+| ApexPost.Specs | 13 | 0 | 0 | 13 | 1 s |
+| **All** | **463** | **0** | **0** | **463** | |
 <!-- test-results:end -->
 
 ## TDD, BDD and Copilot evidence
