@@ -19,7 +19,7 @@ public sealed class ScanUploadItemRequest : IValidatableObject
 {
     /// <summary>The device document ID, scan::{Guid}. The server de-duplicates on it.</summary>
     [Required]
-    [RegularExpression(ValidationPatterns.ScanId, ErrorMessage = "The scan ID must use the format scan::{Guid}.")]
+    [RegularExpression(ValidationPatterns.ScanId, ErrorMessage = "The scan ID must use the format scan::{{Guid}}.")]  // braces doubled: the message is a format string
     public string ScanId { get; init; } = string.Empty;
 
     /// <summary>Pickup, InTransit, Delivered or Failed.</summary>
