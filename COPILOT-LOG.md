@@ -1,7 +1,7 @@
 # Copilot log: AI-drafted tests with human review
 
-GitHub Copilot drafted two pieces of test code. A person reviewed every line before anything was committed.
-This log records each prompt, what Copilot produced, what we kept, changed or rejected and why, and the proof
+GitHub Copilot drafted a set of unit tests for the shipment service. A person reviewed every line before anything was committed.
+This log records the prompt, what Copilot produced, what we kept, changed or rejected and why, and the proof
 that the kept tests can fail.
 
 Copilot-assisted test files carry this comment on the first line:
@@ -13,7 +13,6 @@ Copilot-assisted test files carry this comment on the first line:
 | # | Target | Copilot output | Final file |
 |---|---|---|---|
 | 1 | Unit tests for `CourierShipmentService.ReplaceAsync` and `ListAsync` (Moq) | Section 1.2 | `ApexPost.UnitTests/Courier/CourierShipmentServiceCopilotTests.cs` |
-| 2 | Gherkin feature and step definitions for shipment status updates (API level) | Section 2.2 | `ApexPost.Specs/Features/ShipmentStatusUpdates.feature`, `ApexPost.Specs/Steps/ShipmentStatusSteps.cs` |
 
 ## How each draft was reviewed
 
@@ -53,19 +52,312 @@ Name the class CourierShipmentServiceCopilotTests.
 
 ### 1.2 What Copilot produced
 
-> Paste Copilot's complete answer here, unedited (code block), before making any change.
+Copilot's answer, unedited (11 tests). The first-line marker was requested in the prompt.
 
 ```csharp
-// (Copilot output)
+// Copilot-assisted: drafted with GitHub Copilot, reviewed and corrected by hand. See COPILOT-LOG.md.
+using ApexPost.Application.Abstractions;
+using ApexPost.Application.Courier;
+using ApexPost.Application.Exceptions;
+using ApexPost.Domain.Courier;
+using ApexPost.UnitTests.TestDoubles;
+using Moq;
+
+namespace ApexPost.UnitTests.Courier;
+
+public sealed class CourierShipmentServiceCopilotTests
+{
+    private const string TrackingNumber = "APX-10000001";
+    private static readonly DateTimeOffset Now = FixedClock.DefaultNow;
+
+    private readonly Mock<ICourierShipmentRepository> repository = new();
+    private readonly Mock<IUnitOfWork> unitOfWork = new();
+    private readonly CourierShipmentService service;
+
+    public CourierShipmentServiceCopilotTests()
+    {
+        unitOfWork
+            .Setup(work => work.ExecuteInTransactionAsync(
+                It.IsAny<Func<CancellationToken, Task<bool>>>(),
+                It.IsAny<CancellationToken>()))
+            .Returns((Func<CancellationToken, Task<bool>> operation, CancellationToken token) => operation(token));
+
+        service = new CourierShipmentService(repository.Object, unitOfWork.Object, new FixedClock(Now));
+    }
+
+    [Fact]
+    public async Task ReplaceAsync_ValidChange_UpdatesWeightRecipientAndUpdatedAt()
+    {
+        // Arrange
+        var command = new ReplaceCourierShipmentCommand(
+            3.5m,
+            new Recipient("Jordan Example", "+15550100123", "12 Elm Row", "Maplewood"));
+
+        var existing = new CourierShipment(
+            Guid.NewGuid(),
+            TrackingNumber,
+            2.5m,
+            new Recipient("Jordan Example", "+15550100123", "12 Elm Row", "Maplewood"),
+            CourierShipmentStatus.Created,
+            Now.AddDays(-1),
+            Now.AddDays(-1));
+
+        repository
+            .Setup(repo => repo.FindByTrackingNumberAsync(TrackingNumber, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing);
+
+        repository
+            .Setup(repo => repo.GetDetailsAsync(TrackingNumber, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CourierShipmentDetails(
+                TrackingNumber,
+                CourierShipmentStatus.Created,
+                3.5m,
+                command.Recipient,
+                Now.AddDays(-1),
+                Now,
+                null));
+
+        // Act
+        var result = await service.ReplaceAsync(TrackingNumber, command);
+
+        // Assert
+        Assert.Equal(3.5m, result.WeightKilograms);
+        Assert.Equal("Jordan Example", result.Recipient.Name);
+        Assert.Equal("Maplewood", result.Recipient.City);
+
+        repository.Verify(repo => repo.Update(It.Is<CourierShipment>(shipment =>
+            shipment.TrackingNumber == TrackingNumber &&
+            shipment.WeightKilograms == 3.5m &&
+            shipment.Recipient.City == "Maplewood" &&
+            shipment.UpdatedAtUtc == Now)), Times.Once);
+    }
+
+    [Fact]
+    public async Task ReplaceAsync_DeliveredShipment_ThrowsAndDoesNotUpdate()
+    {
+        // Arrange
+        var command = new ReplaceCourierShipmentCommand(
+            3.5m,
+            new Recipient("Jordan Example", "+15550100123", "12 Elm Row", "Maplewood"));
+
+        var existing = new CourierShipment(
+            Guid.NewGuid(),
+            TrackingNumber,
+            2.5m,
+            new Recipient("Jordan Example", "+15550100123", "12 Elm Row", "Maplewood"),
+            CourierShipmentStatus.Delivered,
+            Now.AddDays(-10),
+            Now.AddDays(-10));
+
+        repository
+            .Setup(repo => repo.FindByTrackingNumberAsync(TrackingNumber, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing);
+
+        // Act
+        var exception = await Assert.ThrowsAsync<ShipmentRuleViolationException>(() =>
+            service.ReplaceAsync(TrackingNumber, command));
+
+        // Assert
+        Assert.Contains("can no longer be edited", exception.Message);
+        repository.Verify(repo => repo.Update(It.IsAny<CourierShipment>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ReplaceAsync_UnknownTrackingNumber_ThrowsShipmentNotFound()
+    {
+        // Arrange
+        repository
+            .Setup(repo => repo.FindByTrackingNumberAsync(TrackingNumber, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((CourierShipment?)null);
+
+        // Act
+        await Assert.ThrowsAsync<ShipmentNotFoundException>(() =>
+            service.ReplaceAsync(
+                TrackingNumber,
+                new ReplaceCourierShipmentCommand(
+                    2.0m,
+                    new Recipient("Jordan Example", "+15550100123", "12 Elm Row", "Maplewood"))));
+
+        // Assert
+        repository.Verify(repo => repo.Update(It.IsAny<CourierShipment>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ReplaceAsync_LowerCaseTrackingNumber_IsNormalizedBeforeLookup()
+    {
+        // Arrange
+        var command = new ReplaceCourierShipmentCommand(
+            3.5m,
+            new Recipient("Jordan Example", "+15550100123", "12 Elm Row", "Maplewood"));
+
+        var existing = new CourierShipment(
+            Guid.NewGuid(),
+            TrackingNumber,
+            2.5m,
+            new Recipient("Jordan Example", "+15550100123", "12 Elm Row", "Maplewood"),
+            CourierShipmentStatus.Created,
+            Now.AddDays(-1),
+            Now.AddDays(-1));
+
+        repository
+            .Setup(repo => repo.FindByTrackingNumberAsync(TrackingNumber, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing);
+
+        repository
+            .Setup(repo => repo.GetDetailsAsync(TrackingNumber, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CourierShipmentDetails(
+                TrackingNumber,
+                CourierShipmentStatus.Created,
+                3.5m,
+                command.Recipient,
+                Now.AddDays(-1),
+                Now,
+                null));
+
+        // Act
+        await service.ReplaceAsync("  apx-10000001  ", command);
+
+        // Assert
+        repository.Verify(repo => repo.FindByTrackingNumberAsync(
+            TrackingNumber,
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ListAsync_PageSizeOne_UsesValidQuery()
+    {
+        // Arrange
+        var query = new CourierShipmentQuery(1, 1, null, null);
+
+        repository
+            .Setup(repo => repo.ListAsync(
+                It.Is<CourierShipmentQuery>(q => q.Page == 1 && q.PageSize == 1),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PagedResult<CourierShipmentDetails>([], 1, 1, 0));
+
+        // Act
+        var result = await service.ListAsync(query);
+
+        // Assert
+        Assert.Equal(1, result.PageSize);
+        Assert.Empty(result.Items);
+    }
+
+    [Fact]
+    public async Task ListAsync_PageSizeFifty_IsAllowed()
+    {
+        // Arrange
+        var query = new CourierShipmentQuery(1, 50, null, null);
+
+        repository
+            .Setup(repo => repo.ListAsync(
+                It.Is<CourierShipmentQuery>(q => q.PageSize == 50),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PagedResult<CourierShipmentDetails>([], 1, 50, 0));
+
+        // Act
+        var result = await service.ListAsync(query);
+
+        // Assert
+        Assert.Equal(50, result.PageSize);
+    }
+
+    [Fact]
+    public async Task ListAsync_PageSizeFiftyOne_Throws()
+    {
+        // Arrange
+        var query = new CourierShipmentQuery(1, 51, null, null);
+
+        // Act
+        var exception = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            service.ListAsync(query));
+
+        // Assert
+        Assert.Equal("pageSize", exception.ParamName);
+    }
+
+    [Fact]
+    public async Task ListAsync_PageSizeZero_Throws()
+    {
+        // Arrange
+        var query = new CourierShipmentQuery(1, 0, null, null);
+
+        // Act
+        var exception = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            service.ListAsync(query));
+
+        // Assert
+        Assert.Equal("pageSize", exception.ParamName);
+    }
+
+    [Fact]
+    public async Task ListAsync_PageZero_Throws()
+    {
+        // Arrange
+        var query = new CourierShipmentQuery(0, 20, null, null);
+
+        // Act
+        var exception = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            service.ListAsync(query));
+
+        // Assert
+        Assert.Equal("page", exception.ParamName);
+    }
+
+    [Fact]
+    public async Task ListAsync_CityFilterTrimsWhitespaceBeforeRepositoryCall()
+    {
+        // Arrange
+        var query = new CourierShipmentQuery(1, 20, null, "  Maplewood  ");
+
+        repository
+            .Setup(repo => repo.ListAsync(
+                It.Is<CourierShipmentQuery>(q => q.City == "Maplewood"),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PagedResult<CourierShipmentDetails>([], 1, 20, 0));
+
+        // Act
+        await service.ListAsync(query);
+
+        // Assert
+        repository.Verify(repo => repo.ListAsync(
+            It.Is<CourierShipmentQuery>(q => q.City == "Maplewood"),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ListAsync_NullQuery_ThrowsArgumentNullException()
+    {
+        // Act
+        await Assert.ThrowsAsync<ArgumentNullException>(() => service.ListAsync(null!));
+    }
+}
 ```
+
+**Checked against the real code before any change:** the service passes `nameof(query.PageSize)` and
+`nameof(query.Page)` to `ArgumentOutOfRangeException.ThrowIfLessThan` / `ThrowIfGreaterThan`, so the exception's
+`ParamName` is `"PageSize"` or `"Page"`. Copilot's three boundary tests expect `"pageSize"` and `"page"`, so they
+fail on correct code. That was the first thing fixed (section 1.3).
 
 ### 1.3 Review decisions
 
 | Generated test | Decision | Reason |
 |---|---|---|
-| *(test name)* | Kept / Changed / Rejected | *(for example: "Rejected: asserts only `Assert.NotNull(result)`; the mock returns the details whatever the service does, so the test cannot fail.")* |
-| | | |
-| | | |
+| `ReplaceAsync_ValidChange_UpdatesWeightRecipientAndUpdatedAt` | **Changed** | The `Verify` on `Update` (weight, `UpdatedAtUtc == Now`, `Times.Once`) was good and is kept. Two problems around it: (1) the "new" recipient is identical to the existing one (Jordan Example, Maplewood), so the test could not notice if the recipient were never replaced; (2) the three `Assert.Equal` lines check `result`, which is exactly what the mocked `GetDetailsAsync` was told to return, so they pass whatever `ReplaceAsync` does (asserting the mock). Now a different recipient (Sam Example, Riverton) is used and checked in the `Verify`, the `result` asserts are removed, and the unit of work is verified `Times.Once`. |
+| `ReplaceAsync_DeliveredShipment_ThrowsAndDoesNotUpdate` | Kept | Right exception, `Update` verified `Times.Never`. Only added `StringComparison.Ordinal` to the message check. |
+| `ReplaceAsync_UnknownTrackingNumber_ThrowsShipmentNotFound` | Kept | Correct path and `Times.Never` on `Update`. |
+| `ReplaceAsync_LowerCaseTrackingNumber_IsNormalizedBeforeLookup` | Kept | Verifies the lookup with the normalised number `Times.Once`. Added the same check for the final read (`GetDetailsAsync`). |
+| `ListAsync_PageSizeOne_UsesValidQuery` | **Rejected** | Its only asserts are `result.PageSize == 1` and `result.Items` empty, and `result` is the `PagedResult` the mock was set up to return, so the test checks its own setup. If the service sent a different query, the `Setup` would not match, Moq would return `null` and the test would crash with a `NullReferenceException` instead of a clear assertion; nothing verifies what the repository actually received. Replaced by a hand-written `[Theory]`, `ListAsync_PageSizeInsideTheLimits_PassesTheQueryToTheRepository` (rows 1 and 50), which uses `Verify` on the query passed to the repository. |
+| `ListAsync_PageSizeFifty_IsAllowed` | **Changed** (merged) | Same "asserting the mock" problem as above. Folded into the new `[Theory]` as the upper boundary row (50). |
+| `ListAsync_PageSizeFiftyOne_Throws` | **Changed** | **Wrong expected value**: it expects `ParamName == "pageSize"`, but the service uses `nameof(query.PageSize)`, which is `"PageSize"`. The draft fails on correct code (see the run above). Fixed, and it now also verifies the repository is never queried. Merged into `ListAsync_PageOrPageSizeOutOfRange_ThrowsAndNeverQueries`. |
+| `ListAsync_PageSizeZero_Throws` | **Changed** | Same wrong `ParamName` (`"pageSize"` instead of `"PageSize"`). Merged into the same `[Theory]`. |
+| `ListAsync_PageZero_Throws` | **Changed** | Same mistake: expects `"page"`, the service reports `"Page"`. Merged into the same `[Theory]`. |
+| `ListAsync_CityFilterTrimsWhitespaceBeforeRepositoryCall` | Kept | Good: `It.Is` with a real condition (`City == "Maplewood"`) and `Verify ... Times.Once`. The duplicated `Setup` condition was simplified to `It.IsAny` so the `Verify` alone decides the outcome. |
+| `ListAsync_NullQuery_ThrowsArgumentNullException` | **Changed** | Had no Assert section. Now also checks that the repository was never called (`VerifyNoOtherCalls`). |
+
+Summary: 4 kept, 6 changed, 1 rejected. The main lessons: Copilot **guessed parameter names** instead of reading
+`nameof(query.PageSize)` (three tests failed on correct code), and it **asserted values that came from its own
+mocks**, which makes a test pass whatever the service does.
 
 Things to look for in this draft:
 
@@ -83,71 +375,13 @@ Things to look for in this draft:
 
 ---
 
-## 2. A Gherkin feature with its step definitions
+## 2. Proof that the generated tests are meaningful
 
-### 2.1 Prompt
-
-Copilot Chat, with these files attached: `#ShipmentCreation.feature`, `#ShipmentCreationSteps.cs`,
-`#ShipmentApiContext.cs`, `#Hooks.cs`, `#ShipmentApiHost.cs`, `#ShipmentsController.cs` (V2).
-
-```text
-Write a Reqnroll feature file ShipmentStatusUpdates.feature, in business language, for a courier updating a
-shipment's status through the API (PATCH /api/v2/shipments/{trackingNumber}/status with body { "status": "..." }),
-and its step definitions in ShipmentStatusSteps.cs.
-Rules: Created -> PickedUp -> InTransit -> OutForDelivery -> Delivered or Failed. Any other change is refused with
-409 Conflict. Only the Courier role may change a status: a token with only the Admin role gets 403 Forbidden.
-An unknown tracking number gives 404.
-Use a Background and a Scenario Outline with an Examples table for allowed and refused changes.
-Tag the feature @api. Reuse ShipmentApiContext through constructor injection (no static fields) and
-TestRunHooks.ApiHost.CreateClientWithRoles to get clients. Create shipments through POST /api/v2/shipments with
-an Admin token and add their tracking numbers to context.CreatedTrackingNumbers so the existing AfterScenario
-hook deletes them. Use regular-expression step definitions like ShipmentCreationSteps.
-Use tracking numbers APX-51000001 and higher.
-```
-
-### 2.2 What Copilot produced
-
-> Paste the generated feature file and step definitions here, unedited.
-
-```gherkin
-# (Copilot output: feature)
-```
-
-```csharp
-// (Copilot output: steps)
-```
-
-### 2.3 Review decisions
-
-| Generated item | Decision | Reason |
-|---|---|---|
-| *(scenario / step)* | Kept / Changed / Rejected | |
-| | | |
-
-Things to look for in this draft:
-
-- Technical wording in the scenarios ("PATCH returns 409") instead of business language ("the change is refused").
-- A client with both roles used for the 403 scenario: then the test passes or fails for the wrong reason.
-- Step text that duplicates an existing step in `ShipmentCreationSteps` (Reqnroll reports an ambiguous step).
-- Static fields used to pass the response between steps.
-- Tracking numbers that clash with `ShipmentCreation.feature` (50000001-50000021).
-- A Scenario Outline whose expected result is computed by calling the production status table (copying the
-  implementation).
-
-### 2.4 Final version
-
-`ApexPost.Specs/Features/ShipmentStatusUpdates.feature` and `ApexPost.Specs/Steps/ShipmentStatusSteps.cs`
-(steps class marked with the Copilot comment).
-
----
-
-## 3. Proof that the generated tests are meaningful
-
-Each kept test must **fail** when the behaviour it checks is broken. `scripts/prove-tests-fail.ps1` runs the tests
+Each kept test must be able to **fail** when the behaviour it checks is broken. `scripts/prove-tests-fail.ps1` runs the tests
 on the real code, applies one deliberate bug, runs them again (they must fail), restores the file byte for byte
 and runs them a third time. The full logs are in `docs/test-results/`.
 
-### 3.1 Break the page-size limit (tests from section 1)
+### 2.1 Break the page-size limit
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/prove-tests-fail.ps1 `
@@ -161,29 +395,36 @@ powershell -ExecutionPolicy Bypass -File scripts/prove-tests-fail.ps1 `
 
 | Run | Result |
 |---|---|
-| Real code | *(paste the summary line, e.g. "Passed! - Failed: 0, Passed: 10")* |
-| Page size 51 allowed (bug) | *(e.g. "Failed! - Failed: 1 ... ListAsync_PageSizeAboveFifty_Throws")* |
-| Restored | *(Passed)* |
+| Real code | `Passed!  - Failed:     0, Passed:    11, Skipped:     0, Total:    11, Duration: 254 ms - ApexPost.UnitTests.dll (net10.0)` |
+| Page size 51 allowed (bug) | `pageSize: 51, parameter: "PageSize") [FAIL]`<br>`+ CategoryInfo          : NotSpecified: ([xUnit.net 00:0...geSize") [FAIL]:String) [], RemoteException`<br>`Failed!  - Failed:     1, Passed:    10, Skipped:     0, Total:    11, Duration: 242 ms - ApexPost.UnitTests.dll (net10.0)` |
+| Restored | `Passed!  - Failed:     0, Passed:    11, Skipped:     0, Total:    11, Duration: 254 ms - ApexPost.UnitTests.dll (net10.0)` |
 
-### 3.2 Allow a forbidden status change (feature from section 2)
+Full output: `docs/test-results/mutation-page-size.txt`.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/prove-tests-fail.ps1 `
-    -Name "mutation-status-machine" `
-    -File "ApexPost.Domain/Courier/CourierShipment.cs" `
-    -Find "[CourierShipmentStatus.Created] = [CourierShipmentStatus.PickedUp]," `
-    -Replace "[CourierShipmentStatus.Created] = [CourierShipmentStatus.PickedUp, CourierShipmentStatus.Delivered]," `
-    -Project "ApexPost.Specs" `
-    -Filter "FullyQualifiedName~ShipmentStatusUpdates"
+### 2.2 Generated test that was rejected (for the viva)
+
+Copilot wrote:
+
+```csharp
+[Fact]
+public async Task ListAsync_PageSizeOne_UsesValidQuery()
+{
+    var query = new CourierShipmentQuery(1, 1, null, null);
+    repository
+        .Setup(repo => repo.ListAsync(
+            It.Is<CourierShipmentQuery>(q => q.Page == 1 && q.PageSize == 1),
+            It.IsAny<CancellationToken>()))
+        .ReturnsAsync(new PagedResult<CourierShipmentDetails>([], 1, 1, 0));
+
+    var result = await service.ListAsync(query);
+
+    Assert.Equal(1, result.PageSize);
+    Assert.Empty(result.Items);
+}
 ```
 
-| Run | Result |
-|---|---|
-| Real code | |
-| Created -> Delivered allowed (bug) | |
-| Restored | |
-
-### 3.3 Generated test that was rejected (for the viva)
-
-> Describe one generated test you rejected, quote it, and explain in two or three sentences why it was wrong
-> and what replaced it.
+It looks thorough, but both asserts read back the `PagedResult` the mock was told to return, so the test checks its
+own set-up rather than the service. If the service sent the wrong query, the `Setup` would not match, Moq would
+return `null`, and the test would crash with a `NullReferenceException` instead of explaining what went wrong.
+It was replaced by `ListAsync_PageSizeInsideTheLimits_PassesTheQueryToTheRepository` (rows 1 and 50), which
+verifies the query the repository actually received with `repository.Verify(..., Times.Once)`.

@@ -1,0 +1,53 @@
+﻿Mutation: mutation-page-size
+Date (UTC): 2026-11-15 14:38
+File: ApexPost.Application/Courier/CourierShipmentService.cs
+Changed: ThrowIfGreaterThan(query.PageSize, CourierShipmentQuery.MaximumPageSize
+To:      ThrowIfGreaterThan(query.PageSize, CourierShipmentQuery.MaximumPageSize + 1
+Tests: ApexPost.UnitTests --filter "FullyQualifiedName~CourierShipmentServiceCopilotTests"
+
+PROVEN: the tests fail when the code is broken and pass on the real code.
+
+---- 1. Real code (tests must pass) (exit code 0)
+Passed!  - Failed:     0, Passed:    11, Skipped:     0, Total:    11, Duration: 254 ms - ApexPost.UnitTests.dll (net10.0)
+
+---- 2. Broken code (tests must fail) (exit code 1)
+pageSize: 51, parameter: "PageSize") [FAIL]
+    + CategoryInfo          : NotSpecified: ([xUnit.net 00:0...geSize") [FAIL]:String) [], RemoteException
+  Error Message:
+Failed!  - Failed:     1, Passed:    10, Skipped:     0, Total:    11, Duration: 242 ms - ApexPost.UnitTests.dll (net10.0)
+
+---- 3. Restored code (tests must pass again) (exit code 0)
+Passed!  - Failed:     0, Passed:    11, Skipped:     0, Total:    11, Duration: 254 ms - ApexPost.UnitTests.dll (net10.0)
+
+==== Full output of run 2 (broken code)
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  ApexPost.Domain -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Domain\bin\Debug\net10.0\ApexPost.Domain.dll
+  ApexPost.Application -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Application\bin\Debug\net10.0\ApexPost.Application.dll
+  ApexPost.Infrastructure -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Infrastructure\bin\Debug\net10.0\ApexPost.Infrastructure.dll
+  ApexPost.Web -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Web\bin\Debug\net10.0\ApexPost.Web.dll
+  ApexPost.Api -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Api\bin\Debug\net10.0\ApexPost.Api.dll
+  ApexPost.Courier.Offline.Domain -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Courier.Offline.Domain\bin\Debug\net10.0\ApexPost.Courier.Offline.Domain.dll
+  ApexPost.Courier.Offline -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Courier.Offline\bin\Debug\net10.0\ApexPost.Courier.Offline.dll
+  ApexPost.Courier.Core -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Courier.Core\bin\Debug\net10.0\ApexPost.Courier.Core.dll
+  ApexPost.UnitTests -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.UnitTests\bin\Debug\net10.0\ApexPost.UnitTests.dll
+Test run for E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.UnitTests\bin\Debug\net10.0\ApexPost.UnitTests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+dotnet.exe : [xUnit.net 00:00:00.73]     ApexPost.UnitTests.Courier.CourierShipmentServiceCopilotTests.ListAsync_PageOrPageSizeOutOfRange_ThrowsAndNeverQueries(page: 1, 
+pageSize: 51, parameter: "PageSize") [FAIL]
+At E:\DotNetTraining\Day1\Lab_Project2_Assignment\scripts\prove-tests-fail.ps1:47 char:15
++ ...   $output = & dotnet test $projectPath -m:1 --filter $Filter --nologo ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([xUnit.net 00:0...geSize") [FAIL]:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  Failed ApexPost.UnitTests.Courier.CourierShipmentServiceCopilotTests.ListAsync_PageOrPageSizeOutOfRange_ThrowsAndNeverQueries(page: 1, pageSize: 51, parameter: "PageSize") [5 ms]
+  Error Message:
+   Assert.Throws() Failure: No exception was thrown
+Expected: typeof(System.ArgumentOutOfRangeException)
+  Stack Trace:
+     at ApexPost.UnitTests.Courier.CourierShipmentServiceCopilotTests.ListAsync_PageOrPageSizeOutOfRange_ThrowsAndNeverQueries(Int32 page, Int32 pageSize, String parameter) in E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.UnitTests\Courier\CourierShipmentServiceCopilotTests.cs:line 144
+--- End of stack trace from previous location ---
+
+Failed!  - Failed:     1, Passed:    10, Skipped:     0, Total:    11, Duration: 242 ms - ApexPost.UnitTests.dll (net10.0)
+
