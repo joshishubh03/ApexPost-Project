@@ -305,4 +305,4 @@ Server together, so a wiring mistake anywhere in the chain shows up.
    It proves that a duplicate tracking number is refused **before** anything is staged (`Add` verified
    `Times.Never`). It does not prove that the database would also refuse it: the mock's `ExistsAsync` returns
    whatever we tell it. The unique index is proved by `SqlConstraintTests` and the 409 by `ShipmentsApiTests`.
-4. **One Copilot test we rejected:** see [COPILOT-LOG.md](COPILOT-LOG.md), section 3.3.
+4. **One Copilot test we rejected:** see [COPILOT-LOG.md](COPILOT-LOG.md), section 2.2.

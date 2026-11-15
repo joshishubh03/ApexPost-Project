@@ -43,9 +43,10 @@ $logPath = Join-Path $outDir "$Name.txt"
 
 function Invoke-Tests([string] $label) {
     Write-Host "== $label" -ForegroundColor Cyan
-    $output = & dotnet test $projectPath --filter $Filter --nologo 2>&1 | Out-String
+    $ErrorActionPreference = "Continue"
+    $output = & dotnet test $projectPath -m:1 --filter $Filter --nologo 2>&1 | Out-String
     $exit = $LASTEXITCODE
-    $summary = ($output -split "`r?`n" | Where-Object { $_ -match "Passed!|Failed!|Failed |Total tests|error " }) -join "`n"
+    $summary = ($output -split "`r?`n" | Where-Object { $_ -match "Test summary|Passed!|Failed!|\[FAIL\]|Total tests|error " }) -join "`n"
     Write-Host $summary
     return [pscustomobject]@{ Label = $label; Exit = $exit; Output = $output; Summary = $summary }
 }
