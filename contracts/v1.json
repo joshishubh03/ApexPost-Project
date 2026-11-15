@@ -214,15 +214,7 @@
             "schema": {
               "maximum": 2147483647,
               "minimum": 1,
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "string"
-                }
-              ],
+              "type": "integer",
               "format": "int32"
             }
           },
@@ -233,15 +225,7 @@
             "schema": {
               "maximum": 50,
               "minimum": 1,
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "string"
-                }
-              ],
+              "type": "integer",
               "format": "int32"
             }
           },
@@ -849,15 +833,7 @@
           "weightKg": {
             "maximum": 70,
             "minimum": 0.1,
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "string"
-              }
-            ],
+            "type": "number",
             "description": "Parcel weight in kilograms, 0.1 to 70.",
             "format": "decimal"
           },
@@ -899,21 +875,7 @@
             "nullable": true
           },
           "status": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "string"
-              },
-              {
-                "enum": [
-                  null
-                ],
-                "nullable": true
-              }
-            ],
+            "type": "integer",
             "format": "int32",
             "nullable": true
           },
@@ -1010,17 +972,7 @@
             "description": "The device document ID, scan::{Guid}. The server de-duplicates on it."
           },
           "scanType": {
-            "oneOf": [
-              {
-                "enum": [
-                  null
-                ],
-                "nullable": true
-              },
-              {
-                "$ref": "#/components/schemas/CourierScanType"
-              }
-            ]
+            "$ref": "#/components/schemas/CourierScanType"
           },
           "courierId": {
             "maxLength": 40,
@@ -1084,28 +1036,12 @@
         "type": "object",
         "properties": {
           "accepted": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "string"
-              }
-            ],
+            "type": "integer",
             "description": "New scans stored.",
             "format": "int32"
           },
           "duplicatesSkipped": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "string"
-              }
-            ],
+            "type": "integer",
             "description": "Scans whose ID was already stored (or repeated in the batch): skipped, not duplicated.",
             "format": "int32"
           },
@@ -1137,54 +1073,22 @@
             "description": "The shipments on this page, newest first."
           },
           "page": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "string"
-              }
-            ],
+            "type": "integer",
             "description": "1-based page number.",
             "format": "int32"
           },
           "pageSize": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "string"
-              }
-            ],
+            "type": "integer",
             "description": "Requested page size.",
             "format": "int32"
           },
           "totalCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "string"
-              }
-            ],
+            "type": "integer",
             "description": "Number of shipments matching the filter.",
             "format": "int32"
           },
           "totalPages": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "string"
-              }
-            ],
+            "type": "integer",
             "description": "Number of pages.",
             "format": "int32"
           }
@@ -1210,28 +1114,12 @@
             "description": "Tracking number, e.g. APX-10000001."
           },
           "status": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "string"
-              }
-            ],
+            "type": "integer",
             "description": "Numeric status code: 0 Created, 1 PickedUp, 2 InTransit, 3 OutForDelivery, 4 Delivered, 5 Failed.\r\n(v2 returns the status name instead.)",
             "format": "int32"
           },
           "weightKg": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "string"
-              }
-            ],
+            "type": "number",
             "description": "Weight in kilograms.",
             "format": "decimal"
           },
@@ -1276,15 +1164,7 @@
           "weightKg": {
             "maximum": 70,
             "minimum": 0.1,
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "string"
-              }
-            ],
+            "type": "number",
             "description": "Parcel weight in kilograms, 0.1 to 70.",
             "format": "decimal"
           },
@@ -1321,17 +1201,7 @@
         "type": "object",
         "properties": {
           "status": {
-            "oneOf": [
-              {
-                "enum": [
-                  null
-                ],
-                "nullable": true
-              },
-              {
-                "$ref": "#/components/schemas/CourierShipmentStatus"
-              }
-            ]
+            "$ref": "#/components/schemas/CourierShipmentStatus"
           }
         },
         "description": "Body of PATCH /shipments/{trackingNumber}/status."
@@ -1348,21 +1218,7 @@
             "nullable": true
           },
           "status": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "string"
-              },
-              {
-                "enum": [
-                  null
-                ],
-                "nullable": true
-              }
-            ],
+            "type": "integer",
             "format": "int32",
             "nullable": true
           },
