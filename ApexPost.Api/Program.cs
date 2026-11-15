@@ -34,7 +34,14 @@ builder.Services.Configure<RouteOptions>(options =>
 builder.Services
     .AddControllers()
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
-builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+// These options also drive the built-in OpenAPI generator. Strict number handling documents numbers as plain
+// "number"/"integer" instead of "number or numeric string" (anyOf), which NSwag would turn into empty wrapper
+// classes (WeightKg, Page, ...) in the generated client. Controllers keep their own (unchanged) JSON options.
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    options.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;
+});
 
 // Part D: JWT bearer authentication. Issuer/audience/lifetime/signing key are all validated; values come from
 // configuration ("Jwt" section) and the signing key from User Secrets.

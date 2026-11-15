@@ -44,6 +44,25 @@ public sealed class OpenApiDocumentTests : IClassFixture<OpenApiDocumentTests.De
             $"contracts/{version}.json is out of date with the API. Run scripts/update-contracts.ps1, review the diff and record the change in VERSIONING.md.");
     }
 
+    [Theory]
+    [InlineData("v1")]
+    [InlineData("v2")]
+    public async Task Request_schemas_use_plain_numbers_and_enum_references_so_the_sdk_gets_real_types(string version)
+    {
+        // Arrange
+        var schemas = (await GetDocumentAsync(version)).GetProperty("components").GetProperty("schemas");
+
+        // Act
+        var weight = schemas.GetProperty("CreateShipmentRequest").GetProperty("properties").GetProperty("weightKg");
+        var scanType = schemas.GetProperty("ScanUploadItemRequest").GetProperty("properties").GetProperty("scanType");
+
+        // Assert: no "number or string" union and no "null or enum" union (NSwag turns both into empty classes).
+        Assert.Equal("number", weight.GetProperty("type").GetString());
+        Assert.False(weight.TryGetProperty("anyOf", out _));
+        Assert.False(scanType.TryGetProperty("oneOf", out _));
+        Assert.EndsWith("/CourierScanType", scanType.GetProperty("$ref").GetString(), StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task Documents_carry_the_title_contact_and_versions()
     {
