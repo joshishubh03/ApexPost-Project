@@ -60,7 +60,7 @@ namespace ApexPost.Client
         /// <param name="city">Optional city filter (exact match).</param>
         /// <returns>One page of shipments.</returns>
         /// <exception cref="ApexPostApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<ShipmentPageResponseV2> ListShipmentsAsync(Page? page = null, PageSize? pageSize = null, CourierShipmentStatus? status = null, string? city = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<ShipmentPageResponseV2> ListShipmentsAsync(int? page = null, int? pageSize = null, CourierShipmentStatus? status = null, string? city = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -421,7 +421,7 @@ namespace ApexPost.Client
         /// <param name="city">Optional city filter (exact match).</param>
         /// <returns>One page of shipments.</returns>
         /// <exception cref="ApexPostApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<ShipmentPageResponseV2> ListShipmentsAsync(Page? page = null, PageSize? pageSize = null, CourierShipmentStatus? status = null, string? city = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<ShipmentPageResponseV2> ListShipmentsAsync(int? page = null, int? pageSize = null, CourierShipmentStatus? status = null, string? city = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -1506,7 +1506,8 @@ namespace ApexPost.Client
         /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("weightKg")]
-        public WeightKg? WeightKg { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Range(typeof(decimal), "0.1", "70")]
+        public decimal? WeightKg { get; set; } = default!;
 
         /// <summary>
         /// Recipient full name.
@@ -1650,7 +1651,7 @@ namespace ApexPost.Client
         public string? Title { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("status")]
-        public Status? Status { get; set; } = default!;
+        public int? Status { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("detail")]
         public string? Detail { get; set; } = default!;
@@ -1841,7 +1842,7 @@ namespace ApexPost.Client
         public string ScanId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("scanType")]
-        public ScanType? ScanType { get; set; } = default!;
+        public CourierScanType? ScanType { get; set; } = default!;
 
         /// <summary>
         /// Courier who took the scan.
@@ -1933,14 +1934,14 @@ namespace ApexPost.Client
         /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("accepted")]
-        public Accepted Accepted { get; set; } = default!;
+        public int Accepted { get; set; } = default!;
 
         /// <summary>
         /// Scans whose ID was already stored (or repeated in the batch): skipped, not duplicated.
         /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("duplicatesSkipped")]
-        public DuplicatesSkipped DuplicatesSkipped { get; set; } = default!;
+        public int DuplicatesSkipped { get; set; } = default!;
 
         /// <summary>
         /// Scans refused by a business rule, with the reason.
@@ -1980,28 +1981,28 @@ namespace ApexPost.Client
         /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("page")]
-        public Page2 Page { get; set; } = default!;
+        public int Page { get; set; } = default!;
 
         /// <summary>
         /// Requested page size.
         /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("pageSize")]
-        public PageSize2 PageSize { get; set; } = default!;
+        public int PageSize { get; set; } = default!;
 
         /// <summary>
         /// Number of shipments matching the filter.
         /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("totalCount")]
-        public TotalCount TotalCount { get; set; } = default!;
+        public int TotalCount { get; set; } = default!;
 
         /// <summary>
         /// Number of pages.
         /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("totalPages")]
-        public TotalPages TotalPages { get; set; } = default!;
+        public int TotalPages { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -2037,7 +2038,7 @@ namespace ApexPost.Client
         /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("weightKg")]
-        public WeightKg2 WeightKg { get; set; } = default!;
+        public decimal WeightKg { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("recipient")]
         [System.ComponentModel.DataAnnotations.Required]
@@ -2084,7 +2085,8 @@ namespace ApexPost.Client
         /// </summary>
 
         [System.Text.Json.Serialization.JsonPropertyName("weightKg")]
-        public WeightKg3? WeightKg { get; set; } = default!;
+        [System.ComponentModel.DataAnnotations.Range(typeof(decimal), "0.1", "70")]
+        public decimal? WeightKg { get; set; } = default!;
 
         /// <summary>
         /// Recipient full name.
@@ -2141,7 +2143,7 @@ namespace ApexPost.Client
     {
 
         [System.Text.Json.Serialization.JsonPropertyName("status")]
-        public CourierShipmentStatus? Status { get; set; } = default!;
+        public CourierShipmentStatus Status { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -2165,7 +2167,7 @@ namespace ApexPost.Client
         public string? Title { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("status")]
-        public Status2? Status { get; set; } = default!;
+        public int? Status { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("detail")]
         public string? Detail { get; set; } = default!;
@@ -2175,216 +2177,6 @@ namespace ApexPost.Client
 
         [System.Text.Json.Serialization.JsonPropertyName("errors")]
         public System.Collections.Generic.IDictionary<string, System.Collections.Generic.ICollection<string>>? Errors { get; set; } = default!;
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Page
-    {
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class PageSize
-    {
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class WeightKg
-    {
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Status
-    {
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class ScanType
-    {
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Accepted
-    {
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class DuplicatesSkipped
-    {
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Page2
-    {
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class PageSize2
-    {
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class TotalCount
-    {
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class TotalPages
-    {
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class WeightKg2
-    {
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class WeightKg3
-    {
-
-        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
-
-        [System.Text.Json.Serialization.JsonExtensionData]
-        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
-        {
-            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
-            set { _additionalProperties = value; }
-        }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public partial class Status2
-    {
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
