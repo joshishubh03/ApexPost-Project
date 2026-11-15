@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 
@@ -113,6 +114,25 @@ public static class OpenApiConfiguration
             return Task.CompletedTask;
         });
 
+        // A nullable enum property (CourierScanType?, CourierShipmentStatus? on the request DTOs, nullable so that
+        // [Required] can report a missing value) is emitted as oneOf [ {enum: [null]}, {$ref: enum} ]. NSwag turns that
+        // into an empty wrapper class instead of the enum, so the oneOf is collapsed to the enum reference. Run both per
+        // schema and once over the finished components, so it applies whichever stage holds the references.
+        options.AddSchemaTransformer((schema, _, _) =>
+        {
+            CollapseNullableOneOf(schema.Properties);
+            return Task.CompletedTask;
+        });
+        options.AddDocumentTransformer((document, _, _) =>
+        {
+            foreach (var component in document.Components?.Schemas?.Values ?? [])
+            {
+                CollapseNullableOneOf((component as OpenApiSchema)?.Properties);
+            }
+
+            return Task.CompletedTask;
+        });
+
         // decimal -> "format": "decimal" so generated clients use decimal (money/weight) instead of double.
         options.AddSchemaTransformer((schema, context, _) =>
         {
@@ -125,4 +145,33 @@ public static class OpenApiConfiguration
             return Task.CompletedTask;
         });
     }
+
+    /// <summary>Replaces <c>oneOf [ {enum: [null]}, X ]</c> property schemas with X.</summary>
+    private static void CollapseNullableOneOf(IDictionary<string, IOpenApiSchema>? properties)
+    {
+        if (properties is null)
+        {
+            return;
+        }
+
+        foreach (var name in properties.Keys.ToList())
+        {
+            if (properties[name] is not OpenApiSchema { OneOf: { Count: 2 } options })
+            {
+                continue;
+            }
+
+            var real = options.Where(option => !IsNullOnly(option)).ToList();
+            if (real.Count == 1)
+            {
+                properties[name] = real[0];
+            }
+        }
+    }
+
+    // The "null" branch is either { enum: [null] } or a schema whose only type is null, depending on the stage.
+    private static bool IsNullOnly(IOpenApiSchema option) =>
+        option is OpenApiSchema { Type: JsonSchemaType.Null } ||
+        (option is OpenApiSchema { Enum: { Count: > 0 } values } &&
+         values.All(value => value is null || value.GetValueKind() == JsonValueKind.Null));
 }

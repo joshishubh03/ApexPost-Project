@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Week 4 Part A: courier domain (ShipmentScan) and the storage-neutral ports (IScanRepository,
+       IShipmentUploader). This project has NO package or project references on purpose: the compiler itself
+       guarantees that the domain can never use a Couchbase type. Couchbase Lite lives only in
+       ApexPost.Courier.Offline, which references this project. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>ApexPost.Courier.Offline</RootNamespace>
+  </PropertyGroup>
+
+</Project>

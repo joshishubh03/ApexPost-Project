@@ -1,0 +1,52 @@
+﻿==== ApexPost.UnitTests
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  ApexPost.Domain -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Domain\bin\Debug\net10.0\ApexPost.Domain.dll
+  ApexPost.Courier.Offline.Domain -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Courier.Offline.Domain\bin\Debug\net10.0\ApexPost.Courier.Offline.Domain.dll
+  ApexPost.Courier.Offline -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Courier.Offline\bin\Debug\net10.0\ApexPost.Courier.Offline.dll
+  ApexPost.Application -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Application\bin\Debug\net10.0\ApexPost.Application.dll
+  ApexPost.Courier.Core -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Courier.Core\bin\Debug\net10.0\ApexPost.Courier.Core.dll
+  ApexPost.Infrastructure -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Infrastructure\bin\Debug\net10.0\ApexPost.Infrastructure.dll
+  ApexPost.Api -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Api\bin\Debug\net10.0\ApexPost.Api.dll
+  ApexPost.Web -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Web\bin\Debug\net10.0\ApexPost.Web.dll
+  ApexPost.UnitTests -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.UnitTests\bin\Debug\net10.0\ApexPost.UnitTests.dll
+Test run for E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.UnitTests\bin\Debug\net10.0\ApexPost.UnitTests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: E:\DotNetTraining\Day1\Lab_Project2_Assignment\docs\test-results\ApexPost.UnitTests\ApexPost.UnitTests.trx
+
+Passed!  - Failed:     0, Passed:   302, Skipped:     0, Total:   302, Duration: 1 s - ApexPost.UnitTests.dll (net10.0)
+
+==== ApexPost.IntegrationTests
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  ApexPost.Domain -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Domain\bin\Debug\net10.0\ApexPost.Domain.dll
+  ApexPost.Courier.Offline.Domain -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Courier.Offline.Domain\bin\Debug\net10.0\ApexPost.Courier.Offline.Domain.dll
+  ApexPost.Application -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Application\bin\Debug\net10.0\ApexPost.Application.dll
+  ApexPost.Courier.Offline -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Courier.Offline\bin\Debug\net10.0\ApexPost.Courier.Offline.dll
+  ApexPost.Infrastructure -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Infrastructure\bin\Debug\net10.0\ApexPost.Infrastructure.dll
+  ApexPost.Courier.Core -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Courier.Core\bin\Debug\net10.0\ApexPost.Courier.Core.dll
+  ApexPost.Api -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Api\bin\Debug\net10.0\ApexPost.Api.dll
+  ApexPost.Web -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Web\bin\Debug\net10.0\ApexPost.Web.dll
+  ApexPost.IntegrationTests -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.IntegrationTests\bin\Debug\net10.0\ApexPost.IntegrationTests.dll
+Test run for E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.IntegrationTests\bin\Debug\net10.0\ApexPost.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: E:\DotNetTraining\Day1\Lab_Project2_Assignment\docs\test-results\ApexPost.IntegrationTests\ApexPost.IntegrationTests.trx
+
+Passed!  - Failed:     0, Passed:   148, Skipped:     0, Total:   148, Duration: 28 s - ApexPost.IntegrationTests.dll (net10.0)
+
+==== ApexPost.Specs
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  ApexPost.Domain -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Domain\bin\Debug\net10.0\ApexPost.Domain.dll
+  ApexPost.Courier.Offline.Domain -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Courier.Offline.Domain\bin\Debug\net10.0\ApexPost.Courier.Offline.Domain.dll
+  ApexPost.Application -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Application\bin\Debug\net10.0\ApexPost.Application.dll
+  ApexPost.Courier.Offline -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Courier.Offline\bin\Debug\net10.0\ApexPost.Courier.Offline.dll
+  ApexPost.Infrastructure -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Infrastructure\bin\Debug\net10.0\ApexPost.Infrastructure.dll
+  ApexPost.Api -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Api\bin\Debug\net10.0\ApexPost.Api.dll
+  ApexPost.Specs -> E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Specs\bin\Debug\net10.0\ApexPost.Specs.dll
+Test run for E:\DotNetTraining\Day1\Lab_Project2_Assignment\ApexPost.Specs\bin\Debug\net10.0\ApexPost.Specs.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: E:\DotNetTraining\Day1\Lab_Project2_Assignment\docs\test-results\ApexPost.Specs\ApexPost.Specs.trx
+
+Passed!  - Failed:     0, Passed:    13, Skipped:     0, Total:    13, Duration: 1 s - ApexPost.Specs.dll (net10.0)
+

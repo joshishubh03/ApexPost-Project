@@ -8,8 +8,8 @@ with a merge commit.
 
 | Criterion | Evidence |
 |---|---|
-| Database lifecycle and document model (5) | `ApexPost.Courier.Offline/Storage/CourierDatabase.cs`: `apexpost_courier`, default collection, `IDisposable`. `Domain/ShipmentScan.cs`: all the required fields, and IDs `scan::{Guid}`. |
-| Repository and key-value CRUD (5) | `Abstractions/IScanRepository.cs`, `Storage/CouchbaseScanRepository.cs`. `ArchitectureTests` proves the domain has no Couchbase types. |
+| Database lifecycle and document model (5) | `ApexPost.Courier.Offline/Storage/CourierDatabase.cs`: `apexpost_courier`, default collection, `IDisposable`. `ApexPost.Courier.Offline.Domain/Domain/ShipmentScan.cs`: all the required fields, and IDs `scan::{Guid}`. |
+| Repository and key-value CRUD (5) | `ApexPost.Courier.Offline.Domain/Abstractions/IScanRepository.cs`, `ApexPost.Courier.Offline/Storage/CouchbaseScanRepository.cs`. The domain is a separate project with no package references, so the compiler keeps Couchbase out of it; `ArchitectureTests` guards that project's references (ADR 0054). |
 | SQL++ queries, parameters, indexes (6) | Queries by tracking number (ordered by `scannedAtUtc`), pending, and counts per scan type for a courier. All use `$parameters`. Value indexes on `trackingNumber`, `syncStatus` and `courierId`. Tests: `CouchbaseScanRepositoryTests`. |
 | Outbox / offline persistence (4) | `Outbox/OutboxService.cs` (save locally as Pending; Synced or Failed; transient errors stay Pending) and `FakeShipmentUploader`. Tests: `OutboxServiceTests`. |
 | Change listener and clean-up (3) | `Monitoring/PendingScanMonitor.cs` logs the changed IDs and the live pending count. `CourierDatabase.Dispose()` removes the tokens. Tests: `ChangeListenerTests`. |
@@ -51,6 +51,15 @@ with a merge commit.
 | Offline sync and SecureStorage (4) | `Sync/ApiShipmentUploader.cs`, `Sync/SyncCoordinator.cs`, `ApexPost.Courier/Services/PlatformServices.cs`. Tests: `OfflineSyncTests`. |
 | End-to-end demo | Demo script in README ("Demo script"); automated evidence in `OfflineSyncTests`, `ResilienceTests`, `SecurityApiTests` |
 
+## Review follow-ups
+
+| Feedback | Change | Evidence |
+|---|---|---|
+| Part A domain shared a project with Couchbase | `ShipmentScan` and the ports moved to `ApexPost.Courier.Offline.Domain`, a project with no package references | ADR 0054, `ArchitectureTests` |
+| Wildcard package versions | Every PackageReference has an exact version | ADR 0054, `PackageVersionTests` |
+| `PendingScanMonitor` blocked on a Task | Uses the synchronous `CouchbaseScanRepository.CountPending()` | `ChangeListenerTests.Monitor_starts_from_the_stored_pending_count_using_the_synchronous_count` |
+| A shipped Week 3 migration was edited | `Week3SchemaCompliance` restored to the shipped version; the idempotent script is handled by `IdempotentScriptMigrationsSqlGenerator` | ADR 0053, `MigrationScriptTests` |
+
 ## Verification
 
 ```powershell
@@ -58,3 +67,17 @@ dotnet build ApexPost.Server.slnf      # everything except the MAUI app
 dotnet test  ApexPost.Server.slnf      # LocalDB; first run also writes the generated contracts/v1.json and v2.json
 dotnet build ApexPost.Courier -f net10.0-windows10.0.19041.0
 ```
+
+---
+
+# Week 5 assessment evidence (testing strategy)
+
+| Criterion | Evidence |
+|---|---|
+| Strategy document (20) | [TESTING-STRATEGY.md](../TESTING-STRATEGY.md): risk map (10 risks), pyramid with proportions and reasons, xUnit justification, one row per existing test class (kept / modified / removed), data access strategy (Moq, fakes, why not SQLite, SQL Server test database, why not to mock `DbContext`), what is not tested |
+| Unit tests (15) | `ApexPost.UnitTests`: AAA comments and `Method_Scenario_ExpectedResult` names in all new tests; `[Theory]` for status transitions (36 rows), tracking number, weight, phone, clock skew, scan ID, batch size; boundaries (0.09 / 0.1 / 70 / 70.01, 300 s / 301 s, 50 / 51); exception tests. Runs from Test Explorer and `dotnet test` |
+| Mocking and isolation (20) | Moq: `CourierShipmentServiceMockTests`, `OutboxServiceMockTests` (`Setup`, `ReturnsAsync`, `SetupSequence`, `ThrowsAsync`, `It.Is`, `It.IsAny`, `Verify` + `Times`, `VerifyNoOtherCalls`). HTTP: `ApexApiClientHttpTests` (200 JSON, 404, 500, timeout, cancellation, ProblemDetails). Repositories on SQL Server only (`IntegrationTests/SqlServer`). End-to-end API test: `ShipmentsApiTests` with `WebApplicationFactory`, a disposable database and test JWTs |
+| TDD (15) | Commits `RED:` / `GREEN:` / `REFACTOR:`; [TDD-LOG.md](../TDD-LOG.md); `StaleScanRuleTests` |
+| BDD (15) | `ApexPost.Specs` with Reqnroll 3.3.4: `ShipmentCreation.feature` (API level), `ScanSync.feature` (service level), Background, Scenario Outlines with Examples, context injection (`ShipmentApiContext`, `CourierSyncContext`), hooks (`Support/Hooks.cs`) |
+| Copilot (10) | [COPILOT-LOG.md](../COPILOT-LOG.md): prompts, review checklist and decisions, `scripts/prove-tests-fail.ps1` logs in `docs/test-results/` |
+| Results and reflection (5) | README "Test results" (written by `scripts/run-tests.ps1`), reflection and viva notes in TESTING-STRATEGY.md sections 10-11 |

@@ -1,7 +1,7 @@
 # Generated SQL samples (EF Core `ToQueryString()`)
 
 Captured by the integration test `Generated_sql_for_the_main_queries_is_captured_with_ToQueryString` (written to
-`ApexPost.Tests/bin/<config>/net10.0/generated-sql.md` on every test run). Every value is a parameter; date windows are
+`ApexPost.IntegrationTests/bin/<config>/net10.0/generated-sql.md` on every test run). Every value is a parameter; date windows are
 half-open ranges on the raw column (SARGable).
 
 ### Shipping volume by zone and service level

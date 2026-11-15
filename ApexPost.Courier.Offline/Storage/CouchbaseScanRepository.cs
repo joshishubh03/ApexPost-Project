@@ -144,14 +144,22 @@ public sealed class CouchbaseScanRepository(CourierDatabase database) : IScanRep
     public Task<int> CountPendingAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(CountPending());
+    }
+
+    /// <summary>
+    /// Synchronous pending count. Couchbase Lite's query API is synchronous, so callers that cannot await - the
+    /// change-listener callback and constructors - use this instead of blocking on <see cref="CountPendingAsync"/>.
+    /// </summary>
+    public int CountPending()
+    {
         using var query = database.CreateQuery(CountPendingQuery);
         query.Parameters = new Parameters()
             .SetString("docType", DocumentType)
             .SetString("syncStatus", nameof(SyncStatus.Pending));
 
         using var results = query.Execute();
-        var total = results.Select(row => row.GetInt("total")).FirstOrDefault();
-        return Task.FromResult(total);
+        return results.Select(row => row.GetInt("total")).FirstOrDefault();
     }
 
     public Task<IReadOnlyList<ScanTypeCount>> CountByScanTypeAsync(string courierId, CancellationToken cancellationToken = default)

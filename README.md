@@ -1,8 +1,8 @@
-# ApexPost Logistics - Week 3 (SQL Server + EF Core 10) and Week 4 (courier offline -> API -> mobile app)
+# ApexPost Logistics - Week 3 (SQL Server + EF Core 10), Week 4 (courier offline -> API -> mobile app) and Week 5 (testing strategy)
 
 ApexPost is a branch counter system: product sales, stock, shipping, money orders with identity checks, and
 reporting. **Week 4** (Parts A-D) is described in the [Week 4 section](#week-4-courier-offline---api---mobile-app)
-below. In Week 3, SQL Server becomes the system of record:
+below, and the **Week 5** testing strategy in the [Week 5 section](#week-5-testing-strategy). In Week 3, SQL Server becomes the system of record:
 
 - EF Core 10 maps a 3NF schema (20 tables) with migrations.
 - Three stored procedures handle the set-based work.
@@ -18,11 +18,13 @@ In Week 3 Couchbase was out of scope. Week 4 Part A adds Couchbase Lite, but onl
 | [PERFORMANCE.md](PERFORMANCE.md) | Workloads, indexes, before/after plans and numbers, write overhead, SARGability, statistics |
 | [docs/sql-transactions-and-concurrency.md](docs/sql-transactions-and-concurrency.md) | T-SQL transaction, blocking demo output, isolation level, deadlock avoidance |
 | [docs/generated-sql-samples.md](docs/generated-sql-samples.md) | SQL that EF Core generated for the main queries (`ToQueryString`) |
-| [docs/adr/](docs/adr/) | Architecture decisions; 0041-0049 are the Week 3 ones, 0051-0052 the Week 4 ones |
+| [docs/adr/](docs/adr/) | Architecture decisions; 0041-0049 are the Week 3 ones, 0051-0054 the Week 4 ones |
 | [OFFLINE-DESIGN.md](OFFLINE-DESIGN.md) | Week 4 Part A: save locally first, conflicts, one process per embedded database |
 | [API-NOTES.md](API-NOTES.md) / [VERSIONING.md](VERSIONING.md) | Week 4 Parts B-C: endpoints and status codes, v1/v2 changes and the v1 sunset plan |
 | [SECURITY.md](SECURITY.md) / [RESILIENCE.md](RESILIENCE.md) | Week 4 Part D: JWT, roles, API keys, OAuth2, TLS/HSTS; retry, circuit breaker and timeout values |
 | [docs/ASSESSMENT-EVIDENCE.md](docs/ASSESSMENT-EVIDENCE.md) | Week 4 requirement -> evidence map |
+| [TESTING-STRATEGY.md](TESTING-STRATEGY.md) | Week 5: risk map, test pyramid, xUnit choice, review of every existing test, data access strategy, reflection |
+| [TDD-LOG.md](TDD-LOG.md) / [COPILOT-LOG.md](COPILOT-LOG.md) | Week 5: the stale-scan rule built Red -> Green -> Refactor; Copilot prompts and review decisions |
 
 ## Solution layout
 
@@ -30,9 +32,11 @@ In Week 3 Couchbase was out of scope. Week 4 Part A adds Couchbase Lite, but onl
 ApexPost.Domain          entities, value objects (Sku, BranchCode, Money, Weight, IdentityDocumentMask), invariants
 ApexPost.Application     use-case services, ports (IUnitOfWork, repositories, IReportingQueries, IAuditStore), DTOs
 ApexPost.Infrastructure  Persistence/ (ApexPostDbContext, Configurations/, Migrations/, Repositories/, Queries/,
-                         StoredProcedures/, EfUnitOfWork, EfAuditStore), Seed/, JSON adapter (Weeks 1-2)
+                         StoredProcedures/, EfUnitOfWork, EfAuditStore), Seed/
 ApexPost.Web             MVC controllers + views, reports API, Problem Details, audit filter, composition root
-ApexPost.Tests           unit, unit-of-work spy, SQL Server integration and WebApplicationFactory tests
+ApexPost.UnitTests       unit tests (no I/O): domain, validation, services with Moq/fakes, typed API client
+ApexPost.IntegrationTests SQL Server, WebApplicationFactory (MVC + API), EF model/migrations, Couchbase Lite
+ApexPost.Specs           Reqnroll BDD scenarios (business language)
 sql/                     schema script, procedures, report queries, transaction + blocking demos, perf data/workloads
 scripts/                 measure-performance.ps1, run-blocking-demo.ps1
 ```
@@ -128,8 +132,11 @@ Things to try:
 ## 4. Tests
 
 ```powershell
-dotnet test ApexPost.slnx
+dotnet test ApexPost.Server.slnf      # all test projects; the MAUI app is left out (it needs the MAUI workload)
 ```
+
+The tests are split into `ApexPost.UnitTests`, `ApexPost.IntegrationTests` and `ApexPost.Specs`; see the
+[Week 5 section](#week-5-testing-strategy) for how to run each one and the latest results.
 
 - Unit and unit-of-work spy tests need no database.
 - SQL Server integration and web tests do the following:
@@ -164,10 +171,10 @@ powershell -ExecutionPolicy Bypass -File scripts/measure-performance.ps1 -Server
 powershell -ExecutionPolicy Bypass -File scripts/run-blocking-demo.ps1
 ```
 
-## Persistence modes
+## Persistence
 
-`Persistence:Provider` is `SqlServer` (default) or `Json`. The JSON adapter from Weeks 1-2 is kept for offline
-demos; it has no atomic commit, so services use their compensation path (ADR 0030).
+SQL Server is the only persistence model. The JSON repositories from Weeks 1-2 were removed (ADRs 0002 and 0030
+are marked superseded), so every environment, including the tests, runs the same EF Core code.
 
 ---
 
@@ -177,14 +184,15 @@ demos; it has no atomic commit, so services use their compensation path (ADR 003
 
 | Project | Purpose |
 |---|---|
-| `ApexPost.Courier.Offline` | Class library: `ShipmentScan` domain record, `IScanRepository`, `CouchbaseScanRepository`, `CourierDatabase` (IDisposable), `OutboxService`, `FakeShipmentUploader`, `PendingScanMonitor` |
+| `ApexPost.Courier.Offline.Domain` | `ShipmentScan` domain record and the ports `IScanRepository` and `IShipmentUploader`. No package references, so the compiler keeps Couchbase out of the domain (ADR 0054) |
+| `ApexPost.Courier.Offline` | Couchbase Lite adapter: `CouchbaseScanRepository`, `CourierDatabase` (IDisposable), plus `OutboxService`, `FakeShipmentUploader`, `PendingScanMonitor` |
 | `ApexPost.Courier.Offline.Harness` | Console menu: Add Scan, Find by Tracking Number, List Pending, Simulate Sync, Delete Scan, Exit, plus scans per type, an offline toggle, demo seeding and query plans |
-| `ApexPost.Courier.Offline.Tests` | CRUD, SQL++ queries and parameters, indexes, outbox, change listener and clean-up, architecture rule |
+| Tests | `ApexPost.IntegrationTests/CourierOffline` (CRUD, SQL++ queries and parameters, indexes, outbox, change listener and clean-up) and `ApexPost.UnitTests/CourierOffline` (architecture rule, outbox logic with Moq) |
 
 ```powershell
 dotnet run --project ApexPost.Courier.Offline.Harness           # data in %LOCALAPPDATA%\ApexPost\courier-harness
 dotnet run --project ApexPost.Courier.Offline.Harness -- --data .\work\courier   # custom folder
-dotnet test ApexPost.Courier.Offline.Tests
+dotnet test ApexPost.IntegrationTests --filter "FullyQualifiedName~Courier.Offline"
 ```
 
 Try it: **9** (seed fictional scans), **2** with `APX-10000001`, **3**, **7** with `courier-007`, **8** (go
@@ -202,7 +210,7 @@ unit of work and SQL Server composition (`AddApexPostSqlServer`). The additive W
 ```powershell
 dotnet user-secrets set "ConnectionStrings:ApexPostDb" "Server=(localdb)\MSSQLLocalDB;Database=ApexPostDb;Trusted_Connection=True;TrustServerCertificate=True" --project ApexPost.Api
 dotnet run --project ApexPost.Api --launch-profile https      # Development applies migrations on start
-dotnet test ApexPost.Api.Tests                                  # disposable LocalDB database per run
+dotnet test ApexPost.IntegrationTests --filter "FullyQualifiedName~ApexPost.Api.Tests"   # disposable LocalDB database per run
 ```
 
 - **Controllers stay thin.** They bind the input, call `CourierShipmentService` and return the HTTP result.
@@ -269,7 +277,7 @@ powershell -File scripts/update-contracts.ps1     # after an intentional API cha
 | `ApexPost.Api` (updated) | JWT bearer (issuer, audience, lifetime and key validated from config), roles (`Courier`/`Admin`), courierId ownership check, partner `X-Api-Key` middleware, HTTPS redirection everywhere plus HSTS outside Development, `Bearer` and `PartnerApiKey` schemes in OpenAPI, Development-only `/dev/token`. |
 | `ApexPost.Courier.Core` | Typed `ApexApiClient` (`AddHttpClient<ApexApiClient>()`), `AuthHeaderHandler`, Polly retry / circuit breaker / timeouts with logging, source-generated `CourierJsonContext`, ProblemDetails to friendly messages, `ApiShipmentUploader` (replaces Part A's fake), `SyncCoordinator` (batches of 20 on reconnect). |
 | `ApexPost.Courier` | .NET MAUI app (Android emulator + Windows). Screens: Login, New Scan, Pending Scans, Sync Status. Uses SecureStorage for the token, Connectivity for online/offline, and the offline banner. |
-| `ApexPost.Courier.Core.Tests` | Retry, no-retry-on-4xx, circuit breaker, timeouts, auth handler and 401, JSON tolerance, uploader mapping, end-to-end sync. |
+| Tests | `ApexPost.UnitTests/CourierClient` (retry, no retry on 4xx, circuit breaker, timeouts, auth handler and 401, JSON tolerance, HTTP status handling) and `ApexPost.IntegrationTests/CourierClient` (end-to-end sync with Couchbase Lite). |
 
 ### Setup
 
@@ -301,7 +309,59 @@ dotnet test ApexPost.Server.slnf
 4. Turn airplane mode off. `SyncCoordinator` uploads automatically, **Pending** drops to 0 and **Sync Status**
    shows the time.
 5. **Stop the API** and save a scan, then press "Sync now" a few times. The retries are logged, the circuit opens,
-   and the banner reads **"Server unavailable – working offline"**. Start the API again: after 20 s the circuit
+   and the banner reads **"Server unavailable â€“ working offline"**. Start the API again: after 20 s the circuit
    goes half-open, then closed, and the scan syncs.
 
 See [SECURITY.md](SECURITY.md) and [RESILIENCE.md](RESILIENCE.md).
+
+---
+
+# Week 5: testing strategy
+
+The strategy (what we test, at which level and why) is in [TESTING-STRATEGY.md](TESTING-STRATEGY.md). In short:
+
+| Project | Level | What it covers | Needs |
+|---|---|---|---|
+| `ApexPost.UnitTests` | Unit (~55%) | Domain rules (status machine, weights, value objects), API request validation, services with **Moq** and in-memory fakes, outbox decisions, typed API client with a fake `HttpMessageHandler` (200, 404, 500, timeout, cancellation, ProblemDetails) | Nothing: no database, files or network |
+| `ApexPost.IntegrationTests` | Integration (~35%) | EF Core repositories, constraints, stored procedures and migrations on a disposable SQL Server database; MVC app and API end to end with `WebApplicationFactory` and test JWTs; Couchbase Lite repository, listener and device sync | SQL Server LocalDB (installed with Visual Studio) |
+| `ApexPost.Specs` | BDD (~10%) | Reqnroll features in business language: `ShipmentCreation.feature` (API level), `ScanSync.feature` (service level) | SQL Server LocalDB |
+
+## Running the tests
+
+```powershell
+dotnet test ApexPost.Server.slnf                       # everything (MAUI app excluded)
+dotnet test ApexPost.UnitTests                         # seconds, no set-up at all
+dotnet test ApexPost.IntegrationTests                  # SQL Server LocalDB + Couchbase Lite
+dotnet test ApexPost.Specs                             # Reqnroll scenarios
+dotnet test ApexPost.UnitTests --filter "FullyQualifiedName~StaleScanRuleTests"   # the TDD rule only
+
+# Full run with TRX files, a log, and the summary below written into this README (add -Coverage for line coverage)
+powershell -ExecutionPolicy Bypass -File scripts/run-tests.ps1
+```
+
+All three projects appear in Visual Studio **Test Explorer** (Test > Test Explorer > Run All). Nothing has to be
+set up by hand: each SQL Server test fixture creates its own database (`ApexPostDb_Test_<guid>`,
+`ApexPostDb_ApiTest_<guid>`, `ApexPostDb_Specs_<guid>`), applies the real migrations and drops it at the end.
+Another server can be used with `$env:APEXPOST_TEST_SQLSERVER = "Server=localhost;Trusted_Connection=True;TrustServerCertificate=True"`.
+No secrets are needed: the test JWT signing key is random per run.
+
+## Test results
+
+<!-- test-results:start -->
+Last run: 2026-11-15 10:49 UTC on DESKTOP-FB55L35, `scripts/run-tests.ps1`. Full log: [docs/test-results/test-output.txt](docs/test-results/test-output.txt).
+
+| Project | Passed | Failed | Skipped | Total | Duration |
+|---|---|---|---|---|---|
+| ApexPost.UnitTests | 302 | 0 | 0 | 302 | 1 s |
+| ApexPost.IntegrationTests | 148 | 0 | 0 | 148 | 28 s |
+| ApexPost.Specs | 13 | 0 | 0 | 13 | 1 s |
+| **All** | **463** | **0** | **0** | **463** | |
+<!-- test-results:end -->
+
+## TDD, BDD and Copilot evidence
+
+- **TDD:** commits `RED:`, `GREEN:` and `REFACTOR:` on `week5-testing`, explained in [TDD-LOG.md](TDD-LOG.md).
+- **BDD:** `ApexPost.Specs/Features/*.feature`, with the Background, Scenario Outlines, hooks
+  (`Support/Hooks.cs`) and context classes (`Support/ShipmentApiContext.cs`, `Support/CourierSyncContext.cs`).
+- **Copilot:** prompts, review decisions and the break-the-code proof in [COPILOT-LOG.md](COPILOT-LOG.md)
+  (`scripts/prove-tests-fail.ps1`).

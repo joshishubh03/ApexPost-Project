@@ -17,8 +17,8 @@ them with EF Core. Web (`Program.cs`) only composes.
 - They **stage changes only** - no repository calls `SaveChanges` (previously 28 calls).
 - No member returns `IQueryable`; reads return immutable domain records.
 - Focused members (`GetByIdAsync`, `GetForBranchAsync`, `GetRecentForBranchAsync`, `AddAsync`, `UpdateAsync`)
-  have default interface implementations over `GetAll/SaveAll`, so the JSON adapter and test fakes keep working
-  unchanged while EF Core overrides them with targeted queries.
+  have default interface implementations over `GetAll/SaveAll`, so the in-memory test fakes stay small while
+  EF Core overrides them with targeted queries.
 - Rows already staged in the current unit of work (`DbSet.Local`) are reused, so two calls in one use case
   never add a duplicate.
 
@@ -46,4 +46,4 @@ Both use the same ApexPostDb - **no separate read database is required or used**
 
 - Services that previously saved after every step now commit once; a failure anywhere rolls back everything
   (proved by `Failed_sale_rolls_back_stock_and_transaction_rows_together` and the spy unit-of-work tests).
-- The JSON adapter keeps its Week 2 compensation logic behind `IUnitOfWork.SupportsAtomicCommit == false`.
+- There is one commit path. The JSON adapter and its compensation logic were removed with the JSON repositories.

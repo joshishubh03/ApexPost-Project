@@ -40,10 +40,11 @@ public static class MauiProgram
             Path.Combine(FileSystem.AppDataDirectory, "courier"),
             CourierDatabase.DefaultName,
             provider.GetRequiredService<ILogger<CourierDatabase>>()));
-        builder.Services.AddSingleton<IScanRepository>(provider => new CouchbaseScanRepository(provider.GetRequiredService<CourierDatabase>()));
+        builder.Services.AddSingleton(provider => new CouchbaseScanRepository(provider.GetRequiredService<CourierDatabase>()));
+        builder.Services.AddSingleton<IScanRepository>(provider => provider.GetRequiredService<CouchbaseScanRepository>());
         builder.Services.AddSingleton(provider => new PendingScanMonitor(
             provider.GetRequiredService<CourierDatabase>(),
-            provider.GetRequiredService<IScanRepository>(),
+            provider.GetRequiredService<CouchbaseScanRepository>(),
             provider.GetRequiredService<ILogger<PendingScanMonitor>>()));
 
         // Typed API client via IHttpClientFactory + AuthHeaderHandler + Polly (retry, circuit breaker, timeouts).
