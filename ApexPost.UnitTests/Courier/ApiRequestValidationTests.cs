@@ -140,6 +140,21 @@ public sealed class ApiRequestValidationTests
         Assert.Equal(valid, !errors.Any(error => error.MemberNames.Contains(nameof(ScanUploadItemRequest.ScanId))));
     }
 
+    [Fact]
+    public void ScanUploadItemRequest_MalformedScanId_ReportsAReadableMessageInsteadOfThrowing()
+    {
+        // Regression: the message used to contain "{Guid}", which DataAnnotations treats as a format placeholder,
+        // so an invalid scan ID threw FormatException (a 500 from the API) instead of returning a 400.
+        // Arrange
+        var request = ValidScan(scanId: "not-a-scan-id");
+
+        // Act
+        var error = Assert.Single(Validate(request, new FixedClock(Now)));
+
+        // Assert
+        Assert.Equal("The scan ID must use the format scan::{Guid}.", error.ErrorMessage);
+    }
+
     [Theory]
     [InlineData(0, false)]
     [InlineData(1, true)]

@@ -254,8 +254,15 @@ with Visual Studio) unless `APEXPOST_TEST_SQLSERVER` points to another server.
 
 ## 10. Reflection
 
-**What the strategy caught.** Reviewing the existing tests against the risk map found problems that were
-invisible while the suite was green:
+**What the strategy caught.**
+
+- **A real production bug.** The new boundary tests for the scan ID format (risk R8) failed on the first run:
+  the validation message `"... scan::{Guid}."` is used by DataAnnotations as a format string, so `{Guid}` made
+  `string.Format` throw. Any upload with a malformed scan ID would have returned **500** instead of a **400**
+  with a clear message. The Week 4 API tests only sent valid scan IDs, so they never reached that path. Fixed by
+  escaping the braces (`{{Guid}}`), with a regression test that checks the message text.
+
+Reviewing the existing tests against the risk map also found problems that were invisible while the suite was green:
 
 - `Concurrent_counter_sales_preserve_every_receipt_and_stock_change` gave false confidence. It ran 20 parallel
   sales against an in-memory fake and passed because of the fake unit of work's semaphore, not because of ApexPost.
